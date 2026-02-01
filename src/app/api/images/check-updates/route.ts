@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE clears cache for specific images (or all) and triggers recheck
+// DELETE clears cache for specific images (or all)
+// Does NOT wait for recheck - the next GET will trigger it
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
@@ -99,17 +100,14 @@ export async function DELETE(request: NextRequest) {
     // Clear cache for specified images (or all if none specified)
     if (images && Array.isArray(images) && images.length > 0) {
       clearCachedUpdates(images);
-      // Recheck the cleared images
-      await checkImageUpdates(images);
     } else {
       clearCachedUpdates();
-      // Trigger full recheck - reset both flags so ensureInitialCheck starts fresh
+      // Reset flags so next GET triggers fresh check
       initialCheckDone = false;
       initialCheckPromise = null;
-      await ensureInitialCheck();
     }
 
-    return NextResponse.json({ data: { message: "Cache cleared and rechecked" } });
+    return NextResponse.json({ data: { message: "Cache cleared" } });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to clear cache" },

@@ -18,11 +18,15 @@ export class OciClient implements RegistryClient {
 
     try {
       // Get tag list
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const listRes = await fetch(`${this.baseUrl}/v2/${name}/tags/list`, {
         headers: {
           "Accept": "application/json",
         },
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
 
       if (!listRes.ok) {
         if (listRes.status === 404) {
@@ -75,24 +79,32 @@ export class OciClient implements RegistryClient {
    * Get the digest for a specific tag by fetching its manifest.
    */
   private async getManifestDigest(name: string, tag: string): Promise<string | null> {
-    const response = await fetch(`${this.baseUrl}/v2/${name}/manifests/${tag}`, {
-      method: "HEAD",
-      headers: {
-        // Request manifest list or image index
-        "Accept": [
-          "application/vnd.oci.image.index.v1+json",
-          "application/vnd.docker.distribution.manifest.list.v2+json",
-          "application/vnd.oci.image.manifest.v1+json",
-          "application/vnd.docker.distribution.manifest.v2+json",
-        ].join(", "),
-      },
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout per manifest
 
-    if (!response.ok) {
-      return null;
+    try {
+      const response = await fetch(`${this.baseUrl}/v2/${name}/manifests/${tag}`, {
+        method: "HEAD",
+        headers: {
+          // Request manifest list or image index
+          "Accept": [
+            "application/vnd.oci.image.index.v1+json",
+            "application/vnd.docker.distribution.manifest.list.v2+json",
+            "application/vnd.oci.image.manifest.v1+json",
+            "application/vnd.docker.distribution.manifest.v2+json",
+          ].join(", "),
+        },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.headers.get("docker-content-digest");
+    } finally {
+      clearTimeout(timeout);
     }
-
-    return response.headers.get("docker-content-digest");
   }
 }
 

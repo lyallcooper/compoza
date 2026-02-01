@@ -26,11 +26,15 @@ export class DockerHubClient implements RegistryClient {
 
     try {
       while (url) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
         const response = await fetch(url, {
           headers: {
             "Accept": "application/json",
           },
-        });
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeout));
 
         if (!response.ok) {
           if (response.status === 404) {

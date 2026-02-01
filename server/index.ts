@@ -29,33 +29,16 @@ async function runUpdateCheck() {
   console.log("[Update Check] Starting background update check...");
 
   try {
-    // Dynamically import to avoid issues with Next.js module resolution
-    const { scanProjects } = await import("../src/lib/projects/scanner");
-    const { checkImageUpdates } = await import("../src/lib/updates");
-
-    // Get all projects and their images
-    const projects = await scanProjects();
-    const images = new Set<string>();
-
-    for (const project of projects) {
-      for (const service of project.services) {
-        if (service.image) {
-          images.add(service.image);
-        }
-      }
+    // Trigger the API endpoint which handles the update check
+    // This ensures we use the same module instance as the API routes
+    const res = await fetch(`http://${hostname}:${port}/api/images/check-updates`);
+    if (!res.ok) {
+      throw new Error(`API returned ${res.status}`);
     }
-
-    const imageList = Array.from(images);
-    console.log(`[Update Check] Checking ${imageList.length} images from ${projects.length} projects`);
-
-    if (imageList.length > 0) {
-      // Check updates (this will populate the cache)
-      const results = await checkImageUpdates(imageList);
-      const updatesAvailable = results.filter((r) => r.updateAvailable).length;
-      console.log(`[Update Check] Complete. ${updatesAvailable} updates available.`);
-    } else {
-      console.log("[Update Check] No images to check.");
-    }
+    const data = await res.json();
+    const updates = data.data || [];
+    const updatesAvailable = updates.filter((r: { updateAvailable: boolean }) => r.updateAvailable).length;
+    console.log(`[Update Check] Complete. ${updates.length} images checked, ${updatesAvailable} updates available.`);
   } catch (error) {
     console.error("[Update Check] Error:", error);
   }
@@ -241,6 +224,9 @@ app.prepare().then(() => {
     });
   };
 
+  // Remove existing listeners to avoid leaks during hot reload
+  process.removeAllListeners("SIGTERM");
+  process.removeAllListeners("SIGINT");
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
 });

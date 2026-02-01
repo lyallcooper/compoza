@@ -15,20 +15,36 @@ interface LabelGroup {
 
 function groupLabels(labels: Record<string, string>): LabelGroup[] {
   const entries = Object.entries(labels).sort(([a], [b]) => a.localeCompare(b));
+  const prefixCounts: Map<string, number> = new Map();
+
+  // First pass: count labels per prefix
+  for (const [key] of entries) {
+    const parts = key.split(".");
+    if (parts.length >= 3) {
+      const prefix = parts.slice(0, -1).join(".");
+      prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1);
+    }
+  }
+
+  // Second pass: group labels, only grouping if prefix has more than 1 item
   const groups: Map<string, LabelGroup> = new Map();
 
   for (const [key, value] of entries) {
-    // Find prefix (everything up to and including the second-to-last dot)
     const parts = key.split(".");
     let prefix: string;
     let suffix: string;
 
     if (parts.length >= 3) {
-      // Group by all but the last part: "com.docker.compose.project" -> prefix="com.docker.compose", suffix="project"
-      prefix = parts.slice(0, -1).join(".");
-      suffix = parts[parts.length - 1];
+      const candidatePrefix = parts.slice(0, -1).join(".");
+      // Only group if there are multiple labels with this prefix
+      if ((prefixCounts.get(candidatePrefix) || 0) > 1) {
+        prefix = candidatePrefix;
+        suffix = parts[parts.length - 1];
+      } else {
+        prefix = "";
+        suffix = key;
+      }
     } else {
-      // No grouping for short keys
       prefix = "";
       suffix = key;
     }
@@ -55,10 +71,10 @@ function groupLabels(labels: Record<string, string>): LabelGroup[] {
 export function GroupedLabels({ labels }: GroupedLabelsProps) {
   const groups = useMemo(() => groupLabels(labels), [labels]);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
-    // Start with all groups collapsed except small ones
+    // Only collapse com.docker.* groups by default
     const initial = new Set<string>();
     for (const group of groups) {
-      if (group.prefix && group.labels.length > 1) {
+      if (group.prefix && group.prefix.startsWith("com.docker")) {
         initial.add(group.prefix);
       }
     }

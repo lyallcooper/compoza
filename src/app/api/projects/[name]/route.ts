@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getProject, deleteProject } from "@/lib/projects";
+import { success, notFound, error, getErrorMessage } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -12,15 +13,12 @@ export async function GET(
     const project = await getProject(name);
 
     if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+      return notFound("Project not found");
     }
 
-    return NextResponse.json({ data: project });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to get project" },
-      { status: 500 }
-    );
+    return success(project);
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to get project"));
   }
 }
 
@@ -33,14 +31,11 @@ export async function DELETE(
     const result = await deleteProject(name);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return error(result.error || "Failed to delete project");
     }
 
-    return NextResponse.json({ data: { message: result.output } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete project" },
-      { status: 500 }
-    );
+    return success({ message: result.output });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to delete project"));
   }
 }

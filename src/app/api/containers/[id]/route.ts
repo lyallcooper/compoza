@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getContainer } from "@/lib/docker";
+import { success, notFound, error, getErrorMessage } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -12,14 +13,11 @@ export async function GET(
     const container = await getContainer(id);
 
     if (!container) {
-      return NextResponse.json({ error: "Container not found" }, { status: 404 });
+      return notFound("Container not found");
     }
 
-    return NextResponse.json({ data: container });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to get container" },
-      { status: 500 }
-    );
+    return success(container);
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to get container"));
   }
 }

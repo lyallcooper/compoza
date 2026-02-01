@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
-import { YamlEditor, EnvEditor } from "@/components/projects";
+import { YamlEditor, EnvEditor, UpdateConfirmModal } from "@/components/projects";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates, useProjectCompose, useProjectEnv } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
 
@@ -121,6 +121,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   }, [imageUpdates]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [actionOutput, setActionOutput] = useState<string | null>(null);
 
   // Check if project has any updates available
@@ -128,6 +129,25 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     if (!project) return false;
     return project.services.some((s) => s.image && updatesMap.get(s.image));
   }, [project, updatesMap]);
+
+  // Get images with updates for this project (with version info)
+  const updatableImages = useMemo(() => {
+    if (!project || !imageUpdates) return [];
+    const seenImages = new Set<string>();
+    const images: { image: string; currentVersion?: string; latestVersion?: string }[] = [];
+    for (const service of project.services) {
+      if (service.image && updatesMap.get(service.image) && !seenImages.has(service.image)) {
+        seenImages.add(service.image);
+        const update = imageUpdates.find((u) => u.image === service.image);
+        images.push({
+          image: service.image,
+          currentVersion: update?.currentVersion,
+          latestVersion: update?.latestVersion,
+        });
+      }
+    }
+    return images;
+  }, [project, imageUpdates, updatesMap]);
 
   // Derived state for action button disabled states
   const anyActionPending = projectUp.isPending || projectDown.isPending || projectUpdate.isPending;
@@ -176,6 +196,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     try {
       const result = await projectUpdate.mutateAsync();
       setActionOutput(result?.output || "Updated");
+      setShowUpdateModal(false);
     } catch (error) {
       console.error("[Project Update] Error:", error);
     }
@@ -224,8 +245,13 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <Button onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
             Down
           </Button>
-          <Button variant={hasUpdates ? "accent" : "default"} onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
-            Update
+          <Button
+            variant={hasUpdates ? "accent" : "default"}
+            onClick={hasUpdates ? () => setShowUpdateModal(true) : handleUpdate}
+            loading={projectUpdate.isPending}
+            disabled={!canUpdate}
+          >
+            {hasUpdates ? "Update…" : "Update"}
           </Button>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">
             <Button>Logs</Button>
@@ -243,8 +269,12 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <DropdownItem onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
             Down
           </DropdownItem>
-          <DropdownItem onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
-            Update
+          <DropdownItem
+            onClick={hasUpdates ? () => setShowUpdateModal(true) : handleUpdate}
+            loading={projectUpdate.isPending}
+            disabled={!canUpdate}
+          >
+            {hasUpdates ? "Update…" : "Update"}
           </DropdownItem>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
             <DropdownItem>Logs</DropdownItem>
@@ -395,6 +425,20 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             <div className="text-error text-sm mt-2">{String(deleteProject.error)}</div>
           )}
         </Modal>
+      )}
+
+      {/* Update Modal */}
+      {showUpdateModal && (
+        <UpdateConfirmModal
+          open
+          onClose={() => setShowUpdateModal(false)}
+          onConfirm={handleUpdate}
+          title={`Update ${project.name}`}
+          projectName={project.name}
+          images={updatableImages}
+          isRunning={project.status === "running" || project.status === "partial"}
+          loading={projectUpdate.isPending}
+        />
       )}
     </div>
   );

@@ -5,9 +5,13 @@ import {
   shouldCheckImage,
   markCheckPending,
   markCheckComplete,
+  updateCachedVersions,
+  markVersionResolutionFailed,
 } from "./cache";
+import { resolveVersions } from "@/lib/registries";
 
 export { getAllCachedUpdates, getCacheStats, clearCachedUpdates } from "./cache";
+export type { CachedUpdate } from "./cache";
 
 interface ImageUpdateInfo {
   image: string;
@@ -16,6 +20,8 @@ interface ImageUpdateInfo {
   updateAvailable: boolean;
   status: "checked" | "unknown" | "error";
   fromCache?: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
 }
 
 export async function checkImageUpdates(images: string[]): Promise<ImageUpdateInfo[]> {
@@ -28,9 +34,13 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
     if (cached) {
       results.push({
         image: cached.image,
+        currentDigest: cached.currentDigest,
+        latestDigest: cached.latestDigest,
         updateAvailable: cached.updateAvailable,
         status: cached.status,
         fromCache: true,
+        currentVersion: cached.currentVersion,
+        latestVersion: cached.latestVersion,
       });
 
       // Schedule background refresh if stale
@@ -77,9 +87,13 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
       if (cached) {
         results.push({
           image: cached.image,
+          currentDigest: cached.currentDigest,
+          latestDigest: cached.latestDigest,
           updateAvailable: cached.updateAvailable,
           status: cached.status,
           fromCache: true,
+          currentVersion: cached.currentVersion,
+          latestVersion: cached.latestVersion,
         });
       }
       continue;
@@ -162,8 +176,17 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           };
         }
 
-        setCachedUpdate(imageName, result);
+        // Store in cache with version resolution pending
+        setCachedUpdate(imageName, {
+          ...result,
+          versionStatus: "pending",
+        });
         results.push(result);
+
+        // Trigger async version resolution (don't await)
+        if (result.updateAvailable && (currentDigest || latestDigest)) {
+          triggerVersionResolution(imageName, currentDigest, latestDigest);
+        }
       } catch (error) {
         // Distribution API failures are common (private registries, local images, etc.)
         // Only log if it's not a typical 404/401/403 error
@@ -195,6 +218,28 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
   }
 
   return results;
+}
+
+/**
+ * Trigger async version resolution for an image.
+ * Updates the cache when complete.
+ */
+function triggerVersionResolution(
+  imageName: string,
+  currentDigest?: string,
+  latestDigest?: string
+): void {
+  resolveVersions(imageName, currentDigest, latestDigest)
+    .then(({ currentVersion, latestVersion }) => {
+      if (currentVersion || latestVersion) {
+        updateCachedVersions(imageName, currentVersion, latestVersion);
+        console.log(`[Version Resolution] ${imageName}: ${currentVersion || "?"} → ${latestVersion || "?"}`);
+      }
+    })
+    .catch((error) => {
+      markVersionResolutionFailed(imageName);
+      console.warn(`[Version Resolution] Failed for ${imageName}:`, error);
+    });
 }
 
 export async function pullLatestImage(imageName: string): Promise<void> {

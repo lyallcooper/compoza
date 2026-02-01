@@ -1,8 +1,15 @@
-interface CachedUpdate {
+export interface CachedUpdate {
   image: string;
   updateAvailable: boolean;
   status: "checked" | "unknown" | "error";
   checkedAt: number;
+  // Digest information
+  currentDigest?: string;
+  latestDigest?: string;
+  // Resolved version information
+  currentVersion?: string;
+  latestVersion?: string;
+  versionStatus?: "pending" | "resolved" | "failed";
 }
 
 // In-memory cache with TTL
@@ -28,6 +35,33 @@ export function setCachedUpdate(image: string, update: Omit<CachedUpdate, "check
     ...update,
     checkedAt: Date.now(),
   });
+}
+
+/**
+ * Update only the version fields of a cached entry.
+ * Used when async version resolution completes.
+ */
+export function updateCachedVersions(
+  image: string,
+  currentVersion?: string,
+  latestVersion?: string
+): void {
+  const cached = cache.get(image);
+  if (cached) {
+    cached.currentVersion = currentVersion;
+    cached.latestVersion = latestVersion;
+    cached.versionStatus = "resolved";
+  }
+}
+
+/**
+ * Mark version resolution as failed for a cached entry.
+ */
+export function markVersionResolutionFailed(image: string): void {
+  const cached = cache.get(image);
+  if (cached) {
+    cached.versionStatus = "failed";
+  }
 }
 
 export function shouldCheckImage(image: string): boolean {

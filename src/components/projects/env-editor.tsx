@@ -4,32 +4,6 @@ import { useEffect, useRef } from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-import { syntaxHighlighting, HighlightStyle, StreamLanguage } from "@codemirror/language";
-import { tags } from "@lezer/highlight";
-
-// Simple env file syntax: KEY=value, # comments
-const envLanguage = StreamLanguage.define({
-  token(stream) {
-    if (stream.match(/^#.*/)) {
-      return "comment";
-    }
-    if (stream.sol() && stream.match(/^[A-Z_][A-Z0-9_]*/i)) {
-      return "propertyName";
-    }
-    if (stream.match(/^=/) ) {
-      return "punctuation";
-    }
-    stream.next();
-    return "string";
-  },
-});
-
-const customHighlightStyle = HighlightStyle.define([
-  { tag: tags.propertyName, color: "var(--foreground)" },
-  { tag: tags.string, color: "var(--success)" },
-  { tag: tags.comment, color: "var(--muted)", fontStyle: "italic" },
-  { tag: tags.punctuation, color: "var(--muted)" },
-]);
 
 interface EnvEditorProps {
   value: string;
@@ -87,8 +61,6 @@ export function EnvEditor({ value, onChange, readOnly = false, className = "" }:
         lineNumbers(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
-        envLanguage,
-        syntaxHighlighting(customHighlightStyle),
         keymap.of([...defaultKeymap, indentWithTab]),
         theme,
         EditorView.updateListener.of((update) => {

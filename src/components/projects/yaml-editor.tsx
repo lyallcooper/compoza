@@ -5,20 +5,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { yaml } from "@codemirror/lang-yaml";
-import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
-import { tags } from "@lezer/highlight";
-
-// Custom highlight style using our theme colors
-const customHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "var(--accent)" },
-  { tag: tags.string, color: "var(--success)" },
-  { tag: tags.number, color: "var(--warning)" },
-  { tag: tags.bool, color: "var(--warning)" },
-  { tag: tags.null, color: "var(--muted)" },
-  { tag: tags.propertyName, color: "var(--foreground)" },
-  { tag: tags.comment, color: "var(--muted)", fontStyle: "italic" },
-  { tag: tags.punctuation, color: "var(--muted)" },
-]);
+import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
 interface YamlEditorProps {
   value: string;
@@ -77,7 +64,7 @@ export function YamlEditor({ value, onChange, readOnly = false, className = "" }
         highlightActiveLine(),
         highlightActiveLineGutter(),
         yaml(),
-        syntaxHighlighting(customHighlightStyle),
+        syntaxHighlighting(defaultHighlightStyle),
         keymap.of([...defaultKeymap, indentWithTab]),
         theme,
         EditorView.updateListener.of((update) => {

@@ -7,6 +7,8 @@ export {
   useDeleteProject,
   useProjectPull,
   useProjectUpdate,
+  useProjectCompose,
+  useProjectEnv,
 } from "./use-projects";
 export {
   useContainers,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, SelectableText, PortsList, DropdownMenu, DropdownItem } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
-import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates } from "@/hooks";
+import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates, useProjectCompose, useProjectEnv } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
 
 export default function ProjectDetailPage({ params }: ProjectRouteProps) {
@@ -13,6 +13,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const decodedName = decodeURIComponent(name);
   const router = useRouter();
   const { data: project, isLoading, error } = useProject(decodedName);
+  const { data: composeContent } = useProjectCompose(decodedName);
+  const { data: envContent } = useProjectEnv(decodedName);
   const projectUp = useProjectUp(decodedName);
   const projectDown = useProjectDown(decodedName);
   const deleteProject = useDeleteProject(decodedName);
@@ -240,19 +242,21 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         </Table>
       </Box>
 
-      {/* Info */}
-      <Box title="Info">
-        <div className="space-y-1 text-sm">
-          <div>
-            <span className="text-muted">Path:</span>{" "}
-            <SelectableText className="font-mono">{project.path}</SelectableText>
-          </div>
-          <div>
-            <span className="text-muted">Compose file:</span>{" "}
-            <SelectableText className="font-mono">{project.composeFile}</SelectableText>
-          </div>
-        </div>
-      </Box>
+      {/* Files */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Box title="compose.yaml">
+          <pre className="text-xs font-mono text-muted whitespace-pre-wrap overflow-auto max-h-96">
+            {composeContent || "Loading..."}
+          </pre>
+        </Box>
+        {envContent && (
+          <Box title=".env">
+            <pre className="text-xs font-mono text-muted whitespace-pre-wrap overflow-auto max-h-96">
+              {envContent}
+            </pre>
+          </Box>
+        )}
+      </div>
 
       {/* Delete Modal */}
       {showDeleteModal && (

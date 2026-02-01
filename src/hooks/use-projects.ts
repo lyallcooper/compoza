@@ -173,3 +173,29 @@ export function useProjectUpdate(name: string) {
     },
   });
 }
+
+export function useProjectCompose(name: string) {
+  return useQuery({
+    queryKey: ["projects", name, "compose"],
+    queryFn: async (): Promise<string> => {
+      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/compose`);
+      const data: ApiResponse<{ content: string }> = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.data?.content || "";
+    },
+    enabled: !!name,
+  });
+}
+
+export function useProjectEnv(name: string) {
+  return useQuery({
+    queryKey: ["projects", name, "env"],
+    queryFn: async (): Promise<string> => {
+      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/env`);
+      const data: ApiResponse<{ content: string }> = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.data?.content || "";
+    },
+    enabled: !!name,
+  });
+}

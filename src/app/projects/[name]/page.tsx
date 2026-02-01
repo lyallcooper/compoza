@@ -323,7 +323,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           actions={hasComposeChanges && saveDiscardButtons}
         >
           {editedCompose !== null ? (
-            <YamlEditor value={editedCompose} onChange={setEditedCompose} className="h-80" />
+            <YamlEditor value={editedCompose} onChange={setEditedCompose} className="h-80 lg:h-[32rem]" />
           ) : (
             <div className="p-4 text-muted">Loading...</div>
           )}
@@ -334,7 +334,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           actions={hasEnvChanges && saveDiscardButtons}
         >
           {editedEnv !== null ? (
-            <EnvEditor value={editedEnv} onChange={setEditedEnv} className="h-80" />
+            <EnvEditor value={editedEnv} onChange={setEditedEnv} className="h-80 lg:h-[32rem]" />
           ) : (
             <div className="p-4 text-muted">Loading...</div>
           )}

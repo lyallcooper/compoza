@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui";
+import { useEventSource } from "@/hooks";
 import { formatTime } from "@/lib/format";
 
 const MAX_LOG_LINES = 10000;
+
+interface LogMessage {
+  line?: string;
+  error?: string;
+}
 
 interface LogViewerProps {
   url: string;
@@ -13,60 +19,32 @@ interface LogViewerProps {
 
 export function LogViewer({ url, className = "" }: LogViewerProps) {
   const [logs, setLogs] = useState<string[]>([]);
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const currentUrlRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    // Track URL changes to reset state in callbacks
-    const isNewUrl = currentUrlRef.current !== url;
-    currentUrlRef.current = url;
+  const handleMessage = useCallback((data: LogMessage) => {
+    if (data.error) {
+      // Error is handled by the hook's error state
+      return;
+    }
+    if (data.line) {
+      setLogs((prev) => {
+        const newLogs = [...prev, data.line!];
+        return newLogs.length > MAX_LOG_LINES ? newLogs.slice(-MAX_LOG_LINES) : newLogs;
+      });
+    }
+  }, []);
 
-    const eventSource = new EventSource(url);
-    eventSourceRef.current = eventSource;
+  // Clear logs when connection opens (happens on URL change due to new EventSource)
+  const handleOpen = useCallback(() => {
+    setLogs([]);
+  }, []);
 
-    eventSource.onopen = () => {
-      // Reset state when connection opens for a new URL
-      if (isNewUrl) {
-        setLogs([]);
-        setError(null);
-      }
-      setConnected(true);
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.error) {
-          setError(data.error);
-          setConnected(false);
-        } else if (data.line) {
-          setLogs((prev) => {
-            const newLogs = [...prev, data.line];
-            return newLogs.length > MAX_LOG_LINES ? newLogs.slice(-MAX_LOG_LINES) : newLogs;
-          });
-        }
-      } catch {
-        setLogs((prev) => {
-          const newLogs = [...prev, event.data];
-          return newLogs.length > MAX_LOG_LINES ? newLogs.slice(-MAX_LOG_LINES) : newLogs;
-        });
-      }
-    };
-
-    eventSource.onerror = () => {
-      setConnected(false);
-      setError("Connection lost");
-    };
-
-    return () => {
-      eventSource.close();
-      eventSourceRef.current = null;
-    };
-  }, [url]);
+  const { connected, error } = useEventSource<LogMessage>({
+    url,
+    onMessage: handleMessage,
+    onOpen: handleOpen,
+  });
 
   // Auto-scroll
   useEffect(() => {

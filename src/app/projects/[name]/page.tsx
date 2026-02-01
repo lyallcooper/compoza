@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, use, useMemo } from "react";
+import { useState, useEffect, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, SelectableText, PortsList, DropdownMenu, DropdownItem } from "@/components/ui";
+import { useQueryClient } from "@tanstack/react-query";
+import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { YamlEditor, EnvEditor } from "@/components/projects";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates, useProjectCompose, useProjectEnv } from "@/hooks";
@@ -13,6 +14,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const { name } = use(params);
   const decodedName = decodeURIComponent(name);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: project, isLoading, error } = useProject(decodedName);
   const { data: composeContent } = useProjectCompose(decodedName);
   const { data: envContent } = useProjectEnv(decodedName);
@@ -20,6 +22,91 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const projectDown = useProjectDown(decodedName);
   const deleteProject = useDeleteProject(decodedName);
   const projectUpdate = useProjectUpdate(decodedName);
+
+  // Editing state
+  const [editedCompose, setEditedCompose] = useState<string | null>(null);
+  const [editedEnv, setEditedEnv] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [showApplyPrompt, setShowApplyPrompt] = useState(false);
+
+  // Initialize edited content when data loads
+  useEffect(() => {
+    if (composeContent !== undefined && editedCompose === null) {
+      setEditedCompose(composeContent);
+    }
+  }, [composeContent, editedCompose]);
+
+  useEffect(() => {
+    if (envContent !== undefined && editedEnv === null) {
+      setEditedEnv(envContent || "");
+    }
+  }, [envContent, editedEnv]);
+
+  // Track if there are unsaved changes
+  const hasComposeChanges = editedCompose !== null && editedCompose !== composeContent;
+  const hasEnvChanges = editedEnv !== null && editedEnv !== (envContent || "");
+  const hasChanges = hasComposeChanges || hasEnvChanges;
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      // Save compose file
+      if (hasComposeChanges) {
+        const composeRes = await fetch(`/api/projects/${encodeURIComponent(decodedName)}/compose`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: editedCompose }),
+        });
+        const composeData = await composeRes.json();
+        if (composeData.error) throw new Error(composeData.error);
+      }
+
+      // Save env file
+      if (hasEnvChanges) {
+        const envRes = await fetch(`/api/projects/${encodeURIComponent(decodedName)}/env`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: editedEnv }),
+        });
+        const envData = await envRes.json();
+        if (envData.error) throw new Error(envData.error);
+      }
+
+      // Invalidate cache to refetch fresh data
+      await queryClient.invalidateQueries({ queryKey: ["projects", decodedName, "compose"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects", decodedName, "env"] });
+
+      // Show prompt to apply changes
+      setShowApplyPrompt(true);
+    } catch (err) {
+      setSaveError(String(err));
+    } finally {
+      setSaving(false);
+    }
+  }, [decodedName, editedCompose, editedEnv, hasComposeChanges, hasEnvChanges, queryClient]);
+
+  const handleDiscard = useCallback(() => {
+    setEditedCompose(composeContent ?? "");
+    setEditedEnv(envContent || "");
+    setSaveError(null);
+  }, [composeContent, envContent]);
+
+  // Keyboard shortcut: Cmd/Ctrl+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (hasChanges && !saving) {
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasChanges, saving, handleSave]);
 
   // Get cached update info from server
   const { data: imageUpdates } = useImageUpdates();
@@ -36,7 +123,23 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [actionOutput, setActionOutput] = useState<string | null>(null);
 
+  // Derived state for action button disabled states
+  const anyActionPending = projectUp.isPending || projectDown.isPending || projectUpdate.isPending;
+  const canUp = !anyActionPending && !hasChanges;
+  const canDown = !anyActionPending && !hasChanges && project?.status !== "stopped";
+  const canUpdate = !anyActionPending && !hasChanges;
+  const canDelete = !hasChanges;
+
+  // Shared save/discard buttons for editor boxes
+  const saveDiscardButtons = (
+    <>
+      <Button size="sm" onClick={handleDiscard} disabled={saving}>Discard</Button>
+      <Button size="sm" variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+    </>
+  );
+
   const handleUp = async () => {
+    setShowApplyPrompt(false);
     try {
       const result = await projectUp.mutateAsync();
       setActionOutput(result?.output || "Started");
@@ -112,32 +215,16 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`}>
             <Button>Logs</Button>
           </Link>
-          <Link href={`/projects/${encodeURIComponent(project.name)}/edit`}>
-            <Button>Edit</Button>
-          </Link>
-          <Button
-            variant="primary"
-            onClick={handleUp}
-            loading={projectUp.isPending}
-            disabled={projectDown.isPending || projectUpdate.isPending}
-          >
+          <Button variant="primary" onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
             Up
           </Button>
-          <Button
-            onClick={handleDown}
-            loading={projectDown.isPending}
-            disabled={projectUp.isPending || projectUpdate.isPending || project.status === "stopped"}
-          >
+          <Button onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
             Down
           </Button>
-          <Button
-            onClick={handleUpdate}
-            loading={projectUpdate.isPending}
-            disabled={projectUp.isPending || projectDown.isPending}
-          >
+          <Button onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
             Update
           </Button>
-          <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+          <Button variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete}>
             Delete
           </Button>
         </div>
@@ -147,31 +234,16 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
             <DropdownItem>Logs</DropdownItem>
           </Link>
-          <Link href={`/projects/${encodeURIComponent(project.name)}/edit`} className="block">
-            <DropdownItem>Edit</DropdownItem>
-          </Link>
-          <DropdownItem
-            onClick={handleUp}
-            loading={projectUp.isPending}
-            disabled={projectDown.isPending || projectUpdate.isPending}
-          >
+          <DropdownItem onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
             Up
           </DropdownItem>
-          <DropdownItem
-            onClick={handleDown}
-            loading={projectDown.isPending}
-            disabled={projectUp.isPending || projectUpdate.isPending || project.status === "stopped"}
-          >
+          <DropdownItem onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
             Down
           </DropdownItem>
-          <DropdownItem
-            onClick={handleUpdate}
-            loading={projectUpdate.isPending}
-            disabled={projectUp.isPending || projectDown.isPending}
-          >
+          <DropdownItem onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
             Update
           </DropdownItem>
-          <DropdownItem variant="danger" onClick={() => setShowDeleteModal(true)}>
+          <DropdownItem variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete}>
             Delete
           </DropdownItem>
         </DropdownMenu>
@@ -245,29 +317,48 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
       {/* Files */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Box title="compose.yaml" padding={false}>
-          {composeContent !== undefined ? (
-            <YamlEditor
-              value={composeContent}
-              onChange={() => {}}
-              readOnly
-              className="h-80"
-            />
+        <Box
+          title={hasComposeChanges ? "compose.yaml *" : "compose.yaml"}
+          padding={false}
+          actions={hasComposeChanges && saveDiscardButtons}
+        >
+          {editedCompose !== null ? (
+            <YamlEditor value={editedCompose} onChange={setEditedCompose} className="h-80" />
           ) : (
             <div className="p-4 text-muted">Loading...</div>
           )}
         </Box>
-        {envContent && (
-          <Box title=".env" padding={false}>
-            <EnvEditor
-              value={envContent}
-              onChange={() => {}}
-              readOnly
-              className="h-80"
-            />
-          </Box>
-        )}
+        <Box
+          title={hasEnvChanges ? ".env *" : ".env"}
+          padding={false}
+          actions={hasEnvChanges && saveDiscardButtons}
+        >
+          {editedEnv !== null ? (
+            <EnvEditor value={editedEnv} onChange={setEditedEnv} className="h-80" />
+          ) : (
+            <div className="p-4 text-muted">Loading...</div>
+          )}
+        </Box>
       </div>
+
+      {/* Save error message */}
+      {saveError && (
+        <div className="text-error text-sm text-right">{saveError}</div>
+      )}
+
+      {/* Apply changes prompt */}
+      {showApplyPrompt && !hasChanges && (
+        <Toast
+          onClose={() => setShowApplyPrompt(false)}
+          actions={
+            <Button size="sm" variant="primary" onClick={handleUp} loading={projectUp.isPending}>
+              Up
+            </Button>
+          }
+        >
+          Changes saved. Run Up to apply them.
+        </Toast>
+      )}
 
       {/* Delete Modal */}
       {showDeleteModal && (

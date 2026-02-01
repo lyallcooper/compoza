@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { composeUp } from "@/lib/projects";
+import { success, error, getErrorMessage } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -15,14 +16,11 @@ export async function POST(
     const result = await composeUp(name, { build, pull });
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return error(result.error || "Failed to start project");
     }
 
-    return NextResponse.json({ data: { output: result.output } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to start project" },
-      { status: 500 }
-    );
+    return success({ output: result.output });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to start project"));
   }
 }

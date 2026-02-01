@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { readEnvFile, saveEnvFile } from "@/lib/projects";
-import { validateJsonContentType } from "@/lib/api/validation";
+import { success, error, badRequest, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -13,12 +13,9 @@ export async function GET(
     const content = await readEnvFile(name);
 
     // Return empty string if no env file exists (not an error)
-    return NextResponse.json({ data: { content: content || "" } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to read env file" },
-      { status: 500 }
-    );
+    return success({ content: content || "" });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to read env file"));
   }
 }
 
@@ -35,20 +32,17 @@ export async function PUT(
     const { content } = body;
 
     if (content === undefined) {
-      return NextResponse.json({ error: "Content is required" }, { status: 400 });
+      return badRequest("Content is required");
     }
 
     const result = await saveEnvFile(name, content);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return error(result.error || "Failed to save env file");
     }
 
-    return NextResponse.json({ data: { message: result.output } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save env file" },
-      { status: 500 }
-    );
+    return success({ message: result.output });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to save env file"));
   }
 }

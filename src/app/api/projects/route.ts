@@ -1,16 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { scanProjects, createProject } from "@/lib/projects";
-import { validateJsonContentType } from "@/lib/api/validation";
+import { success, error, badRequest, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
 export async function GET() {
   try {
     const projects = await scanProjects();
-    return NextResponse.json({ data: projects });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to scan projects" },
-      { status: 500 }
-    );
+    return success(projects);
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to scan projects"));
   }
 }
 
@@ -23,31 +20,22 @@ export async function POST(request: NextRequest) {
     const { name, composeContent, envContent } = body;
 
     if (!name || !composeContent) {
-      return NextResponse.json(
-        { error: "Name and compose content are required" },
-        { status: 400 }
-      );
+      return badRequest("Name and compose content are required");
     }
 
     // Validate project name
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      return NextResponse.json(
-        { error: "Project name can only contain letters, numbers, hyphens, and underscores" },
-        { status: 400 }
-      );
+      return badRequest("Project name can only contain letters, numbers, hyphens, and underscores");
     }
 
     const result = await createProject(name, composeContent, envContent);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return error(result.error || "Failed to create project");
     }
 
-    return NextResponse.json({ data: { message: result.output } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create project" },
-      { status: 500 }
-    );
+    return success({ message: result.output });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to create project"));
   }
 }

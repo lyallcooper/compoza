@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { pullImage } from "@/lib/docker";
-import { validateJsonContentType } from "@/lib/api/validation";
+import { success, error, badRequest, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
 export async function POST(request: NextRequest) {
   const contentTypeError = validateJsonContentType(request);
@@ -11,15 +11,12 @@ export async function POST(request: NextRequest) {
     const { name } = body;
 
     if (!name) {
-      return NextResponse.json({ error: "Image name is required" }, { status: 400 });
+      return badRequest("Image name is required");
     }
 
     await pullImage(name);
-    return NextResponse.json({ data: { message: `Image ${name} pulled successfully` } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to pull image" },
-      { status: 500 }
-    );
+    return success({ message: `Image ${name} pulled successfully` });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to pull image"));
   }
 }

@@ -1,16 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDocker } from "@/lib/docker";
+import { success, error, badRequest, notFound } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
   // Only allow in development mode
   if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return notFound("Not found");
   }
 
   const imageName = request.nextUrl.searchParams.get("image");
 
   if (!imageName) {
-    return NextResponse.json({ error: "image parameter required" }, { status: 400 });
+    return badRequest("image parameter required");
   }
 
   const docker = getDocker();
@@ -49,9 +50,9 @@ export async function GET(request: NextRequest) {
       debug.distributionError = distError instanceof Error ? distError.message : String(distError);
     }
 
-    return NextResponse.json({ data: debug });
-  } catch (error) {
-    debug.error = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ data: debug }, { status: 500 });
+    return success(debug);
+  } catch (err) {
+    debug.error = err instanceof Error ? err.message : String(err);
+    return error(JSON.stringify(debug), 500);
   }
 }

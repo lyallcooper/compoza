@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdates } from "@/lib/updates";
 import { scanProjects } from "@/lib/projects";
-import { validateJsonContentType } from "@/lib/api/validation";
+import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
 // Track if we've done an initial check in this process
 let initialCheckDone = false;
@@ -30,8 +30,8 @@ async function ensureInitialCheck() {
       }
       initialCheckDone = true;
       console.log("[Update Check] Initial check complete.");
-    } catch (error) {
-      console.error("[Update Check] Initial check failed:", error);
+    } catch (err) {
+      console.error("[Update Check] Initial check failed:", err);
       initialCheckPromise = null; // Allow retry on failure
     }
   })();
@@ -44,22 +44,19 @@ export async function GET(request: NextRequest) {
   try {
     // Debug: return cache stats if requested
     if (request.nextUrl.searchParams.get("stats") === "true") {
-      return NextResponse.json({ data: getCacheStats() });
+      return success(getCacheStats());
     }
 
     // Trigger initial check if cache is empty
     const cached = getAllCachedUpdates();
     if (cached.length === 0 && !initialCheckDone) {
       await ensureInitialCheck();
-      return NextResponse.json({ data: getAllCachedUpdates() });
+      return success(getAllCachedUpdates());
     }
 
-    return NextResponse.json({ data: cached });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to get updates" },
-      { status: 500 }
-    );
+    return success(cached);
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to get updates"));
   }
 }
 
@@ -78,15 +75,12 @@ export async function POST(request: NextRequest) {
     if (images && Array.isArray(images)) {
       const imageSet = new Set(images);
       const filtered = cached.filter((c) => imageSet.has(c.image));
-      return NextResponse.json({ data: filtered });
+      return success(filtered);
     }
 
-    return NextResponse.json({ data: cached });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to get updates" },
-      { status: 500 }
-    );
+    return success(cached);
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to get updates"));
   }
 }
 
@@ -107,11 +101,8 @@ export async function DELETE(request: NextRequest) {
       initialCheckPromise = null;
     }
 
-    return NextResponse.json({ data: { message: "Cache cleared" } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to clear cache" },
-      { status: 500 }
-    );
+    return success({ message: "Cache cleared" });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to clear cache"));
   }
 }

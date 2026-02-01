@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getContainer } from "@/lib/docker";
 import { composePullService, composeUpService } from "@/lib/projects";
 import { clearCachedUpdates } from "@/lib/updates";
+import { success, error, notFound, badRequest, getErrorMessage } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -14,15 +15,12 @@ export async function POST(
     const container = await getContainer(id);
 
     if (!container) {
-      return NextResponse.json({ error: "Container not found" }, { status: 404 });
+      return notFound("Container not found");
     }
 
     // Verify this is a compose-managed container
     if (!container.projectName || !container.serviceName) {
-      return NextResponse.json(
-        { error: "Container is not managed by compose" },
-        { status: 400 }
-      );
+      return badRequest("Container is not managed by compose");
     }
 
     const wasRunning = container.state === "running";
@@ -33,7 +31,7 @@ export async function POST(
     output += pullResult.output;
 
     if (!pullResult.success) {
-      return NextResponse.json({ error: pullResult.error || "Failed to pull image" }, { status: 500 });
+      return error(pullResult.error || "Failed to pull image");
     }
 
     // Recreate the service if it was running
@@ -43,7 +41,7 @@ export async function POST(
       output += "\n" + upResult.output;
 
       if (!upResult.success) {
-        return NextResponse.json({ error: upResult.error || "Failed to recreate container" }, { status: 500 });
+        return error(upResult.error || "Failed to recreate container");
       }
       restarted = true;
     }
@@ -53,11 +51,8 @@ export async function POST(
       clearCachedUpdates([container.image]);
     }
 
-    return NextResponse.json({ data: { output, restarted } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update container" },
-      { status: 500 }
-    );
+    return success({ output, restarted });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to update container"));
   }
 }

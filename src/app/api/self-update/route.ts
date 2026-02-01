@@ -1,19 +1,16 @@
-import { NextResponse } from "next/server";
 import { selfUpdate } from "@/lib/updates";
+import { success, error, getErrorMessage } from "@/lib/api";
 
 export async function POST() {
   try {
     const result = await selfUpdate();
 
     if (!result.success) {
-      return NextResponse.json({ error: result.message }, { status: 500 });
+      return error(result.message);
     }
 
-    return NextResponse.json({ data: { message: result.message } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update" },
-      { status: 500 }
-    );
+    return success({ message: result.message });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to update"));
   }
 }

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getContainerStats } from "@/lib/docker";
+import { success, error, getErrorMessage } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -10,11 +11,8 @@ export async function GET(
   const { id } = await context.params;
   try {
     const stats = await getContainerStats(id);
-    return NextResponse.json({ data: stats });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to get container stats" },
-      { status: 500 }
-    );
+    return success(stats);
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to get container stats"));
   }
 }

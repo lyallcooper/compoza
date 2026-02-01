@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { composePull } from "@/lib/projects";
+import { success, error, getErrorMessage } from "@/lib/api";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -12,14 +13,11 @@ export async function POST(
     const result = await composePull(name);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return error(result.error || "Failed to pull images");
     }
 
-    return NextResponse.json({ data: { output: result.output } });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to pull images" },
-      { status: 500 }
-    );
+    return success({ output: result.output });
+  } catch (err) {
+    return error(getErrorMessage(err, "Failed to pull images"));
   }
 }

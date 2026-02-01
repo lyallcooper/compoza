@@ -85,10 +85,21 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         </div>
       </div>
 
-      {/* Stats */}
-      {stats && (
+      {/* Stats - only shown for running containers */}
+      {container.state === "running" && (
         <Box title="Stats">
-          <StatsDisplay stats={stats} />
+          {stats ? (
+            <StatsDisplay stats={stats} />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              {["CPU", "Memory", "Network I/O", "Disk I/O"].map((label) => (
+                <div key={label}>
+                  <div className="text-muted">{label}</div>
+                  <div className="text-muted">--</div>
+                </div>
+              ))}
+            </div>
+          )}
         </Box>
       )}
 

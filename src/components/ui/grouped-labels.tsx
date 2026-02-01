@@ -94,7 +94,7 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
   };
 
   return (
-    <div className="text-sm font-mono space-y-1 max-h-64 overflow-auto">
+    <div className="text-sm font-mono space-y-1">
       {groups.map((group) => {
         if (!group.prefix) {
           // Ungrouped labels - render directly

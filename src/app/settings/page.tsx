@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Box, Button, Badge, SelectableText, TruncatedText } from "@/components/ui";
 import { useImages } from "@/hooks";
+import { formatDate } from "@/lib/format";
 
 export default function SettingsPage() {
   const { data: images } = useImages();
@@ -106,7 +107,7 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <div className="text-xs text-muted mt-1">
-                  {formatBytes(image.size)} • Created {formatDate(image.created)}
+                  {formatBytes(image.size)} • Created {formatDate(new Date(image.created * 1000))}
                 </div>
               </div>
             ))}
@@ -140,6 +141,3 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleDateString();
-}

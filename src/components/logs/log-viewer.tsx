@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
+import { formatTime } from "@/lib/format";
 
 const MAX_LOG_LINES = 10000;
 
@@ -138,9 +139,9 @@ function formatLogLine(line: string): React.ReactNode {
     const timestamp = timestampMatch[1];
     const rest = line.slice(timestampMatch[0].length);
 
-    // Format timestamp
+    // Format timestamp as ISO 8601 time
     const date = new Date(timestamp);
-    const formatted = date.toLocaleTimeString();
+    const formatted = formatTime(date);
 
     return (
       <>

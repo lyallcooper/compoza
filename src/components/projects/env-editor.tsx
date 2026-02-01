@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting, HighlightStyle, StreamLanguage } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
@@ -89,7 +89,8 @@ export function EnvEditor({ value, onChange, readOnly = false, className = "" }:
         highlightActiveLineGutter(),
         envLanguage,
         syntaxHighlighting(customHighlightStyle),
-        keymap.of([...defaultKeymap, indentWithTab]),
+        history(),
+        keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         theme,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

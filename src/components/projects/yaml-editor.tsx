@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
 import { yaml } from "@codemirror/lang-yaml";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
@@ -91,7 +91,8 @@ export function YamlEditor({ value, onChange, readOnly = false, className = "" }
         highlightActiveLineGutter(),
         yaml(),
         syntaxHighlighting(customHighlightStyle),
-        keymap.of([...defaultKeymap, indentWithTab]),
+        history(),
+        keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         theme,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

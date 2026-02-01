@@ -1,0 +1,21 @@
+services:
+  compoza:
+    build: .
+    # Or use pre-built image:
+    # image: compoza:latest
+    container_name: compoza
+    ports:
+      - "3000:3000"
+    volumes:
+      # Docker socket - required for Docker API access
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Projects directory - MUST be mounted at the same path
+      # This ensures relative paths in compose files resolve correctly
+      - ${PROJECTS_DIR:-/home/user/docker}:${PROJECTS_DIR:-/home/user/docker}:rw
+    environment:
+      - PROJECTS_DIR=${PROJECTS_DIR:-/home/user/docker}
+      - NODE_ENV=production
+    # Run as root to access docker socket
+    # Alternatively, use a socket proxy for better security
+    user: root
+    restart: unless-stopped

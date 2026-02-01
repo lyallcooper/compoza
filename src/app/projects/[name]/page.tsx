@@ -3,7 +3,7 @@
 import { useState, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, SelectableText, PortsList } from "@/components/ui";
+import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, SelectableText, PortsList, DropdownMenu, DropdownItem } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
@@ -103,7 +103,9 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <h1 className="text-xl font-semibold">{project.name}</h1>
           <ProjectStatusBadge status={project.status} />
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Desktop actions */}
+        <div className="hidden md:flex items-center gap-2">
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`}>
             <Button>Logs</Button>
           </Link>
@@ -136,6 +138,40 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             Delete
           </Button>
         </div>
+
+        {/* Mobile actions dropdown */}
+        <DropdownMenu className="md:hidden">
+          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
+            <DropdownItem>Logs</DropdownItem>
+          </Link>
+          <Link href={`/projects/${encodeURIComponent(project.name)}/edit`} className="block">
+            <DropdownItem>Edit</DropdownItem>
+          </Link>
+          <DropdownItem
+            onClick={handleUp}
+            loading={projectUp.isPending}
+            disabled={projectDown.isPending || projectUpdate.isPending}
+          >
+            Up
+          </DropdownItem>
+          <DropdownItem
+            onClick={handleDown}
+            loading={projectDown.isPending}
+            disabled={projectUp.isPending || projectUpdate.isPending || project.status === "stopped"}
+          >
+            Down
+          </DropdownItem>
+          <DropdownItem
+            onClick={handleUpdate}
+            loading={projectUpdate.isPending}
+            disabled={projectUp.isPending || projectDown.isPending}
+          >
+            Update
+          </DropdownItem>
+          <DropdownItem variant="danger" onClick={() => setShowDeleteModal(true)}>
+            Delete
+          </DropdownItem>
+        </DropdownMenu>
       </div>
 
       {/* Action Output */}

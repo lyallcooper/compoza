@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels, DropdownMenu, DropdownItem } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
@@ -49,7 +49,9 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <h1 className="text-xl font-semibold">{container.name}</h1>
           <ContainerStateBadge state={container.state} />
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Desktop actions */}
+        <div className="hidden md:flex items-center gap-2">
           <Link href={`/containers/${encodeURIComponent(name)}/logs`}>
             <Button>Logs</Button>
           </Link>
@@ -83,6 +85,41 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             </Button>
           )}
         </div>
+
+        {/* Mobile actions dropdown */}
+        <DropdownMenu className="md:hidden">
+          <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="block">
+            <DropdownItem>Logs</DropdownItem>
+          </Link>
+          {container.state === "running" && (
+            <Link href={`/containers/${encodeURIComponent(name)}/exec`} className="block">
+              <DropdownItem>Terminal</DropdownItem>
+            </Link>
+          )}
+          {container.state === "running" ? (
+            <>
+              <DropdownItem
+                onClick={() => stopContainer.mutate(name)}
+                loading={stopContainer.isPending}
+              >
+                Stop
+              </DropdownItem>
+              <DropdownItem
+                onClick={() => restartContainer.mutate(name)}
+                loading={restartContainer.isPending}
+              >
+                Restart
+              </DropdownItem>
+            </>
+          ) : (
+            <DropdownItem
+              onClick={() => startContainer.mutate(name)}
+              loading={startContainer.isPending}
+            >
+              Start
+            </DropdownItem>
+          )}
+        </DropdownMenu>
       </div>
 
       {/* Stats - only shown for running containers */}

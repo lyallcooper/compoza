@@ -123,6 +123,12 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [actionOutput, setActionOutput] = useState<string | null>(null);
 
+  // Check if project has any updates available
+  const hasUpdates = useMemo(() => {
+    if (!project) return false;
+    return project.services.some((s) => s.image && updatesMap.get(s.image));
+  }, [project, updatesMap]);
+
   // Derived state for action button disabled states
   const anyActionPending = projectUp.isPending || projectDown.isPending || projectUpdate.isPending;
   const canUp = !anyActionPending && !hasChanges;
@@ -218,7 +224,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <Button onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
             Down
           </Button>
-          <Button onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
+          <Button variant={hasUpdates ? "accent" : "default"} onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
             Update
           </Button>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">

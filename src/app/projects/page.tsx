@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
-  Badge,
   Spinner,
   Modal,
   Input,
@@ -17,13 +16,15 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui";
-import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown } from "@/hooks";
+import { UpdateAllModal } from "@/components/projects";
+import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate } from "@/hooks";
 import type { Project } from "@/types";
 
 export default function ProjectsPage() {
   const router = useRouter();
   const { data: projects, isLoading, error } = useProjects();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
 
   // Get cached update info from server
   const { data: imageUpdates, isLoading: updatesLoading } = useImageUpdates();
@@ -39,13 +40,23 @@ export default function ProjectsPage() {
     return map;
   }, [imageUpdates]);
 
-  // Count updates available
-  const updatesAvailable = imageUpdates?.filter((u) => u.updateAvailable).length ?? 0;
-
   // Check if a project has any updates available
   const projectHasUpdates = (project: Project): boolean => {
     return project.services.some((s) => s.image && updatesMap.get(s.image));
   };
+
+  // Get projects with updates and their updatable images
+  const projectsWithUpdates = useMemo(() => {
+    if (!projects) return [];
+    return projects
+      .map((project) => {
+        const images = project.services
+          .filter((s) => s.image && updatesMap.get(s.image))
+          .map((s) => s.image!);
+        return { name: project.name, images };
+      })
+      .filter((p) => p.images.length > 0);
+  }, [projects, updatesMap]);
 
   const sortedProjects = useMemo(
     () => [...(projects || [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -57,14 +68,18 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold">Projects</h1>
-          {updatesAvailable > 0 && (
-            <Badge variant="accent">{updatesAvailable} update{updatesAvailable !== 1 ? "s" : ""}</Badge>
-          )}
           {updatesLoading && <Spinner size="sm" />}
         </div>
-        <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-          + New Project
-        </Button>
+        <div className="flex items-center gap-2">
+          {projectsWithUpdates.length > 0 && (
+            <Button variant="accent" onClick={() => setShowUpdateAllModal(true)}>
+              Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}
+            </Button>
+          )}
+          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+            + New Project
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -112,6 +127,13 @@ export default function ProjectsPage() {
       {showCreateModal && (
         <CreateProjectModal onClose={() => setShowCreateModal(false)} />
       )}
+
+      {showUpdateAllModal && (
+        <UpdateAllModal
+          onClose={() => setShowUpdateAllModal(false)}
+          projects={projectsWithUpdates}
+        />
+      )}
     </div>
   );
 }
@@ -127,16 +149,13 @@ function ProjectRow({
 }) {
   const projectUp = useProjectUp(project.name);
   const projectDown = useProjectDown(project.name);
-  const isRunning = project.status === "running" || project.status === "partial";
+  const projectUpdate = useProjectUpdate(project.name);
   const runningCount = project.services.filter((s) => s.status === "running").length;
 
   return (
     <TableRow clickable onClick={onClick}>
       <TableCell>
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{project.name}</span>
-          {hasUpdates && <Badge variant="accent">update</Badge>}
-        </div>
+        <span className="font-medium">{project.name}</span>
       </TableCell>
       <TableCell className="hidden sm:table-cell text-muted">
         {runningCount}/{project.services.length}
@@ -146,21 +165,29 @@ function ProjectRow({
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
         <div className="flex gap-1">
-          {isRunning ? (
+          <Button
+            size="sm"
+            onClick={() => projectUp.mutate()}
+            loading={projectUp.isPending}
+          >
+            Up
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => projectDown.mutate()}
+            loading={projectDown.isPending}
+            disabled={project.status === "stopped"}
+          >
+            Down
+          </Button>
+          {hasUpdates && (
             <Button
               size="sm"
-              onClick={() => projectDown.mutate()}
-              loading={projectDown.isPending}
+              variant="accent"
+              onClick={() => projectUpdate.mutate()}
+              loading={projectUpdate.isPending}
             >
-              Stop
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => projectUp.mutate()}
-              loading={projectUp.isPending}
-            >
-              Start
+              Update
             </Button>
           )}
         </div>

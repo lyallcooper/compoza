@@ -1,30 +1,29 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Project, ApiResponse } from "@/types";
+import { apiFetch, apiPost, apiDelete } from "@/lib/api";
+import {
+  queryKeys,
+  invalidateProjectQueries,
+  invalidateContainerQueries,
+  clearUpdateCacheAndInvalidate,
+} from "@/lib/query";
+import type { Project } from "@/types";
 
 export function useProjects() {
   return useQuery({
-    queryKey: ["projects"],
-    queryFn: async (): Promise<Project[]> => {
-      const res = await fetch("/api/projects");
-      const data: ApiResponse<Project[]> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data || [];
-    },
+    queryKey: queryKeys.projects.all,
+    queryFn: () => apiFetch<Project[]>("/api/projects"),
   });
 }
 
 export function useProject(name: string) {
   return useQuery({
-    queryKey: ["projects", name],
-    queryFn: async (): Promise<Project | null> => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}`);
-      if (res.status === 404) return null;
-      const data: ApiResponse<Project> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data || null;
-    },
+    queryKey: queryKeys.projects.detail(name),
+    queryFn: () =>
+      apiFetch<Project | null>(`/api/projects/${encodeURIComponent(name)}`, {
+        nullOn404: true,
+      }),
     enabled: !!name,
   });
 }
@@ -33,20 +32,10 @@ export function useProjectUp(name: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/up`, {
-        method: "POST",
-      });
-      const data: ApiResponse<{ output: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data;
-    },
+    mutationFn: () =>
+      apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/up`),
     onSuccess: () => {
-      // Invalidate this specific project and the list
-      queryClient.invalidateQueries({ queryKey: ["projects", name] });
-      queryClient.invalidateQueries({ queryKey: ["projects"], exact: true });
-      // Containers change when project comes up
-      queryClient.invalidateQueries({ queryKey: ["containers"] });
+      invalidateProjectQueries(queryClient, name);
     },
   });
 }
@@ -55,18 +44,10 @@ export function useProjectDown(name: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/down`, {
-        method: "POST",
-      });
-      const data: ApiResponse<{ output: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data;
-    },
+    mutationFn: () =>
+      apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/down`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects", name] });
-      queryClient.invalidateQueries({ queryKey: ["projects"], exact: true });
-      queryClient.invalidateQueries({ queryKey: ["containers"] });
+      invalidateProjectQueries(queryClient, name);
     },
   });
 }
@@ -75,18 +56,10 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; composeContent: string; envContent?: string }) => {
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result: ApiResponse<{ message: string }> = await res.json();
-      if (result.error) throw new Error(result.error);
-      return result.data;
-    },
+    mutationFn: (data: { name: string; composeContent: string; envContent?: string }) =>
+      apiPost<{ message: string }>("/api/projects", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
     },
   });
 }
@@ -95,16 +68,10 @@ export function useDeleteProject(name: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-      });
-      const data: ApiResponse<{ message: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data;
-    },
+    mutationFn: () =>
+      apiDelete<{ message: string }>(`/api/projects/${encodeURIComponent(name)}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
     },
   });
 }
@@ -113,21 +80,11 @@ export function useProjectPull(name: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/pull`, {
-        method: "POST",
-      });
-      const data: ApiResponse<{ output: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data;
-    },
+    mutationFn: () =>
+      apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/pull`),
     onSuccess: async () => {
-      // Clear update cache so pulled images get rechecked
-      await fetch("/api/images/check-updates", { method: "DELETE" });
-      queryClient.invalidateQueries({ queryKey: ["projects", name] });
-      queryClient.invalidateQueries({ queryKey: ["projects"], exact: true });
-      queryClient.invalidateQueries({ queryKey: ["images"] });
-      queryClient.invalidateQueries({ queryKey: ["image-updates"] });
+      await clearUpdateCacheAndInvalidate(queryClient);
+      invalidateProjectQueries(queryClient, name);
     },
   });
 }
@@ -138,50 +95,43 @@ export function useProjectUpdate(name: string) {
   return useMutation({
     mutationFn: async () => {
       // Check current project status before pulling
-      const statusRes = await fetch(`/api/projects/${encodeURIComponent(name)}`);
-      const statusData: ApiResponse<Project> = await statusRes.json();
-      if (statusData.error) throw new Error(statusData.error);
-      const wasRunning = statusData.data?.status === "running" || statusData.data?.status === "partial";
+      const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
+      const wasRunning = project?.status === "running" || project?.status === "partial";
 
       // Pull latest images
-      const pullRes = await fetch(`/api/projects/${encodeURIComponent(name)}/pull`, {
-        method: "POST",
-      });
-      const pullData: ApiResponse<{ output: string }> = await pullRes.json();
-      if (pullData.error) throw new Error(pullData.error);
+      const pullResult = await apiPost<{ output: string }>(
+        `/api/projects/${encodeURIComponent(name)}/pull`
+      );
 
       // Only recreate containers if project was running
       if (wasRunning) {
-        const upRes = await fetch(`/api/projects/${encodeURIComponent(name)}/up`, {
-          method: "POST",
-        });
-        const upData: ApiResponse<{ output: string }> = await upRes.json();
-        if (upData.error) throw new Error(upData.error);
-        return { output: pullData.data?.output + "\n" + upData.data?.output, restarted: true };
+        const upResult = await apiPost<{ output: string }>(
+          `/api/projects/${encodeURIComponent(name)}/up`
+        );
+        return {
+          output: (pullResult?.output || "") + "\n" + (upResult?.output || ""),
+          restarted: true,
+        };
       }
 
-      return { output: pullData.data?.output, restarted: false };
+      return { output: pullResult?.output, restarted: false };
     },
     onSuccess: async () => {
-      // Clear update cache so pulled images get rechecked
-      await fetch("/api/images/check-updates", { method: "DELETE" });
-      queryClient.invalidateQueries({ queryKey: ["projects", name] });
-      queryClient.invalidateQueries({ queryKey: ["projects"], exact: true });
-      queryClient.invalidateQueries({ queryKey: ["containers"] });
-      queryClient.invalidateQueries({ queryKey: ["images"] });
-      queryClient.invalidateQueries({ queryKey: ["image-updates"] });
+      await clearUpdateCacheAndInvalidate(queryClient);
+      invalidateProjectQueries(queryClient, name);
+      invalidateContainerQueries(queryClient);
     },
   });
 }
 
 export function useProjectCompose(name: string) {
   return useQuery({
-    queryKey: ["projects", name, "compose"],
-    queryFn: async (): Promise<string> => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/compose`);
-      const data: ApiResponse<{ content: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data?.content || "";
+    queryKey: queryKeys.projects.compose(name),
+    queryFn: async () => {
+      const result = await apiFetch<{ content: string }>(
+        `/api/projects/${encodeURIComponent(name)}/compose`
+      );
+      return result?.content || "";
     },
     enabled: !!name,
   });
@@ -189,12 +139,12 @@ export function useProjectCompose(name: string) {
 
 export function useProjectEnv(name: string) {
   return useQuery({
-    queryKey: ["projects", name, "env"],
-    queryFn: async (): Promise<string> => {
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/env`);
-      const data: ApiResponse<{ content: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data?.content || "";
+    queryKey: queryKeys.projects.env(name),
+    queryFn: async () => {
+      const result = await apiFetch<{ content: string }>(
+        `/api/projects/${encodeURIComponent(name)}/env`
+      );
+      return result?.content || "";
     },
     enabled: !!name,
   });

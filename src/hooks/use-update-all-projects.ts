@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { invalidateAllQueries } from "@/lib/query";
 import type { UpdateAllEvent } from "@/app/api/projects/update-all/route";
 
 export interface ProjectProgress {
@@ -21,30 +22,85 @@ interface UpdateAllState {
   error: string | null;
 }
 
+const initialState: UpdateAllState = {
+  isRunning: false,
+  progress: [],
+  currentProject: null,
+  total: 0,
+  current: 0,
+  summary: null,
+  error: null,
+};
+
 export function useUpdateAllProjects() {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<UpdateAllState>({
-    isRunning: false,
-    progress: [],
-    currentProject: null,
-    total: 0,
-    current: 0,
-    summary: null,
-    error: null,
-  });
+  const [state, setState] = useState<UpdateAllState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const start = useCallback(async () => {
-    // Reset state
-    setState({
-      isRunning: true,
-      progress: [],
-      currentProject: null,
-      total: 0,
-      current: 0,
-      summary: null,
-      error: null,
+  const handleEvent = useCallback((event: UpdateAllEvent) => {
+    setState((prev) => {
+      switch (event.type) {
+        case "start":
+          return {
+            ...prev,
+            currentProject: event.project,
+            total: event.total,
+            current: event.current,
+            progress: [
+              ...prev.progress,
+              { project: event.project, step: "checking" },
+            ],
+          };
+
+        case "progress": {
+          const progress = prev.progress.map((p) =>
+            p.project === event.project ? { ...p, step: event.step } : p
+          );
+          return { ...prev, progress } as UpdateAllState;
+        }
+
+        case "complete": {
+          const progress = prev.progress.map((p) =>
+            p.project === event.project
+              ? { ...p, step: "complete" as const, restarted: event.restarted }
+              : p
+          );
+          return { ...prev, progress };
+        }
+
+        case "error": {
+          // If project is empty string, it's a general error
+          if (!event.project) {
+            return {
+              ...prev,
+              isRunning: false,
+              error: event.message,
+            };
+          }
+          const progress = prev.progress.map((p) =>
+            p.project === event.project
+              ? { ...p, step: "error" as const, error: event.message }
+              : p
+          );
+          return { ...prev, progress };
+        }
+
+        case "done":
+          return {
+            ...prev,
+            isRunning: false,
+            currentProject: null,
+            summary: event.summary,
+          };
+
+        default:
+          return prev;
+      }
     });
+  }, []);
+
+  const start = useCallback(async () => {
+    setState({ ...initialState, isRunning: true });
 
     abortControllerRef.current = new AbortController();
 
@@ -74,7 +130,7 @@ export function useUpdateAllProjects() {
 
         // Process complete SSE messages
         const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // Keep incomplete line in buffer
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
@@ -97,84 +153,19 @@ export function useUpdateAllProjects() {
           // Ignore parse errors
         }
       }
-    } catch (error) {
-      if ((error as Error).name !== "AbortError") {
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
         setState((prev) => ({
           ...prev,
           isRunning: false,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: err instanceof Error ? err.message : "Unknown error",
         }));
       }
     }
 
-    function handleEvent(event: UpdateAllEvent) {
-      setState((prev) => {
-        switch (event.type) {
-          case "start":
-            return {
-              ...prev,
-              currentProject: event.project,
-              total: event.total,
-              current: event.current,
-              progress: [
-                ...prev.progress,
-                { project: event.project, step: "checking" },
-              ],
-            };
-
-          case "progress": {
-            const progress = prev.progress.map((p) =>
-              p.project === event.project ? { ...p, step: event.step } : p
-            );
-            return { ...prev, progress } as UpdateAllState;
-          }
-
-          case "complete": {
-            const progress = prev.progress.map((p) =>
-              p.project === event.project
-                ? { ...p, step: "complete" as const, restarted: event.restarted }
-                : p
-            );
-            return { ...prev, progress };
-          }
-
-          case "error": {
-            // If project is empty string, it's a general error
-            if (!event.project) {
-              return {
-                ...prev,
-                isRunning: false,
-                error: event.message,
-              };
-            }
-            const progress = prev.progress.map((p) =>
-              p.project === event.project
-                ? { ...p, step: "error" as const, error: event.message }
-                : p
-            );
-            return { ...prev, progress };
-          }
-
-          case "done":
-            return {
-              ...prev,
-              isRunning: false,
-              currentProject: null,
-              summary: event.summary,
-            };
-
-          default:
-            return prev;
-        }
-      });
-    }
-
     // Invalidate queries on completion
-    await queryClient.invalidateQueries({ queryKey: ["projects"] });
-    await queryClient.invalidateQueries({ queryKey: ["containers"] });
-    await queryClient.invalidateQueries({ queryKey: ["images"] });
-    await queryClient.invalidateQueries({ queryKey: ["image-updates"] });
-  }, [queryClient]);
+    invalidateAllQueries(queryClient);
+  }, [queryClient, handleEvent]);
 
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -186,15 +177,7 @@ export function useUpdateAllProjects() {
   }, []);
 
   const reset = useCallback(() => {
-    setState({
-      isRunning: false,
-      progress: [],
-      currentProject: null,
-      total: 0,
-      current: 0,
-      summary: null,
-      error: null,
-    });
+    setState(initialState);
   }, []);
 
   return {

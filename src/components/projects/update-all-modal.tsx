@@ -79,8 +79,8 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
               <div key={project.name} className="text-sm">
                 <div className="font-medium">{project.name}</div>
                 <div className="text-muted text-xs pl-3 space-y-0.5">
-                  {project.images.map(({ image, currentVersion, latestVersion }) => (
-                    <div key={image} className="flex items-center gap-2">
+                  {project.images.map(({ image, currentVersion, latestVersion }, idx) => (
+                    <div key={`${image}-${idx}`} className="flex items-center gap-2">
                       <span className="font-mono truncate">{image}</span>
                       {currentVersion && latestVersion && currentVersion !== latestVersion && (
                         <span className="text-accent whitespace-nowrap">

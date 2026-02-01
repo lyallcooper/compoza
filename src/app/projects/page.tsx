@@ -50,16 +50,20 @@ export default function ProjectsPage() {
     if (!projects || !imageUpdates) return [];
     return projects
       .map((project) => {
-        const images = project.services
-          .filter((s) => s.image && updatesMap.get(s.image))
-          .map((s) => {
-            const update = imageUpdates.find((u) => u.image === s.image);
-            return {
-              image: s.image!,
+        // Get unique images with updates (dedupe if multiple services use same image)
+        const seenImages = new Set<string>();
+        const images: { image: string; currentVersion?: string; latestVersion?: string }[] = [];
+        for (const service of project.services) {
+          if (service.image && updatesMap.get(service.image) && !seenImages.has(service.image)) {
+            seenImages.add(service.image);
+            const update = imageUpdates.find((u) => u.image === service.image);
+            images.push({
+              image: service.image,
               currentVersion: update?.currentVersion,
               latestVersion: update?.latestVersion,
-            };
-          });
+            });
+          }
+        }
         return { name: project.name, images };
       })
       .filter((p) => p.images.length > 0);

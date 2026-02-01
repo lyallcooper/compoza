@@ -10,6 +10,33 @@ interface TokenResponse {
   token: string;
 }
 
+interface OciManifest {
+  schemaVersion: number;
+  mediaType?: string;
+  config?: {
+    mediaType: string;
+    digest: string;
+    size: number;
+  };
+  manifests?: Array<{
+    mediaType: string;
+    digest: string;
+    size: number;
+    platform?: {
+      architecture: string;
+      os: string;
+    };
+    annotations?: Record<string, string>;
+  }>;
+  annotations?: Record<string, string>;
+}
+
+interface OciImageConfig {
+  config?: {
+    Labels?: Record<string, string>;
+  };
+}
+
 // Cache tokens per registry/scope
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
@@ -25,28 +52,15 @@ export class OciClient implements RegistryClient {
     const name = `${namespace}/${repository}`;
 
     try {
-      // Get tag list (with auth retry)
-      const listRes = await this.fetchWithAuth(`${this.baseUrl}/v2/${name}/tags/list`, name);
+      // Get all tags with pagination
+      const allTags = await this.fetchAllTags(name);
 
-      if (!listRes.ok) {
-        if (listRes.status === 404) {
-          return [];
-        }
-        if (listRes.status === 401 || listRes.status === 403) {
-          console.warn(`[OCI] Access denied for ${name}`);
-          return [];
-        }
-        throw new Error(`OCI API error: ${listRes.status}`);
-      }
-
-      const data: OciTagListResponse = await listRes.json();
-
-      if (!data.tags || data.tags.length === 0) {
+      if (allTags.length === 0) {
         return [];
       }
 
       // Filter to semver-like tags to reduce API calls
-      const semverTags = data.tags.filter(isSemverLike);
+      const semverTags = allTags.filter(isSemverLike);
 
       // Sort by version (descending) and limit
       const sortedTags = semverTags
@@ -72,6 +86,65 @@ export class OciClient implements RegistryClient {
       console.warn(`[OCI] Failed to list tags for ${name}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Fetch all tags with pagination support.
+   */
+  private async fetchAllTags(name: string): Promise<string[]> {
+    const allTags: string[] = [];
+    let url: string | null = `${this.baseUrl}/v2/${name}/tags/list?n=1000`;
+    let pageCount = 0;
+    const maxPages = 10; // Safety limit
+
+    while (url && pageCount < maxPages) {
+      pageCount++;
+      const response = await this.fetchWithAuth(url, name);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return [];
+        }
+        if (response.status === 401 || response.status === 403) {
+          console.warn(`[OCI] Access denied for ${name}`);
+          return [];
+        }
+        throw new Error(`OCI API error: ${response.status}`);
+      }
+
+      const data: OciTagListResponse = await response.json();
+
+      if (data.tags && data.tags.length > 0) {
+        allTags.push(...data.tags);
+      }
+
+      // Check for pagination via Link header
+      url = this.getNextPageUrl(response);
+    }
+
+    return allTags;
+  }
+
+  /**
+   * Parse the Link header to get the next page URL.
+   * Format: <url>; rel="next"
+   */
+  private getNextPageUrl(response: Response): string | null {
+    const linkHeader = response.headers.get("link");
+    if (!linkHeader) return null;
+
+    // Parse Link header: <url>; rel="next"
+    const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    if (!match) return null;
+
+    const nextUrl = match[1];
+
+    // Handle relative URLs
+    if (nextUrl.startsWith("/")) {
+      return `${this.baseUrl}${nextUrl}`;
+    }
+
+    return nextUrl;
   }
 
   /**
@@ -195,28 +268,50 @@ export class OciClient implements RegistryClient {
    * Get the digest for a specific tag by fetching its manifest.
    */
   private async getManifestDigest(name: string, tag: string): Promise<string | null> {
+    const url = `${this.baseUrl}/v2/${name}/manifests/${tag}`;
+    const acceptHeader = [
+      "application/vnd.oci.image.index.v1+json",
+      "application/vnd.docker.distribution.manifest.list.v2+json",
+      "application/vnd.oci.image.manifest.v1+json",
+      "application/vnd.docker.distribution.manifest.v2+json",
+    ].join(", ");
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
       const cachedToken = this.getCachedToken(name);
-      const headers: Record<string, string> = {
-        "Accept": [
-          "application/vnd.oci.image.index.v1+json",
-          "application/vnd.docker.distribution.manifest.list.v2+json",
-          "application/vnd.oci.image.manifest.v1+json",
-          "application/vnd.docker.distribution.manifest.v2+json",
-        ].join(", "),
-      };
+      const headers: Record<string, string> = { "Accept": acceptHeader };
       if (cachedToken) {
         headers["Authorization"] = `Bearer ${cachedToken}`;
       }
 
-      const response = await fetch(`${this.baseUrl}/v2/${name}/manifests/${tag}`, {
+      let response = await fetch(url, {
         method: "HEAD",
         headers,
         signal: controller.signal,
       });
+
+      // If unauthorized, try to get a token and retry
+      if (response.status === 401) {
+        const token = await this.getAnonymousToken(response, name);
+        if (token) {
+          const retryController = new AbortController();
+          const retryTimeout = setTimeout(() => retryController.abort(), 5000);
+          try {
+            response = await fetch(url, {
+              method: "HEAD",
+              headers: {
+                "Accept": acceptHeader,
+                "Authorization": `Bearer ${token}`,
+              },
+              signal: retryController.signal,
+            });
+          } finally {
+            clearTimeout(retryTimeout);
+          }
+        }
+      }
 
       if (!response.ok) {
         return null;
@@ -226,6 +321,187 @@ export class OciClient implements RegistryClient {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  /**
+   * Get version from manifest labels/annotations by digest.
+   * This is more efficient than listing all tags when we just need the version.
+   */
+  async getVersionFromDigest(namespace: string, repository: string, digest: string): Promise<string | null> {
+    const name = `${namespace}/${repository}`;
+
+    try {
+      // Fetch the manifest by digest
+      const manifest = await this.fetchManifest(name, digest);
+      if (!manifest) return null;
+
+      // Check for version in manifest annotations (OCI image index)
+      const version = this.extractVersionFromAnnotations(manifest.annotations);
+      if (version) {
+        return version;
+      }
+
+      // For manifest lists/indexes, check the first manifest's annotations
+      if (manifest.manifests && manifest.manifests.length > 0) {
+        for (const m of manifest.manifests) {
+          const v = this.extractVersionFromAnnotations(m.annotations);
+          if (v) {
+            return v;
+          }
+        }
+
+        // Try fetching the config from a platform-specific manifest
+        const linuxAmd64 = manifest.manifests.find(
+          m => m.platform?.os === "linux" && m.platform?.architecture === "amd64"
+        ) || manifest.manifests[0];
+
+        if (linuxAmd64) {
+          const platformManifest = await this.fetchManifest(name, linuxAmd64.digest);
+          if (platformManifest?.config) {
+            const configVersion = await this.getVersionFromConfig(name, platformManifest.config.digest);
+            if (configVersion) return configVersion;
+          }
+        }
+      }
+
+      // For single-platform manifests, fetch the config blob
+      if (manifest.config) {
+        const configVersion = await this.getVersionFromConfig(name, manifest.config.digest);
+        if (configVersion) return configVersion;
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`[OCI] Failed to get version from digest:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch a manifest by tag or digest.
+   */
+  private async fetchManifest(name: string, reference: string): Promise<OciManifest | null> {
+    const url = `${this.baseUrl}/v2/${name}/manifests/${reference}`;
+    const acceptHeader = [
+      "application/vnd.oci.image.index.v1+json",
+      "application/vnd.docker.distribution.manifest.list.v2+json",
+      "application/vnd.oci.image.manifest.v1+json",
+      "application/vnd.docker.distribution.manifest.v2+json",
+    ].join(", ");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const cachedToken = this.getCachedToken(name);
+      const headers: Record<string, string> = { "Accept": acceptHeader };
+      if (cachedToken) {
+        headers["Authorization"] = `Bearer ${cachedToken}`;
+      }
+
+      let response = await fetch(url, { headers, signal: controller.signal });
+
+      // Handle auth retry
+      if (response.status === 401) {
+        const token = await this.getAnonymousToken(response, name);
+        if (token) {
+          const retryController = new AbortController();
+          const retryTimeout = setTimeout(() => retryController.abort(), 10000);
+          try {
+            response = await fetch(url, {
+              headers: { ...headers, "Authorization": `Bearer ${token}` },
+              signal: retryController.signal,
+            });
+          } finally {
+            clearTimeout(retryTimeout);
+          }
+        }
+      }
+
+      if (!response.ok) return null;
+
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Fetch the image config blob and extract version from labels.
+   */
+  private async getVersionFromConfig(name: string, configDigest: string): Promise<string | null> {
+    const url = `${this.baseUrl}/v2/${name}/blobs/${configDigest}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const cachedToken = this.getCachedToken(name);
+      const headers: Record<string, string> = {
+        "Accept": "application/vnd.oci.image.config.v1+json, application/vnd.docker.container.image.v1+json",
+      };
+      if (cachedToken) {
+        headers["Authorization"] = `Bearer ${cachedToken}`;
+      }
+
+      let response = await fetch(url, { headers, signal: controller.signal });
+
+      // Handle auth retry
+      if (response.status === 401) {
+        const token = await this.getAnonymousToken(response, name);
+        if (token) {
+          const retryController = new AbortController();
+          const retryTimeout = setTimeout(() => retryController.abort(), 10000);
+          try {
+            response = await fetch(url, {
+              headers: { ...headers, "Authorization": `Bearer ${token}` },
+              signal: retryController.signal,
+            });
+          } finally {
+            clearTimeout(retryTimeout);
+          }
+        }
+      }
+
+      if (!response.ok) return null;
+
+      const config: OciImageConfig = await response.json();
+      const labels = config.config?.Labels;
+
+      if (labels) {
+        const version = this.extractVersionFromAnnotations(labels);
+        if (version) {
+          return version;
+        }
+      }
+
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Extract version from annotations or labels.
+   */
+  private extractVersionFromAnnotations(annotations?: Record<string, string>): string | null {
+    if (!annotations) return null;
+
+    // Common version annotation/label keys
+    const versionKeys = [
+      "org.opencontainers.image.version",
+      "org.label-schema.version",
+      "version",
+    ];
+
+    for (const key of versionKeys) {
+      const value = annotations[key];
+      if (value && isSemverLike(value)) {
+        return value;
+      }
+    }
+
+    return null;
   }
 }
 

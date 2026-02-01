@@ -176,15 +176,16 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           };
         }
 
-        // Store in cache with version resolution pending
+        // Trigger async version resolution when we have digests
+        const willResolveVersions = currentDigest || latestDigest;
+
         setCachedUpdate(imageName, {
           ...result,
-          versionStatus: "pending",
+          versionStatus: willResolveVersions ? "pending" : undefined,
         });
         results.push(result);
 
-        // Trigger async version resolution (don't await)
-        if (result.updateAvailable && (currentDigest || latestDigest)) {
+        if (willResolveVersions) {
           triggerVersionResolution(imageName, currentDigest, latestDigest);
         }
       } catch (error) {
@@ -233,12 +234,10 @@ function triggerVersionResolution(
     .then(({ currentVersion, latestVersion }) => {
       if (currentVersion || latestVersion) {
         updateCachedVersions(imageName, currentVersion, latestVersion);
-        console.log(`[Version Resolution] ${imageName}: ${currentVersion || "?"} → ${latestVersion || "?"}`);
       }
     })
-    .catch((error) => {
+    .catch(() => {
       markVersionResolutionFailed(imageName);
-      console.warn(`[Version Resolution] Failed for ${imageName}:`, error);
     });
 }
 

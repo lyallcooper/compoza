@@ -1,6 +1,5 @@
-import type { TagInfo, VersionInfo, RegistryClient } from "./types";
+import type { VersionInfo } from "./types";
 import { parseImageRef, getRegistryType } from "./parse";
-import { DockerHubClient } from "./docker-hub";
 import { OciClient } from "./oci";
 
 // Semver-like pattern: starts with digit or 'v' followed by digit
@@ -13,15 +12,11 @@ export function isSemverLike(tag: string): boolean {
   return SEMVER_PATTERN.test(tag);
 }
 
-// Cache for tag lists to avoid repeated API calls
-const tagCache = new Map<string, { tags: TagInfo[]; fetchedAt: number }>();
-const TAG_CACHE_TTL = 60 * 60 * 1000; // 1 hour
-
 /**
  * Resolve semantic versions for an image's current and latest digests.
  *
- * This queries the registry to find which semantic version tags
- * point to the given digests.
+ * Uses manifest labels (org.opencontainers.image.version) for efficient lookup.
+ * This requires only 2-3 API calls per digest instead of listing all tags.
  */
 export async function resolveVersions(
   image: string,
@@ -33,8 +28,6 @@ export async function resolveVersions(
 
   // If tag is already a semver, use it directly
   if (isSemverLike(ref.tag)) {
-    // For pinned semver tags, current and latest are the same tag
-    // The digest comparison already told us if there's an update
     return {
       currentDigest,
       latestDigest,
@@ -43,136 +36,52 @@ export async function resolveVersions(
     };
   }
 
-  // Skip unsupported registries
-  if (registryType === "unknown") {
+  // Get the OCI registry URL for the registry type
+  const ociRegistryUrl = getOciRegistryUrl(registryType, ref.registry);
+  if (!ociRegistryUrl) {
     return { currentDigest, latestDigest };
   }
 
   try {
-    const tags = await getTagsWithCache(ref.registry, ref.namespace, ref.repository, registryType);
+    const client = new OciClient(ociRegistryUrl);
 
-    // Find semver tags matching each digest
-    const currentVersion = findVersionForDigest(tags, currentDigest);
-    const latestVersion = findVersionForDigest(tags, latestDigest);
+    // Fetch versions from manifest labels in parallel
+    const [currentVersion, latestVersion] = await Promise.all([
+      currentDigest
+        ? client.getVersionFromDigest(ref.namespace, ref.repository, currentDigest)
+        : null,
+      latestDigest
+        ? client.getVersionFromDigest(ref.namespace, ref.repository, latestDigest)
+        : null,
+    ]);
 
     return {
       currentDigest,
       latestDigest,
-      currentVersion,
-      latestVersion,
+      currentVersion: currentVersion || undefined,
+      latestVersion: latestVersion || undefined,
     };
-  } catch (error) {
-    console.warn(`[Version Resolution] Failed for ${image}:`, error);
+  } catch {
     return { currentDigest, latestDigest };
   }
 }
 
 /**
- * Get tags for a repository, using cache when available.
+ * Get the OCI Distribution API URL for a registry type.
  */
-async function getTagsWithCache(
-  registry: string,
-  namespace: string,
-  repository: string,
-  registryType: "dockerhub" | "ghcr" | "lscr"
-): Promise<TagInfo[]> {
-  const cacheKey = `${registry}/${namespace}/${repository}`;
-  const cached = tagCache.get(cacheKey);
-
-  if (cached && Date.now() - cached.fetchedAt < TAG_CACHE_TTL) {
-    return cached.tags;
+function getOciRegistryUrl(
+  registryType: ReturnType<typeof getRegistryType>,
+  registry: string
+): string | null {
+  switch (registryType) {
+    case "dockerhub":
+      // Docker Hub's OCI API is at registry-1.docker.io
+      return "https://registry-1.docker.io";
+    case "ghcr":
+    case "lscr":
+      return `https://${registry}`;
+    default:
+      return null;
   }
-
-  const client = createClient(registryType, registry);
-  const tags = await client.listTags(namespace, repository);
-
-  tagCache.set(cacheKey, { tags, fetchedAt: Date.now() });
-
-  return tags;
 }
 
-/**
- * Create a registry client based on the registry type.
- */
-function createClient(type: "dockerhub" | "ghcr" | "lscr", registry: string): RegistryClient {
-  if (type === "dockerhub") {
-    return new DockerHubClient();
-  }
-  // GHCR and lscr.io use the OCI Distribution API
-  return new OciClient(`https://${registry}`);
-}
-
-/**
- * Find the most specific semver tag that points to a given digest.
- */
-function findVersionForDigest(tags: TagInfo[], digest?: string): string | undefined {
-  if (!digest) return undefined;
-
-  // Find all semver tags pointing to this digest
-  const matching = tags.filter(
-    (t) => t.digest === digest && isSemverLike(t.name)
-  );
-
-  if (matching.length === 0) return undefined;
-
-  // Sort by specificity (more segments = more specific) and value
-  // e.g., prefer "1.25.3" over "1.25" over "1"
-  matching.sort((a, b) => {
-    const aSpecificity = countVersionSegments(a.name);
-    const bSpecificity = countVersionSegments(b.name);
-
-    if (aSpecificity !== bSpecificity) {
-      return bSpecificity - aSpecificity; // More specific first
-    }
-
-    // Same specificity: compare actual version numbers
-    return compareVersions(b.name, a.name);
-  });
-
-  return matching[0].name;
-}
-
-/**
- * Count the number of segments in a version string.
- */
-function countVersionSegments(version: string): number {
-  const v = version.startsWith("v") ? version.slice(1) : version;
-  return v.split(/[.-]/).filter((s) => /^\d+$/.test(s)).length;
-}
-
-/**
- * Compare two version strings.
- * Returns positive if a > b, negative if a < b, 0 if equal.
- */
-function compareVersions(a: string, b: string): number {
-  const aParts = parseVersionParts(a);
-  const bParts = parseVersionParts(b);
-
-  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-    const aNum = aParts[i] ?? 0;
-    const bNum = bParts[i] ?? 0;
-    if (aNum !== bNum) {
-      return aNum - bNum;
-    }
-  }
-
-  return 0;
-}
-
-/**
- * Parse a version string into numeric parts.
- */
-function parseVersionParts(version: string): number[] {
-  const v = version.startsWith("v") ? version.slice(1) : version;
-  return v
-    .split(/[.-]/)
-    .map((part) => parseInt(part, 10))
-    .filter((n) => !isNaN(n));
-}
-
-/**
- * Clear the tag cache (useful after updates).
- */
-export function clearTagCache(): void {
-  tagCache.clear();
-}

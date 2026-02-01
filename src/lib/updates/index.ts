@@ -260,7 +260,6 @@ export async function pullLatestImage(imageName: string): Promise<void> {
 }
 
 export async function selfUpdate(): Promise<{ success: boolean; message: string }> {
-  const docker = getDocker();
   const imageName = process.env.COMPOZA_IMAGE || "compoza:latest";
 
   try {

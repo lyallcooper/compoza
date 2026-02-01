@@ -18,18 +18,23 @@ export function LogViewer({ url, className = "" }: LogViewerProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const currentUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setLogs([]);
-    setError(null);
-    setConnected(false);
+    // Track URL changes to reset state in callbacks
+    const isNewUrl = currentUrlRef.current !== url;
+    currentUrlRef.current = url;
 
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
+      // Reset state when connection opens for a new URL
+      if (isNewUrl) {
+        setLogs([]);
+        setError(null);
+      }
       setConnected(true);
-      setError(null);
     };
 
     eventSource.onmessage = (event) => {

@@ -6,7 +6,7 @@ export default function NotFound() {
     <div>
       <Box title="404 - Not Found">
         <div className="space-y-4">
-          <p className="text-muted">The page you're looking for doesn't exist.</p>
+          <p className="text-muted">The page you&apos;re looking for doesn&apos;t exist.</p>
           <Link href="/" className="text-accent hover:underline">
             Go back home
           </Link>

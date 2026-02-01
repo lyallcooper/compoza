@@ -3,15 +3,13 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Spinner, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
-import { useContainers, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
+import { Box, Spinner, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
+import { ContainerActions } from "@/components/containers";
+import { useContainers } from "@/hooks";
 
 export default function ContainersPage() {
   const router = useRouter();
   const { data: containers, isLoading, error } = useContainers();
-  const startContainer = useStartContainer();
-  const stopContainer = useStopContainer();
-  const restartContainer = useRestartContainer();
 
   const sortedContainers = useMemo(
     () => [...(containers || [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -78,35 +76,7 @@ export default function ContainersPage() {
                     <PortsList ports={container.ports} />
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex gap-1">
-                      {container.state === "running" ? (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => stopContainer.mutate(container.id)}
-                            loading={stopContainer.isPending && stopContainer.variables === container.id}
-                          >
-                            Stop
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => restartContainer.mutate(container.id)}
-                            loading={restartContainer.isPending && restartContainer.variables === container.id}
-                          >
-                            Restart
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => startContainer.mutate(container.id)}
-                          loading={startContainer.isPending && startContainer.variables === container.id}
-                        >
-                          Start
-                        </Button>
-                      )}
-                    </div>
+                    <ContainerActions containerId={container.id} state={container.state} />
                   </TableCell>
                 </TableRow>
               ))}

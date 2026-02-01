@@ -1,0 +1,49 @@
+"use client";
+
+import { Button } from "@/components/ui";
+import { useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
+
+interface ContainerActionsProps {
+  containerId: string;
+  state: string;
+}
+
+export function ContainerActions({ containerId, state }: ContainerActionsProps) {
+  const startContainer = useStartContainer();
+  const stopContainer = useStopContainer();
+  const restartContainer = useRestartContainer();
+
+  const isRunning = state === "running";
+
+  return (
+    <div className="flex gap-1">
+      {isRunning ? (
+        <>
+          <Button
+            size="sm"
+            onClick={() => stopContainer.mutate(containerId)}
+            loading={stopContainer.isPending && stopContainer.variables === containerId}
+          >
+            Stop
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => restartContainer.mutate(containerId)}
+            loading={restartContainer.isPending && restartContainer.variables === containerId}
+          >
+            Restart
+          </Button>
+        </>
+      ) : (
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={() => startContainer.mutate(containerId)}
+          loading={startContainer.isPending && startContainer.variables === containerId}
+        >
+          Start
+        </Button>
+      )}
+    </div>
+  );
+}

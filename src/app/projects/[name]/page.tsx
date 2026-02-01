@@ -4,7 +4,8 @@ import { useState, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
-import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useStartContainer, useStopContainer, useRestartContainer, useImageUpdates } from "@/hooks";
+import { ContainerActions } from "@/components/containers";
+import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
 
 export default function ProjectDetailPage({ params }: ProjectRouteProps) {
@@ -16,9 +17,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const projectDown = useProjectDown(decodedName);
   const deleteProject = useDeleteProject(decodedName);
   const projectUpdate = useProjectUpdate(decodedName);
-  const startContainer = useStartContainer();
-  const stopContainer = useStopContainer();
-  const restartContainer = useRestartContainer();
 
   // Get cached update info from server
   const { data: imageUpdates } = useImageUpdates();
@@ -197,35 +195,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   {service.containerId && (
-                    <div className="flex gap-1">
-                      {service.status === "running" ? (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => stopContainer.mutate(service.containerId!)}
-                            loading={stopContainer.isPending && stopContainer.variables === service.containerId}
-                          >
-                            Stop
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => restartContainer.mutate(service.containerId!)}
-                            loading={restartContainer.isPending && restartContainer.variables === service.containerId}
-                          >
-                            Restart
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => startContainer.mutate(service.containerId!)}
-                          loading={startContainer.isPending && startContainer.variables === service.containerId}
-                        >
-                          Start
-                        </Button>
-                      )}
-                    </div>
+                    <ContainerActions containerId={service.containerId} state={service.status} />
                   )}
                 </TableCell>
               </TableRow>

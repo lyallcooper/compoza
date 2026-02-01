@@ -157,7 +157,6 @@ function ProjectRow({
           ) : (
             <Button
               size="sm"
-              variant="primary"
               onClick={() => projectUp.mutate()}
               loading={projectUp.isPending}
             >

@@ -37,7 +37,6 @@ export function ContainerActions({ containerId, state }: ContainerActionsProps) 
       ) : (
         <Button
           size="sm"
-          variant="primary"
           onClick={() => startContainer.mutate(containerId)}
           loading={startContainer.isPending && startContainer.variables === containerId}
         >

@@ -14,7 +14,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variantStyles: Record<ButtonVariant, string> = {
   default: "border-border bg-background text-foreground hover:bg-surface hover:border-foreground",
   primary: "border-foreground bg-foreground text-background hover:bg-muted hover:border-muted",
-  danger: "border-error bg-error text-white hover:opacity-90",
+  danger: "border-error text-error bg-background hover:bg-error-muted",
   ghost: "border-transparent bg-transparent text-foreground hover:bg-surface",
 };
 

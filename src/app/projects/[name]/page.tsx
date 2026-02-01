@@ -212,10 +212,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
         {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-2">
-          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`}>
-            <Button>Logs</Button>
-          </Link>
-          <Button variant="primary" onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
+          <Button onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
             Up
           </Button>
           <Button onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
@@ -224,16 +221,16 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <Button onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
             Update
           </Button>
-          <Button variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete}>
+          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">
+            <Button>Logs</Button>
+          </Link>
+          <Button variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete} className="ml-2">
             Delete
           </Button>
         </div>
 
         {/* Mobile actions dropdown */}
         <DropdownMenu className="md:hidden">
-          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
-            <DropdownItem>Logs</DropdownItem>
-          </Link>
           <DropdownItem onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
             Up
           </DropdownItem>
@@ -243,6 +240,9 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <DropdownItem onClick={handleUpdate} loading={projectUpdate.isPending} disabled={!canUpdate}>
             Update
           </DropdownItem>
+          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
+            <DropdownItem>Logs</DropdownItem>
+          </Link>
           <DropdownItem variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete}>
             Delete
           </DropdownItem>

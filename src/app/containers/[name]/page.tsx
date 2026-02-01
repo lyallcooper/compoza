@@ -77,7 +77,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             </>
           ) : (
             <Button
-              variant="primary"
               onClick={() => startContainer.mutate(name)}
               loading={startContainer.isPending}
             >

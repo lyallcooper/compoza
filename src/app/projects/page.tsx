@@ -1,11 +1,27 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
-import { Box, Button, Badge, Spinner, Modal, Input, ProjectStatusBadge } from "@/components/ui";
-import { useProjects, useCreateProject, useImageUpdates } from "@/hooks";
+import { useRouter } from "next/navigation";
+import {
+  Box,
+  Button,
+  Badge,
+  Spinner,
+  Modal,
+  Input,
+  ProjectStatusBadge,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui";
+import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown } from "@/hooks";
+import type { Project } from "@/types";
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const { data: projects, isLoading, error } = useProjects();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -27,17 +43,20 @@ export default function ProjectsPage() {
   const updatesAvailable = imageUpdates?.filter((u) => u.updateAvailable).length ?? 0;
 
   // Check if a project has any updates available
-  const projectHasUpdates = (projectName: string): boolean => {
-    const project = projects?.find((p) => p.name === projectName);
-    if (!project) return false;
+  const projectHasUpdates = (project: Project): boolean => {
     return project.services.some((s) => s.image && updatesMap.get(s.image));
   };
+
+  const sortedProjects = useMemo(
+    () => [...(projects || [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [projects]
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold">Projects</h1>
+          <h1 className="text-xl font-semibold">Projects</h1>
           {updatesAvailable > 0 && (
             <Badge variant="accent">{updatesAvailable} update{updatesAvailable !== 1 ? "s" : ""}</Badge>
           )}
@@ -67,33 +86,26 @@ export default function ProjectsPage() {
         </Box>
       ) : (
         <Box padding={false}>
-          <div className="divide-y divide-border">
-            {projects?.map((project) => (
-              <Link
-                key={project.name}
-                href={`/projects/${encodeURIComponent(project.name)}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-surface"
-              >
-                <div>
-                  <div className="font-medium flex items-center gap-2">
-                    {project.name}
-                    {projectHasUpdates(project.name) && (
-                      <Badge variant="accent">update</Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted">
-                    {project.services.length} service{project.services.length !== 1 ? "s" : ""}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm text-muted">
-                    {project.services.filter((s) => s.status === "running").length} running
-                  </div>
-                  <ProjectStatusBadge status={project.status} />
-                </div>
-              </Link>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden sm:table-cell">Services</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedProjects.map((project) => (
+                <ProjectRow
+                  key={project.name}
+                  project={project}
+                  hasUpdates={projectHasUpdates(project)}
+                  onClick={() => router.push(`/projects/${encodeURIComponent(project.name)}`)}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </Box>
       )}
 
@@ -101,6 +113,60 @@ export default function ProjectsPage() {
         <CreateProjectModal onClose={() => setShowCreateModal(false)} />
       )}
     </div>
+  );
+}
+
+function ProjectRow({
+  project,
+  hasUpdates,
+  onClick,
+}: {
+  project: Project;
+  hasUpdates: boolean;
+  onClick: () => void;
+}) {
+  const projectUp = useProjectUp(project.name);
+  const projectDown = useProjectDown(project.name);
+  const isRunning = project.status === "running" || project.status === "partial";
+  const runningCount = project.services.filter((s) => s.status === "running").length;
+
+  return (
+    <TableRow clickable onClick={onClick}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{project.name}</span>
+          {hasUpdates && <Badge variant="accent">update</Badge>}
+        </div>
+      </TableCell>
+      <TableCell className="hidden sm:table-cell text-muted">
+        {runningCount}/{project.services.length}
+      </TableCell>
+      <TableCell>
+        <ProjectStatusBadge status={project.status} />
+      </TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <div className="flex gap-1">
+          {isRunning ? (
+            <Button
+              size="sm"
+              onClick={() => projectDown.mutate()}
+              loading={projectDown.isPending}
+            >
+              Stop
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => projectUp.mutate()}
+              loading={projectUp.isPending}
+            >
+              Start
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
 

@@ -9,16 +9,27 @@ import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
 // Custom highlight style using our theme colors
+// Tags based on @lezer/yaml highlighting definitions
 const customHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "var(--accent)" },
+  // Keys (property names)
+  { tag: tags.definition(tags.propertyName), color: "var(--accent)" },
+  { tag: tags.propertyName, color: "var(--accent)" },
+  // Strings and values
   { tag: tags.string, color: "var(--success)" },
-  { tag: tags.number, color: "var(--warning)" },
-  { tag: tags.bool, color: "var(--warning)" },
-  { tag: tags.null, color: "var(--muted)" },
-  { tag: tags.propertyName, color: "var(--foreground)" },
+  { tag: tags.content, color: "var(--foreground)" },
+  { tag: tags.attributeValue, color: "var(--success)" },
+  // Special syntax
+  { tag: tags.keyword, color: "var(--warning)" },
+  { tag: tags.typeName, color: "var(--warning)" },
+  { tag: tags.labelName, color: "var(--warning)" },
+  // Comments
+  { tag: tags.lineComment, color: "var(--muted)", fontStyle: "italic" },
   { tag: tags.comment, color: "var(--muted)", fontStyle: "italic" },
+  // Punctuation and structure
+  { tag: tags.separator, color: "var(--muted)" },
   { tag: tags.punctuation, color: "var(--muted)" },
-  { tag: tags.atom, color: "var(--accent)" },
+  { tag: tags.squareBracket, color: "var(--muted)" },
+  { tag: tags.brace, color: "var(--muted)" },
   { tag: tags.meta, color: "var(--muted)" },
 ]);
 

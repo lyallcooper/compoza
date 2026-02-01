@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllCachedUpdates, getCacheStats, checkImageUpdates } from "@/lib/updates";
+import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdates } from "@/lib/updates";
 import { scanProjects } from "@/lib/projects";
 import { validateJsonContentType } from "@/lib/api/validation";
 
@@ -85,6 +85,34 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to get updates" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE clears cache for specific images (or all) and triggers recheck
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { images } = body;
+
+    // Clear cache for specified images (or all if none specified)
+    if (images && Array.isArray(images) && images.length > 0) {
+      clearCachedUpdates(images);
+      // Recheck the cleared images
+      await checkImageUpdates(images);
+    } else {
+      clearCachedUpdates();
+      // Trigger full recheck - reset both flags so ensureInitialCheck starts fresh
+      initialCheckDone = false;
+      initialCheckPromise = null;
+      await ensureInitialCheck();
+    }
+
+    return NextResponse.json({ data: { message: "Cache cleared and rechecked" } });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to clear cache" },
       { status: 500 }
     );
   }

@@ -7,7 +7,7 @@ import {
   markCheckComplete,
 } from "./cache";
 
-export { getAllCachedUpdates, getCacheStats } from "./cache";
+export { getAllCachedUpdates, getCacheStats, clearCachedUpdates } from "./cache";
 
 interface ImageUpdateInfo {
   image: string;
@@ -104,7 +104,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
       }
 
       // Try inspecting directly if no digest from list
-      if (!currentDigest) {
+      if (!currentDigest && localImages.length > 0) {
         try {
           const image = docker.getImage(imageName);
           const inspection = await image.inspect();
@@ -114,17 +114,17 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
             );
             currentDigest = matchingDigest?.split("@")[1] || inspection.RepoDigests[0]?.split("@")[1];
           }
-        } catch (error) {
-          // Image might not exist locally - this is expected for some images
-          console.debug(`[Update Check] Could not inspect image ${imageName}:`, error);
+        } catch {
+          // Image inspect failed - not critical, we'll continue without digest
         }
       }
 
+      // Image not pulled locally - mark as unknown, not an error
       if (localImages.length === 0) {
         const result: ImageUpdateInfo = {
           image: imageName,
           updateAvailable: false,
-          status: "error",
+          status: "unknown",
         };
         setCachedUpdate(imageName, result);
         results.push(result);
@@ -165,12 +165,17 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
         setCachedUpdate(imageName, result);
         results.push(result);
       } catch (error) {
-        console.error(`[Update Check] Distribution API failed for ${imageName}:`, error);
+        // Distribution API failures are common (private registries, local images, etc.)
+        // Only log if it's not a typical 404/401/403 error
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        if (statusCode && ![401, 403, 404].includes(statusCode)) {
+          console.warn(`[Update Check] Distribution API failed for ${imageName}:`, error);
+        }
         const result: ImageUpdateInfo = {
           image: imageName,
           currentDigest,
           updateAvailable: false,
-          status: "error",
+          status: "unknown",
         };
         setCachedUpdate(imageName, result);
         results.push(result);

@@ -68,3 +68,13 @@ export function getCacheStats(): { size: number; pendingChecks: number } {
     pendingChecks: pendingChecks.size,
   };
 }
+
+export function clearCachedUpdates(images?: string[]): void {
+  if (images) {
+    for (const image of images) {
+      cache.delete(image);
+    }
+  } else {
+    cache.clear();
+  }
+}

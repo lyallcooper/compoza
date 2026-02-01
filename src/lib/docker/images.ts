@@ -54,7 +54,11 @@ export async function inspectImage(id: string): Promise<Dockerode.ImageInspectIn
     const image = docker.getImage(id);
     return await image.inspect();
   } catch (error) {
-    console.error(`[Docker] Failed to inspect image ${id}:`, error);
+    // 404 is expected for images not pulled locally
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    if (statusCode !== 404) {
+      console.error(`[Docker] Failed to inspect image ${id}:`, error);
+    }
     return null;
   }
 }
@@ -79,9 +83,8 @@ export async function checkImageUpdate(imageName: string): Promise<boolean> {
     const remoteDigest = distribution.Descriptor?.digest;
 
     return Boolean(remoteDigest && remoteDigest !== localDigest);
-  } catch (error) {
-    // If we can't check (e.g., local-only image), assume no update
-    console.debug(`[Docker] Could not check update for ${imageName}:`, error);
+  } catch {
+    // If we can't check (e.g., local-only image, private registry), assume no update
     return false;
   }
 }

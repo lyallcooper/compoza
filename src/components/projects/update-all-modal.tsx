@@ -3,9 +3,15 @@
 import { Modal, Button, Spinner } from "@/components/ui";
 import { useUpdateAllProjects, type ProjectProgress } from "@/hooks";
 
+interface ImageWithVersion {
+  image: string;
+  currentVersion?: string;
+  latestVersion?: string;
+}
+
 interface ProjectWithUpdates {
   name: string;
-  images: string[];
+  images: ImageWithVersion[];
 }
 
 interface UpdateAllModalProps {
@@ -72,9 +78,16 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
             {projects.map((project) => (
               <div key={project.name} className="text-sm">
                 <div className="font-medium">{project.name}</div>
-                <div className="text-muted text-xs pl-3">
-                  {project.images.map((image) => (
-                    <div key={image} className="font-mono truncate">{image}</div>
+                <div className="text-muted text-xs pl-3 space-y-0.5">
+                  {project.images.map(({ image, currentVersion, latestVersion }) => (
+                    <div key={image} className="flex items-center gap-2">
+                      <span className="font-mono truncate">{image}</span>
+                      {currentVersion && latestVersion && currentVersion !== latestVersion && (
+                        <span className="text-accent whitespace-nowrap">
+                          {currentVersion} → {latestVersion}
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>

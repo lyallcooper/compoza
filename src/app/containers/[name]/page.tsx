@@ -17,12 +17,19 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const restartContainer = useRestartContainer();
   const containerUpdate = useContainerUpdate();
 
-  // Check if this container has an update available
-  const hasUpdate = useMemo(() => {
-    if (!container?.image || !imageUpdates) return false;
+  // Check if this container has an update available and get version info
+  const updateInfo = useMemo(() => {
+    if (!container?.image || !imageUpdates) return null;
     const update = imageUpdates.find((u) => u.image === container.image);
-    return update?.updateAvailable ?? false;
+    if (!update?.updateAvailable) return null;
+    return {
+      hasUpdate: true,
+      currentVersion: update.currentVersion,
+      latestVersion: update.latestVersion,
+    };
   }, [container, imageUpdates]);
+
+  const hasUpdate = updateInfo?.hasUpdate ?? false;
 
   // Can only update compose-managed containers
   const canUpdate = container?.projectName && container?.serviceName && hasUpdate;
@@ -60,7 +67,13 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           </Link>
           <h1 className="text-xl font-semibold">{container.name}</h1>
           <ContainerStateBadge state={container.state} />
-          {hasUpdate && <Badge variant="accent">update available</Badge>}
+          {hasUpdate && (
+            <Badge variant="accent">
+              {updateInfo?.currentVersion && updateInfo?.latestVersion && updateInfo.currentVersion !== updateInfo.latestVersion
+                ? `${updateInfo.currentVersion} → ${updateInfo.latestVersion}`
+                : "update available"}
+            </Badge>
+          )}
         </div>
 
         {/* Desktop actions */}

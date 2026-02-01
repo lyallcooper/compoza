@@ -45,18 +45,25 @@ export default function ProjectsPage() {
     return project.services.some((s) => s.image && updatesMap.get(s.image));
   };
 
-  // Get projects with updates and their updatable images
+  // Get projects with updates and their updatable images (including version info)
   const projectsWithUpdates = useMemo(() => {
-    if (!projects) return [];
+    if (!projects || !imageUpdates) return [];
     return projects
       .map((project) => {
         const images = project.services
           .filter((s) => s.image && updatesMap.get(s.image))
-          .map((s) => s.image!);
+          .map((s) => {
+            const update = imageUpdates.find((u) => u.image === s.image);
+            return {
+              image: s.image!,
+              currentVersion: update?.currentVersion,
+              latestVersion: update?.latestVersion,
+            };
+          });
         return { name: project.name, images };
       })
       .filter((p) => p.images.length > 0);
-  }, [projects, updatesMap]);
+  }, [projects, updatesMap, imageUpdates]);
 
   const sortedProjects = useMemo(
     () => [...(projects || [])].sort((a, b) => a.name.localeCompare(b.name)),

@@ -1,8 +1,13 @@
 import { createServer } from "http";
 import { parse } from "url";
+import { config } from "dotenv";
 import next from "next";
 import { Server as SocketServer } from "socket.io";
 import Docker from "dockerode";
+
+// Load .env files (Next.js does this automatically, but our custom server doesn't)
+config({ path: ".env.local" });
+config({ path: ".env" });
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
@@ -14,10 +19,26 @@ const UPDATE_CHECK_INTERVAL = parseInt(process.env.UPDATE_CHECK_INTERVAL || "180
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// Docker client
-const docker = new Docker({
-  socketPath: process.env.DOCKER_HOST || "/var/run/docker.sock",
-});
+// Docker client - handle both socket and TCP connections
+function createDockerClient(): Docker {
+  const dockerHost = process.env.DOCKER_HOST || "/var/run/docker.sock";
+  console.log(`[Docker] Connecting to: ${dockerHost}`);
+
+  if (dockerHost.startsWith("tcp://") || dockerHost.startsWith("http://")) {
+    const url = new URL(dockerHost);
+    console.log(`[Docker] Using TCP connection: ${url.hostname}:${url.port || 2375}`);
+    return new Docker({
+      host: url.hostname,
+      port: parseInt(url.port, 10) || 2375,
+      protocol: url.protocol === "https:" ? "https" : "http",
+    });
+  }
+
+  console.log(`[Docker] Using socket: ${dockerHost}`);
+  return new Docker({ socketPath: dockerHost });
+}
+
+const docker = createDockerClient();
 
 // Track active exec sessions for cleanup
 const activeSessions = new Map<string, { exec: Docker.Exec; stream: NodeJS.ReadWriteStream }>();

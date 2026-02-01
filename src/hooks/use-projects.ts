@@ -121,10 +121,13 @@ export function useProjectPull(name: string) {
       if (data.error) throw new Error(data.error);
       return data.data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Clear update cache so pulled images get rechecked
+      await fetch("/api/images/check-updates", { method: "DELETE" });
       queryClient.invalidateQueries({ queryKey: ["projects", name] });
       queryClient.invalidateQueries({ queryKey: ["projects"], exact: true });
       queryClient.invalidateQueries({ queryKey: ["images"] });
+      queryClient.invalidateQueries({ queryKey: ["image-updates"] });
     },
   });
 }
@@ -144,11 +147,14 @@ export function useProjectUpdate(name: string) {
       if (data.error) throw new Error(data.error);
       return data.data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Clear update cache so pulled images get rechecked
+      await fetch("/api/images/check-updates", { method: "DELETE" });
       queryClient.invalidateQueries({ queryKey: ["projects", name] });
       queryClient.invalidateQueries({ queryKey: ["projects"], exact: true });
       queryClient.invalidateQueries({ queryKey: ["containers"] });
       queryClient.invalidateQueries({ queryKey: ["images"] });
+      queryClient.invalidateQueries({ queryKey: ["image-updates"] });
     },
   });
 }

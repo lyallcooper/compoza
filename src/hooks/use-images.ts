@@ -29,8 +29,15 @@ export function usePullImage() {
       if (data.error) throw new Error(data.error);
       return data.data;
     },
-    onSuccess: () => {
+    onSuccess: async (_data, name) => {
+      // Clear update cache for this image so it gets rechecked
+      await fetch("/api/images/check-updates", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: [name] }),
+      });
       queryClient.invalidateQueries({ queryKey: ["images"] });
+      queryClient.invalidateQueries({ queryKey: ["image-updates"] });
     },
   });
 }

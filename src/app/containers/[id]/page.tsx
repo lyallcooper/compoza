@@ -174,10 +174,12 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         <Box title="Labels">
           <div className="text-sm font-mono space-y-1 max-h-48 overflow-auto">
             {Object.entries(container.labels).map(([key, value]) => (
-              <div key={key} className="break-all">
+              <div key={key}>
                 <SelectableText className="text-muted">{key}</SelectableText>
                 <span className="text-muted">:</span>{" "}
-                <SelectableText>{value}</SelectableText>
+                <SelectableText>
+                  <TruncatedText text={value} maxLength={60} />
+                </SelectableText>
               </div>
             ))}
           </div>

@@ -231,7 +231,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             <Button>Logs</Button>
           </Link>
           <Button variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete} className="ml-2">
-            Delete
+            Delete…
           </Button>
         </div>
 
@@ -250,7 +250,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             <DropdownItem>Logs</DropdownItem>
           </Link>
           <DropdownItem variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete}>
-            Delete
+            Delete…
           </DropdownItem>
         </DropdownMenu>
       </div>

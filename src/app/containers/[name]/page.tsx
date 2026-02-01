@@ -118,7 +118,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               variant="accent"
               onClick={() => setShowUpdateModal(true)}
             >
-              Update
+              Update…
             </Button>
           )}
           <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="ml-2">
@@ -159,7 +159,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           )}
           {canUpdate && (
             <DropdownItem onClick={() => setShowUpdateModal(true)}>
-              Update
+              Update…
             </DropdownItem>
           )}
           <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="block">

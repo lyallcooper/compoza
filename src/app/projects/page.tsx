@@ -79,11 +79,11 @@ export default function ProjectsPage() {
         <div className="flex items-center gap-2">
           {projectsWithUpdates.length > 0 && (
             <Button variant="accent" onClick={() => setShowUpdateAllModal(true)}>
-              Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}
+              Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
             </Button>
           )}
           <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            + New Project
+            + New Project…
           </Button>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function ProjectsPage() {
           <div className="text-center py-8">
             <p className="text-muted mb-4">No projects found</p>
             <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-              Create your first project
+              Create your first project…
             </Button>
           </div>
         </Box>
@@ -211,7 +211,7 @@ function ProjectRow({
                 variant="accent"
                 onClick={() => setShowUpdateModal(true)}
               >
-                Update
+                Update…
               </Button>
             )}
           </div>

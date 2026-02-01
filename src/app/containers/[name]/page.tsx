@@ -1,19 +1,31 @@
 "use client";
 
-import { use } from "react";
+import { use, useMemo } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels, DropdownMenu, DropdownItem } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels, DropdownMenu, DropdownItem, Badge } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
-import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
+import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useContainerUpdate, useImageUpdates } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const { name } = use(params);
   const { data: container, isLoading, error } = useContainer(name);
   const { data: stats } = useContainerStats(name, container?.state === "running");
+  const { data: imageUpdates } = useImageUpdates();
   const startContainer = useStartContainer();
   const stopContainer = useStopContainer();
   const restartContainer = useRestartContainer();
+  const containerUpdate = useContainerUpdate();
+
+  // Check if this container has an update available
+  const hasUpdate = useMemo(() => {
+    if (!container?.image || !imageUpdates) return false;
+    const update = imageUpdates.find((u) => u.image === container.image);
+    return update?.updateAvailable ?? false;
+  }, [container, imageUpdates]);
+
+  // Can only update compose-managed containers
+  const canUpdate = container?.projectName && container?.serviceName && hasUpdate;
 
   if (isLoading) {
     return (
@@ -48,6 +60,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           </Link>
           <h1 className="text-xl font-semibold">{container.name}</h1>
           <ContainerStateBadge state={container.state} />
+          {hasUpdate && <Badge variant="accent">update available</Badge>}
         </div>
 
         {/* Desktop actions */}
@@ -59,6 +72,15 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             <Link href={`/containers/${encodeURIComponent(name)}/exec`}>
               <Button>Terminal</Button>
             </Link>
+          )}
+          {canUpdate && (
+            <Button
+              variant="accent"
+              onClick={() => containerUpdate.mutate(name)}
+              loading={containerUpdate.isPending}
+            >
+              Update
+            </Button>
           )}
           {container.state === "running" ? (
             <>
@@ -94,6 +116,14 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             <Link href={`/containers/${encodeURIComponent(name)}/exec`} className="block">
               <DropdownItem>Terminal</DropdownItem>
             </Link>
+          )}
+          {canUpdate && (
+            <DropdownItem
+              onClick={() => containerUpdate.mutate(name)}
+              loading={containerUpdate.isPending}
+            >
+              Update
+            </DropdownItem>
           )}
           {container.state === "running" ? (
             <>

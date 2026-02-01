@@ -104,3 +104,27 @@ export function useRestartContainer() {
     },
   });
 }
+
+export function useContainerUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/containers/${encodeURIComponent(id)}/update`, {
+        method: "POST",
+      });
+      const data: ApiResponse<{ output: string; restarted: boolean }> = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.data;
+    },
+    onSuccess: async (_data, id) => {
+      // Clear update cache so pulled images get rechecked
+      await fetch("/api/images/check-updates", { method: "DELETE" });
+      queryClient.invalidateQueries({ queryKey: ["containers", id] });
+      queryClient.invalidateQueries({ queryKey: ["containers"], exact: true });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["images"] });
+      queryClient.invalidateQueries({ queryKey: ["image-updates"] });
+    },
+  });
+}

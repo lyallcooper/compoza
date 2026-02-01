@@ -6,9 +6,17 @@ interface OciTagListResponse {
   tags: string[];
 }
 
+interface TokenResponse {
+  token: string;
+}
+
+// Cache tokens per registry/scope
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+
 /**
  * OCI Distribution API client.
  * Works with GHCR, lscr.io, and other OCI-compliant registries.
+ * Handles anonymous token authentication for public images.
  */
 export class OciClient implements RegistryClient {
   constructor(private baseUrl: string) {}
@@ -17,24 +25,15 @@ export class OciClient implements RegistryClient {
     const name = `${namespace}/${repository}`;
 
     try {
-      // Get tag list
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      const listRes = await fetch(`${this.baseUrl}/v2/${name}/tags/list`, {
-        headers: {
-          "Accept": "application/json",
-        },
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeout));
+      // Get tag list (with auth retry)
+      const listRes = await this.fetchWithAuth(`${this.baseUrl}/v2/${name}/tags/list`, name);
 
       if (!listRes.ok) {
         if (listRes.status === 404) {
           return [];
         }
-        // Try to get auth challenge for better error message
-        if (listRes.status === 401) {
-          console.warn(`[OCI] Authentication required for ${name}`);
+        if (listRes.status === 401 || listRes.status === 403) {
+          console.warn(`[OCI] Access denied for ${name}`);
           return [];
         }
         throw new Error(`OCI API error: ${listRes.status}`);
@@ -76,24 +75,146 @@ export class OciClient implements RegistryClient {
   }
 
   /**
+   * Fetch with automatic anonymous token authentication.
+   */
+  private async fetchWithAuth(url: string, scope: string): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      // Try with cached token first
+      const cachedToken = this.getCachedToken(scope);
+      const headers: Record<string, string> = {
+        "Accept": "application/json",
+      };
+      if (cachedToken) {
+        headers["Authorization"] = `Bearer ${cachedToken}`;
+      }
+
+      const response = await fetch(url, { headers, signal: controller.signal });
+
+      // If unauthorized, try to get a token
+      if (response.status === 401) {
+        const token = await this.getAnonymousToken(response, scope);
+        if (token) {
+          // Retry with token
+          const retryController = new AbortController();
+          const retryTimeout = setTimeout(() => retryController.abort(), 10000);
+          try {
+            return await fetch(url, {
+              headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`,
+              },
+              signal: retryController.signal,
+            });
+          } finally {
+            clearTimeout(retryTimeout);
+          }
+        }
+      }
+
+      return response;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Get an anonymous token from the registry's auth service.
+   */
+  private async getAnonymousToken(response: Response, scope: string): Promise<string | null> {
+    const wwwAuth = response.headers.get("www-authenticate");
+    if (!wwwAuth) {
+      return null;
+    }
+
+    // Parse WWW-Authenticate header
+    // Format: Bearer realm="https://...",service="...",scope="..."
+    const realmMatch = wwwAuth.match(/realm="([^"]+)"/);
+    const serviceMatch = wwwAuth.match(/service="([^"]+)"/);
+    const scopeMatch = wwwAuth.match(/scope="([^"]+)"/);
+
+    if (!realmMatch) {
+      return null;
+    }
+
+    const realm = realmMatch[1];
+    const service = serviceMatch?.[1];
+    const authScope = scopeMatch?.[1] || `repository:${scope}:pull`;
+
+    try {
+      const tokenUrl = new URL(realm);
+      if (service) {
+        tokenUrl.searchParams.set("service", service);
+      }
+      tokenUrl.searchParams.set("scope", authScope);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const tokenRes = await fetch(tokenUrl.toString(), {
+          signal: controller.signal,
+        });
+
+        if (!tokenRes.ok) {
+          return null;
+        }
+
+        const data: TokenResponse = await tokenRes.json();
+
+        // Cache the token for 5 minutes
+        tokenCache.set(scope, {
+          token: data.token,
+          expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+
+        return data.token;
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (error) {
+      console.warn(`[OCI] Failed to get token:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get a cached token if still valid.
+   */
+  private getCachedToken(scope: string): string | null {
+    const cached = tokenCache.get(scope);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.token;
+    }
+    return null;
+  }
+
+  /**
    * Get the digest for a specific tag by fetching its manifest.
    */
   private async getManifestDigest(name: string, tag: string): Promise<string | null> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout per manifest
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
+      const cachedToken = this.getCachedToken(name);
+      const headers: Record<string, string> = {
+        "Accept": [
+          "application/vnd.oci.image.index.v1+json",
+          "application/vnd.docker.distribution.manifest.list.v2+json",
+          "application/vnd.oci.image.manifest.v1+json",
+          "application/vnd.docker.distribution.manifest.v2+json",
+        ].join(", "),
+      };
+      if (cachedToken) {
+        headers["Authorization"] = `Bearer ${cachedToken}`;
+      }
+
       const response = await fetch(`${this.baseUrl}/v2/${name}/manifests/${tag}`, {
         method: "HEAD",
-        headers: {
-          // Request manifest list or image index
-          "Accept": [
-            "application/vnd.oci.image.index.v1+json",
-            "application/vnd.docker.distribution.manifest.list.v2+json",
-            "application/vnd.oci.image.manifest.v1+json",
-            "application/vnd.docker.distribution.manifest.v2+json",
-          ].join(", "),
-        },
+        headers,
         signal: controller.signal,
       });
 

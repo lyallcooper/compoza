@@ -21,6 +21,25 @@ export interface PortMapping {
   protocol: "tcp" | "udp";
 }
 
+/**
+ * How a container can be updated.
+ * - "compose": Managed by compose, can be updated via compose pull + up
+ * - "standalone": Not compose-managed, manual update required
+ */
+export type ContainerUpdateStrategy = "compose" | "standalone";
+
+/**
+ * Actions available for a container based on its current state.
+ */
+export interface ContainerActions {
+  canStart: boolean;
+  canStop: boolean;
+  canRestart: boolean;
+  canUpdate: boolean;
+  canViewLogs: boolean;
+  canExec: boolean;
+}
+
 export interface Container {
   id: string;
   name: string;
@@ -31,8 +50,14 @@ export interface Container {
   created: number;
   ports: PortMapping[];
   labels: Record<string, string>;
+  /** Compose project name if compose-managed */
   projectName?: string;
+  /** Compose service name if compose-managed */
   serviceName?: string;
+  /** How this container can be updated */
+  updateStrategy: ContainerUpdateStrategy;
+  /** Available actions based on current state */
+  actions: ContainerActions;
 }
 
 export interface ContainerStats {

@@ -32,8 +32,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
   const hasUpdate = updateInfo?.hasUpdate ?? false;
 
-  // Can only update compose-managed containers
-  const canUpdate = container?.projectName && container?.serviceName && hasUpdate;
+  // Use domain model's computed actions
+  const canUpdate = container?.actions.canUpdate && hasUpdate;
 
   if (isLoading) {
     return (
@@ -79,27 +79,28 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-2">
-          {container.state === "running" ? (
-            <>
-              <Button
-                onClick={() => stopContainer.mutate(name)}
-                loading={stopContainer.isPending}
-              >
-                Stop
-              </Button>
-              <Button
-                onClick={() => restartContainer.mutate(name)}
-                loading={restartContainer.isPending}
-              >
-                Restart
-              </Button>
-            </>
-          ) : (
+          {container.actions.canStart && (
             <Button
               onClick={() => startContainer.mutate(name)}
               loading={startContainer.isPending}
             >
               Start
+            </Button>
+          )}
+          {container.actions.canStop && (
+            <Button
+              onClick={() => stopContainer.mutate(name)}
+              loading={stopContainer.isPending}
+            >
+              Stop
+            </Button>
+          )}
+          {container.actions.canRestart && (
+            <Button
+              onClick={() => restartContainer.mutate(name)}
+              loading={restartContainer.isPending}
+            >
+              Restart
             </Button>
           )}
           {canUpdate && (
@@ -114,7 +115,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="ml-2">
             <Button>Logs</Button>
           </Link>
-          {container.state === "running" && (
+          {container.actions.canExec && (
             <Link href={`/containers/${encodeURIComponent(name)}/exec`}>
               <Button>Terminal</Button>
             </Link>
@@ -123,27 +124,28 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Mobile actions dropdown */}
         <DropdownMenu className="md:hidden">
-          {container.state === "running" ? (
-            <>
-              <DropdownItem
-                onClick={() => stopContainer.mutate(name)}
-                loading={stopContainer.isPending}
-              >
-                Stop
-              </DropdownItem>
-              <DropdownItem
-                onClick={() => restartContainer.mutate(name)}
-                loading={restartContainer.isPending}
-              >
-                Restart
-              </DropdownItem>
-            </>
-          ) : (
+          {container.actions.canStart && (
             <DropdownItem
               onClick={() => startContainer.mutate(name)}
               loading={startContainer.isPending}
             >
               Start
+            </DropdownItem>
+          )}
+          {container.actions.canStop && (
+            <DropdownItem
+              onClick={() => stopContainer.mutate(name)}
+              loading={stopContainer.isPending}
+            >
+              Stop
+            </DropdownItem>
+          )}
+          {container.actions.canRestart && (
+            <DropdownItem
+              onClick={() => restartContainer.mutate(name)}
+              loading={restartContainer.isPending}
+            >
+              Restart
             </DropdownItem>
           )}
           {canUpdate && (
@@ -157,7 +159,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="block">
             <DropdownItem>Logs</DropdownItem>
           </Link>
-          {container.state === "running" && (
+          {container.actions.canExec && (
             <Link href={`/containers/${encodeURIComponent(name)}/exec`} className="block">
               <DropdownItem>Terminal</DropdownItem>
             </Link>

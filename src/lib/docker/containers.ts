@@ -1,5 +1,50 @@
 import { getDocker } from "./client";
-import type { Container, ContainerStats, PortMapping } from "@/types";
+import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions } from "@/types";
+
+/**
+ * Determine the update strategy for a container based on its labels.
+ */
+function getUpdateStrategy(projectName?: string, serviceName?: string): ContainerUpdateStrategy {
+  return projectName && serviceName ? "compose" : "standalone";
+}
+
+/**
+ * Compute available actions based on container state and update strategy.
+ */
+function getContainerActions(
+  state: Container["state"],
+  updateStrategy: ContainerUpdateStrategy
+): ContainerActions {
+  const isRunning = state === "running";
+  const isStopped = state === "exited" || state === "created";
+  const canOperate = state !== "removing" && state !== "dead";
+
+  return {
+    canStart: isStopped,
+    canStop: isRunning,
+    canRestart: isRunning,
+    canUpdate: updateStrategy === "compose" && canOperate,
+    canViewLogs: true, // Can always view logs
+    canExec: isRunning,
+  };
+}
+
+/**
+ * Sort ports: published first (by host port), then unpublished (by container port), TCP before UDP.
+ */
+function sortPorts(ports: PortMapping[]): PortMapping[] {
+  return [...ports].sort((a, b) => {
+    if (a.host && !b.host) return -1;
+    if (!a.host && b.host) return 1;
+    const portCompare = a.host && b.host
+      ? a.host - b.host
+      : a.container - b.container;
+    if (portCompare !== 0) return portCompare;
+    if (a.protocol === "tcp" && b.protocol !== "tcp") return -1;
+    if (a.protocol !== "tcp" && b.protocol === "tcp") return 1;
+    return 0;
+  });
+}
 
 export async function listContainers(all = true): Promise<Container[]> {
   const docker = getDocker();
@@ -20,23 +65,12 @@ export async function listContainers(all = true): Promise<Container[]> {
         });
       }
     }
-    // Sort: published ports first (by host port), then unpublished (by container port), TCP before UDP
-    ports.sort((a, b) => {
-      if (a.host && !b.host) return -1;
-      if (!a.host && b.host) return 1;
-      const portCompare = a.host && b.host
-        ? a.host - b.host
-        : a.container - b.container;
-      if (portCompare !== 0) return portCompare;
-      // TCP before UDP as tiebreaker
-      if (a.protocol === "tcp" && b.protocol !== "tcp") return -1;
-      if (a.protocol !== "tcp" && b.protocol === "tcp") return 1;
-      return 0;
-    });
 
     const labels = c.Labels || {};
     const projectName = labels["com.docker.compose.project"];
     const serviceName = labels["com.docker.compose.service"];
+    const state = c.State as Container["state"];
+    const updateStrategy = getUpdateStrategy(projectName, serviceName);
 
     return {
       id: c.Id,
@@ -44,12 +78,14 @@ export async function listContainers(all = true): Promise<Container[]> {
       image: c.Image,
       imageId: c.ImageID,
       status: c.Status,
-      state: c.State as Container["state"],
+      state,
       created: c.Created,
-      ports,
+      ports: sortPorts(ports),
       labels,
       projectName,
       serviceName,
+      updateStrategy,
+      actions: getContainerActions(state, updateStrategy),
     };
   });
 }
@@ -90,22 +126,11 @@ export async function getContainer(id: string): Promise<Container | null> {
       }
     }
 
-    // Sort: published ports first (by host port), then unpublished (by container port), TCP before UDP
-    ports.sort((a, b) => {
-      if (a.host && !b.host) return -1;
-      if (!a.host && b.host) return 1;
-      const portCompare = a.host && b.host
-        ? a.host - b.host
-        : a.container - b.container;
-      if (portCompare !== 0) return portCompare;
-      if (a.protocol === "tcp" && b.protocol !== "tcp") return -1;
-      if (a.protocol !== "tcp" && b.protocol === "tcp") return 1;
-      return 0;
-    });
-
     const labels = info.Config.Labels || {};
     const projectName = labels["com.docker.compose.project"];
     const serviceName = labels["com.docker.compose.service"];
+    const state = info.State.Status as Container["state"];
+    const updateStrategy = getUpdateStrategy(projectName, serviceName);
 
     return {
       id: info.Id,
@@ -113,12 +138,14 @@ export async function getContainer(id: string): Promise<Container | null> {
       image: info.Config.Image,
       imageId: info.Image,
       status: info.State.Status,
-      state: info.State.Status as Container["state"],
+      state,
       created: new Date(info.Created).getTime() / 1000,
-      ports,
+      ports: sortPorts(ports),
       labels,
       projectName,
       serviceName,
+      updateStrategy,
+      actions: getContainerActions(state, updateStrategy),
     };
   } catch (error) {
     console.error(`[Docker] Failed to get container ${id}:`, error);

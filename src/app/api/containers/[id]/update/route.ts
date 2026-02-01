@@ -18,16 +18,18 @@ export async function POST(
       return notFound("Container not found");
     }
 
-    // Verify this is a compose-managed container
-    if (!container.projectName || !container.serviceName) {
-      return badRequest("Container is not managed by compose");
+    // Verify this is a compose-managed container that can be updated
+    // Destructure to narrow types (TypeScript needs explicit presence check)
+    const { projectName, serviceName } = container;
+    if (!projectName || !serviceName || !container.actions.canUpdate) {
+      return badRequest("Container cannot be updated (not compose-managed or in invalid state)");
     }
 
     const wasRunning = container.state === "running";
     let output = "";
 
     // Pull the image for this service
-    const pullResult = await composePullService(container.projectName, container.serviceName);
+    const pullResult = await composePullService(projectName, serviceName);
     output += pullResult.output;
 
     if (!pullResult.success) {
@@ -37,7 +39,7 @@ export async function POST(
     // Recreate the service if it was running
     let restarted = false;
     if (wasRunning) {
-      const upResult = await composeUpService(container.projectName, container.serviceName);
+      const upResult = await composeUpService(projectName, serviceName);
       output += "\n" + upResult.output;
 
       if (!upResult.success) {

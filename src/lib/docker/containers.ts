@@ -90,6 +90,19 @@ export async function getContainer(id: string): Promise<Container | null> {
       }
     }
 
+    // Sort: published ports first (by host port), then unpublished (by container port), TCP before UDP
+    ports.sort((a, b) => {
+      if (a.host && !b.host) return -1;
+      if (!a.host && b.host) return 1;
+      const portCompare = a.host && b.host
+        ? a.host - b.host
+        : a.container - b.container;
+      if (portCompare !== 0) return portCompare;
+      if (a.protocol === "tcp" && b.protocol !== "tcp") return -1;
+      if (a.protocol !== "tcp" && b.protocol === "tcp") return 1;
+      return 0;
+    });
+
     const labels = info.Config.Labels || {};
     const projectName = labels["com.docker.compose.project"];
     const serviceName = labels["com.docker.compose.service"];

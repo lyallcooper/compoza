@@ -92,12 +92,23 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             <StatsDisplay stats={stats} />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              {["CPU", "Memory", "Network I/O", "Disk I/O"].map((label) => (
-                <div key={label}>
-                  <div className="text-muted">{label}</div>
-                  <div className="text-muted">--</div>
-                </div>
-              ))}
+              <div>
+                <div className="text-muted">CPU</div>
+                <div className="text-muted">--</div>
+              </div>
+              <div>
+                <div className="text-muted">Memory</div>
+                <div className="text-muted">--</div>
+                <div className="text-xs text-muted">&nbsp;</div>
+              </div>
+              <div>
+                <div className="text-muted">Network I/O</div>
+                <div className="text-muted">--</div>
+              </div>
+              <div>
+                <div className="text-muted">Disk I/O</div>
+                <div className="text-muted">--</div>
+              </div>
             </div>
           )}
         </Box>

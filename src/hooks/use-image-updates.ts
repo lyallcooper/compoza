@@ -3,11 +3,16 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ApiResponse } from "@/types";
 
-interface ImageUpdateStatus {
+export interface ImageUpdateStatus {
   image: string;
   updateAvailable: boolean;
   status: "checked" | "unknown" | "error";
   checkedAt: number;
+  currentDigest?: string;
+  latestDigest?: string;
+  currentVersion?: string;
+  latestVersion?: string;
+  versionStatus?: "pending" | "resolved" | "failed";
 }
 
 export function useImageUpdates() {
@@ -19,7 +24,7 @@ export function useImageUpdates() {
       if (data.error) throw new Error(data.error);
       return data.data || [];
     },
-    staleTime: 30000, // Consider stale after 30 seconds
-    refetchInterval: 60000, // Refetch every minute to pick up background updates
+    staleTime: 10000, // Consider stale after 10 seconds (to pick up version resolution)
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 }

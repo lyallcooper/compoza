@@ -4,30 +4,41 @@ import { useEffect, useRef } from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-import { yaml } from "@codemirror/lang-yaml";
-import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { syntaxHighlighting, HighlightStyle, StreamLanguage } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
-// Custom highlight style using our theme colors
+// Simple env file syntax: KEY=value, # comments
+const envLanguage = StreamLanguage.define({
+  token(stream) {
+    if (stream.match(/^#.*/)) {
+      return "comment";
+    }
+    if (stream.sol() && stream.match(/^[A-Z_][A-Z0-9_]*/i)) {
+      return "propertyName";
+    }
+    if (stream.match(/^=/) ) {
+      return "punctuation";
+    }
+    stream.next();
+    return "string";
+  },
+});
+
 const customHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "var(--accent)" },
-  { tag: tags.string, color: "var(--success)" },
-  { tag: tags.number, color: "var(--warning)" },
-  { tag: tags.bool, color: "var(--warning)" },
-  { tag: tags.null, color: "var(--muted)" },
   { tag: tags.propertyName, color: "var(--foreground)" },
+  { tag: tags.string, color: "var(--success)" },
   { tag: tags.comment, color: "var(--muted)", fontStyle: "italic" },
   { tag: tags.punctuation, color: "var(--muted)" },
 ]);
 
-interface YamlEditorProps {
+interface EnvEditorProps {
   value: string;
   onChange: (value: string) => void;
   readOnly?: boolean;
   className?: string;
 }
 
-export function YamlEditor({ value, onChange, readOnly = false, className = "" }: YamlEditorProps) {
+export function EnvEditor({ value, onChange, readOnly = false, className = "" }: EnvEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
@@ -76,7 +87,7 @@ export function YamlEditor({ value, onChange, readOnly = false, className = "" }
         lineNumbers(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
-        yaml(),
+        envLanguage,
         syntaxHighlighting(customHighlightStyle),
         keymap.of([...defaultKeymap, indentWithTab]),
         theme,
@@ -99,9 +110,8 @@ export function YamlEditor({ value, onChange, readOnly = false, className = "" }
     return () => {
       view.destroy();
     };
-  }, [readOnly]); // Only recreate on readOnly change
+  }, [readOnly]);
 
-  // Update content when value changes externally
   useEffect(() => {
     if (viewRef.current) {
       const currentValue = viewRef.current.state.doc.toString();

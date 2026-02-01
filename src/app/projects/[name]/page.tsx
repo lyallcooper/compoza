@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, SelectableText, PortsList, DropdownMenu, DropdownItem } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
+import { YamlEditor, EnvEditor } from "@/components/projects";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates, useProjectCompose, useProjectEnv } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
 
@@ -244,16 +245,26 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
       {/* Files */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Box title="compose.yaml">
-          <pre className="text-xs font-mono text-muted whitespace-pre-wrap overflow-auto max-h-96">
-            {composeContent || "Loading..."}
-          </pre>
+        <Box title="compose.yaml" padding={false}>
+          {composeContent !== undefined ? (
+            <YamlEditor
+              value={composeContent}
+              onChange={() => {}}
+              readOnly
+              className="h-80"
+            />
+          ) : (
+            <div className="p-4 text-muted">Loading...</div>
+          )}
         </Box>
         {envContent && (
-          <Box title=".env">
-            <pre className="text-xs font-mono text-muted whitespace-pre-wrap overflow-auto max-h-96">
-              {envContent}
-            </pre>
+          <Box title=".env" padding={false}>
+            <EnvEditor
+              value={envContent}
+              onChange={() => {}}
+              readOnly
+              className="h-80"
+            />
           </Box>
         )}
       </div>

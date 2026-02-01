@@ -25,3 +25,7 @@ export { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 export { useUpdateAllProjects } from "./use-update-all-projects";
 export type { ProjectProgress } from "./use-update-all-projects";
 export { useCodeMirror, editorTheme } from "./use-codemirror";
+export { useEventSource, useStreamingFetch } from "./use-event-source";
+export type { EventSourceState, UseEventSourceOptions } from "./use-event-source";
+export { useTerminalSocket } from "./use-terminal-socket";
+export type { ConnectionStatus, TerminalSocketState, TerminalSocketActions } from "./use-terminal-socket";

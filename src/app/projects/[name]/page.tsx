@@ -164,64 +164,55 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Service</TableHead>
-              <TableHead>Image</TableHead>
+              <TableHead className="hidden sm:table-cell">Image</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Ports</TableHead>
+              <TableHead className="hidden sm:table-cell">Ports</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {project.services.map((service) => (
-              <TableRow key={service.name}>
+              <TableRow
+                key={service.name}
+                clickable={!!service.containerId}
+                onClick={service.containerId ? () => router.push(`/containers/${encodeURIComponent(service.containerId!)}`) : undefined}
+              >
                 <TableCell>
-                  {service.containerId ? (
-                    <Link
-                      href={`/containers/${encodeURIComponent(service.containerId)}`}
-                      className="text-accent hover:underline"
-                    >
-                      {service.name}
-                    </Link>
-                  ) : (
-                    service.name
-                  )}
-                </TableCell>
-                <TableCell className="text-muted">
-                  <span className="flex items-center gap-2">
-                    {service.image || "-"}
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{service.name}</span>
                     {service.image && updatesMap.get(service.image) && (
                       <Badge variant="accent">update</Badge>
                     )}
-                  </span>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell text-muted font-mono text-xs">
+                  <TruncatedText text={service.image || "-"} maxLength={50} />
                 </TableCell>
                 <TableCell>
                   <ContainerStateBadge state={service.status} />
                 </TableCell>
-                <TableCell className="text-muted">
-                  {service.ports?.map((p, i) => (
-                    <span key={i} className="mr-2">
-                      {p.host ? `${p.host}:` : ""}
-                      {p.container}/{p.protocol}
-                    </span>
-                  )) || "-"}
+                <TableCell className="hidden sm:table-cell text-muted text-xs">
+                  <PortsList ports={service.ports || []} />
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   {service.containerId && (
                     <div className="flex gap-1">
-                      {service.status !== "running" ? (
+                      {service.status === "running" ? (
                         <Button
                           size="sm"
-                          onClick={() => startContainer.mutate(service.containerId!)}
-                          loading={startContainer.isPending}
+                          onClick={() => stopContainer.mutate(service.containerId!)}
+                          loading={stopContainer.isPending && stopContainer.variables === service.containerId}
                         >
-                          Start
+                          Stop
                         </Button>
                       ) : (
                         <Button
                           size="sm"
-                          onClick={() => stopContainer.mutate(service.containerId!)}
-                          loading={stopContainer.isPending}
+                          variant="primary"
+                          onClick={() => startContainer.mutate(service.containerId!)}
+                          loading={startContainer.isPending && startContainer.variables === service.containerId}
                         >
-                          Stop
+                          Start
                         </Button>
                       )}
                     </div>
@@ -278,5 +269,46 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         </Modal>
       )}
     </div>
+  );
+}
+
+function TruncatedText({ text, maxLength = 50 }: { text: string; maxLength?: number }) {
+  if (text.length <= maxLength) {
+    return <span title={text}>{text}</span>;
+  }
+  const keepChars = Math.floor((maxLength - 3) / 2);
+  const truncated = `${text.slice(0, keepChars)}...${text.slice(-keepChars)}`;
+  return <span title={text}>{truncated}</span>;
+}
+
+function formatPort(p: { host?: number; container: number; protocol: string }) {
+  const showProtocol = p.protocol !== "tcp";
+  const protocolSuffix = showProtocol ? `/${p.protocol}` : "";
+  if (p.host) {
+    if (p.host === p.container) {
+      return `${p.host}${protocolSuffix}`;
+    }
+    return `${p.host}:${p.container}${protocolSuffix}`;
+  }
+  return `${p.container}${protocolSuffix}`;
+}
+
+function PortsList({ ports, maxVisible = 3 }: { ports: { host?: number; container: number; protocol: string }[]; maxVisible?: number }) {
+  if (ports.length === 0) {
+    return <span>-</span>;
+  }
+  const allPorts = ports.map(formatPort).join(", ");
+  const visiblePorts = ports.slice(0, maxVisible);
+  const hiddenCount = ports.length - maxVisible;
+  return (
+    <span title={allPorts}>
+      {visiblePorts.map((p, i) => (
+        <span key={`${p.host}-${p.container}-${p.protocol}`}>
+          {p.host ? formatPort(p) : <em>{formatPort(p)}</em>}
+          {i < visiblePorts.length - 1 && ", "}
+        </span>
+      ))}
+      {hiddenCount > 0 && <span> +{hiddenCount}</span>}
+    </span>
   );
 }

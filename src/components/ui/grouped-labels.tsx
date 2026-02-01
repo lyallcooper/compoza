@@ -71,10 +71,10 @@ function groupLabels(labels: Record<string, string>): LabelGroup[] {
 export function GroupedLabels({ labels }: GroupedLabelsProps) {
   const groups = useMemo(() => groupLabels(labels), [labels]);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
-    // Only collapse com.docker.* groups by default
+    // Collapse common infrastructure label groups by default
     const initial = new Set<string>();
     for (const group of groups) {
-      if (group.prefix && group.prefix.startsWith("com.docker")) {
+      if (group.prefix && (group.prefix.startsWith("com.docker") || group.prefix.startsWith("org.opencontainers"))) {
         initial.add(group.prefix);
       }
     }

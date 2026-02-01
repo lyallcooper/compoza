@@ -114,85 +114,88 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         </Box>
       )}
 
-      {/* Info */}
-      <Box title="Details">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <div className="text-muted">Image</div>
-            <div className="font-mono text-xs">
-              <SelectableText>
-                <TruncatedText text={container.image} maxLength={50} />
-              </SelectableText>
-            </div>
-          </div>
-          <div>
-            <div className="text-muted">Status</div>
-            <div>{container.status}</div>
-          </div>
-          <div>
-            <div className="text-muted">Container ID</div>
-            <div className="font-mono text-xs">
-              <SelectableText>
-                <TruncatedText text={container.id} maxLength={24} />
-              </SelectableText>
-            </div>
-          </div>
-          <div>
-            <div className="text-muted">Image ID</div>
-            <div className="font-mono text-xs">
-              <SelectableText>
-                <TruncatedText text={container.imageId} maxLength={24} />
-              </SelectableText>
-            </div>
-          </div>
-          <div>
-            <div className="text-muted">Created</div>
-            <div>{new Date(container.created * 1000).toLocaleString()}</div>
-          </div>
-          {container.projectName && (
+      {/* Details and Ports side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Details */}
+        <Box title="Details">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <div className="text-muted">Project</div>
-              <div>
-                <Link
-                  href={`/projects/${encodeURIComponent(container.projectName)}`}
-                  className="text-accent hover:underline"
-                >
-                  {container.projectName}
-                </Link>
-                {container.serviceName && (
-                  <span className="text-muted"> / {container.serviceName}</span>
-                )}
+              <div className="text-muted">Image</div>
+              <div className="font-mono text-xs">
+                <SelectableText>
+                  <TruncatedText text={container.image} maxLength={50} />
+                </SelectableText>
               </div>
             </div>
-          )}
-        </div>
-      </Box>
-
-      {/* Ports */}
-      {container.ports.length > 0 && (
-        <Box title="Ports" padding={false}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Host</TableHead>
-                <TableHead>Container</TableHead>
-                <TableHead>Protocol</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {container.ports.map((p, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-mono">
-                    {p.host || <span className="text-muted">-</span>}
-                  </TableCell>
-                  <TableCell className="font-mono">{p.container}</TableCell>
-                  <TableCell className="text-muted">{p.protocol}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            <div>
+              <div className="text-muted">Status</div>
+              <div>{container.status}</div>
+            </div>
+            <div>
+              <div className="text-muted">Container ID</div>
+              <div className="font-mono text-xs">
+                <SelectableText>
+                  <TruncatedText text={container.id} maxLength={24} />
+                </SelectableText>
+              </div>
+            </div>
+            <div>
+              <div className="text-muted">Image ID</div>
+              <div className="font-mono text-xs">
+                <SelectableText>
+                  <TruncatedText text={container.imageId} maxLength={24} />
+                </SelectableText>
+              </div>
+            </div>
+            <div>
+              <div className="text-muted">Created</div>
+              <div>{new Date(container.created * 1000).toLocaleString()}</div>
+            </div>
+            {container.projectName && (
+              <div>
+                <div className="text-muted">Project</div>
+                <div>
+                  <Link
+                    href={`/projects/${encodeURIComponent(container.projectName)}`}
+                    className="text-accent hover:underline"
+                  >
+                    {container.projectName}
+                  </Link>
+                  {container.serviceName && (
+                    <span className="text-muted"> / {container.serviceName}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </Box>
-      )}
+
+        {/* Ports */}
+        {container.ports.length > 0 && (
+          <Box title="Ports" padding={false}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Host</TableHead>
+                  <TableHead>Container</TableHead>
+                  <TableHead>Protocol</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {container.ports.map((p, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-mono">
+                      {p.host || <span className="text-muted">-</span>}
+                    </TableCell>
+                    <TableCell className="font-mono">{p.container}</TableCell>
+                    <TableCell className="text-muted">{p.protocol}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        )}
+      </div>
 
       {/* Labels */}
       {Object.keys(container.labels).length > 0 && (

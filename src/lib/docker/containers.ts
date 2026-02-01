@@ -62,13 +62,29 @@ export async function getContainer(id: string): Promise<Container | null> {
 
     const ports: PortMapping[] = [];
     const portBindings = info.HostConfig.PortBindings || {};
+    const exposedPorts = info.Config.ExposedPorts || {};
+    const boundPorts = new Set<string>();
+
+    // First, add all host-bound ports
     for (const [containerPort, hostPorts] of Object.entries(portBindings)) {
       const [port, protocol] = containerPort.split("/");
       const bindings = hostPorts as Array<{ HostIp: string; HostPort: string }> | null;
       if (bindings && bindings.length > 0) {
+        boundPorts.add(containerPort);
         ports.push({
           container: parseInt(port, 10),
           host: parseInt(bindings[0].HostPort, 10),
+          protocol: (protocol as "tcp" | "udp") || "tcp",
+        });
+      }
+    }
+
+    // Then add exposed-only ports (not bound to host)
+    for (const containerPort of Object.keys(exposedPorts)) {
+      if (!boundPorts.has(containerPort)) {
+        const [port, protocol] = containerPort.split("/");
+        ports.push({
+          container: parseInt(port, 10),
           protocol: (protocol as "tcp" | "udp") || "tcp",
         });
       }

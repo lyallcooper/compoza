@@ -159,6 +159,32 @@ export async function composePull(
   return runComposeCommand(project.path, ["pull"], onOutput, project.composeFile);
 }
 
+export async function composePullService(
+  projectName: string,
+  serviceName: string,
+  onOutput?: (data: string) => void
+): Promise<ComposeResult> {
+  const project = await getProject(projectName);
+  if (!project) {
+    return { success: false, output: "", error: "Project not found" };
+  }
+
+  return runComposeCommand(project.path, ["pull", serviceName], onOutput, project.composeFile);
+}
+
+export async function composeUpService(
+  projectName: string,
+  serviceName: string,
+  onOutput?: (data: string) => void
+): Promise<ComposeResult> {
+  const project = await getProject(projectName);
+  if (!project) {
+    return { success: false, output: "", error: "Project not found" };
+  }
+
+  return runComposeCommand(project.path, ["up", "-d", serviceName], onOutput, project.composeFile);
+}
+
 export async function composeLogs(
   projectName: string,
   options: { follow?: boolean; tail?: number; service?: string } = {}

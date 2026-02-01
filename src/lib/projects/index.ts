@@ -3,6 +3,8 @@ export {
   composeUp,
   composeDown,
   composePull,
+  composePullService,
+  composeUpService,
   composeLogs,
   saveComposeFile,
   saveEnvFile,

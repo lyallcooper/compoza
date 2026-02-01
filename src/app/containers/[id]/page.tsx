@@ -97,7 +97,11 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <div className="text-muted">Image</div>
-            <div className="font-mono">{container.image}</div>
+            <div className="font-mono text-xs">
+              <SelectableText>
+                <TruncatedText text={container.image} maxLength={50} />
+              </SelectableText>
+            </div>
           </div>
           <div>
             <div className="text-muted">Status</div>
@@ -171,7 +175,9 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <div className="text-sm font-mono space-y-1 max-h-48 overflow-auto">
             {Object.entries(container.labels).map(([key, value]) => (
               <div key={key} className="break-all">
-                <span className="text-muted">{key}:</span> {value}
+                <SelectableText className="text-muted">{key}</SelectableText>
+                <span className="text-muted">:</span>{" "}
+                <SelectableText>{value}</SelectableText>
               </div>
             ))}
           </div>

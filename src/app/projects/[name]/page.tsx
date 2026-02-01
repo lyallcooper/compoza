@@ -3,7 +3,7 @@
 import { useState, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
+import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, SelectableText, PortsList } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
@@ -209,11 +209,11 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <div className="space-y-1 text-sm">
           <div>
             <span className="text-muted">Path:</span>{" "}
-            <span className="font-mono">{project.path}</span>
+            <SelectableText className="font-mono">{project.path}</SelectableText>
           </div>
           <div>
             <span className="text-muted">Compose file:</span>{" "}
-            <span className="font-mono">{project.composeFile}</span>
+            <SelectableText className="font-mono">{project.composeFile}</SelectableText>
           </div>
         </div>
       </Box>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Button, Badge } from "@/components/ui";
+import { Box, Button, Badge, SelectableText, TruncatedText } from "@/components/ui";
 import { useImages } from "@/hooks";
 
 export default function SettingsPage() {
@@ -41,14 +41,14 @@ export default function SettingsPage() {
         <div className="space-y-3 text-sm">
           <div>
             <div className="text-muted">Projects Directory</div>
-            <div className="font-mono">{projectsDir}</div>
+            <SelectableText className="font-mono">{projectsDir}</SelectableText>
             <div className="text-xs text-muted mt-1">
               Set via PROJECTS_DIR environment variable
             </div>
           </div>
           <div>
             <div className="text-muted">Docker Host</div>
-            <div className="font-mono">{dockerHost}</div>
+            <SelectableText className="font-mono">{dockerHost}</SelectableText>
             <div className="text-xs text-muted mt-1">
               Set via DOCKER_HOST environment variable
             </div>
@@ -91,8 +91,19 @@ export default function SettingsPage() {
           <div className="divide-y divide-border max-h-96 overflow-auto">
             {images?.map((image) => (
               <div key={image.id} className="px-4 py-2 text-sm">
-                <div className="font-mono">
-                  {image.tags.length > 0 ? image.tags.join(", ") : "<untagged>"}
+                <div className="font-mono text-xs">
+                  {image.tags.length > 0 ? (
+                    image.tags.map((tag, i) => (
+                      <span key={tag}>
+                        {i > 0 && ", "}
+                        <SelectableText>
+                          <TruncatedText text={tag} maxLength={60} />
+                        </SelectableText>
+                      </span>
+                    ))
+                  ) : (
+                    "<untagged>"
+                  )}
                 </div>
                 <div className="text-xs text-muted mt-1">
                   {formatBytes(image.size)} • Created {formatDate(image.created)}

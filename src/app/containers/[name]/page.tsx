@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
@@ -170,24 +170,27 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
       {/* Ports */}
       {container.ports.length > 0 && (
-        <Box title="Ports">
-          <div className="text-sm space-y-1">
-            {container.ports.map((p, i) => (
-              <div key={i}>
-                {p.host ? (
-                  <span>
-                    <span className="text-muted">Host:</span> {p.host} &rarr;{" "}
-                    <span className="text-muted">Container:</span> {p.container}/{p.protocol}
-                  </span>
-                ) : (
-                  <span>
-                    <span className="text-muted">Container:</span> {p.container}/{p.protocol}{" "}
-                    <span className="text-muted">(not exposed)</span>
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+        <Box title="Ports" padding={false}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Host</TableHead>
+                <TableHead>Container</TableHead>
+                <TableHead>Protocol</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {container.ports.map((p, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-mono">
+                    {p.host || <span className="text-muted">-</span>}
+                  </TableCell>
+                  <TableCell className="font-mono">{p.container}</TableCell>
+                  <TableCell className="text-muted">{p.protocol}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Box>
       )}
 

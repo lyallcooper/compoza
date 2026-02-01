@@ -1,9 +1,10 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels, DropdownMenu, DropdownItem, Badge } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
+import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useContainerUpdate, useImageUpdates } from "@/hooks";
 import { formatDateTime } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
@@ -34,6 +35,15 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
   // Use domain model's computed actions
   const canUpdate = container?.actions.canUpdate && hasUpdate;
+
+  // Update modal state
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  const handleUpdate = () => {
+    containerUpdate.mutate(name, {
+      onSuccess: () => setShowUpdateModal(false),
+    });
+  };
 
   if (isLoading) {
     return (
@@ -106,8 +116,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           {canUpdate && (
             <Button
               variant="accent"
-              onClick={() => containerUpdate.mutate(name)}
-              loading={containerUpdate.isPending}
+              onClick={() => setShowUpdateModal(true)}
             >
               Update
             </Button>
@@ -149,10 +158,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             </DropdownItem>
           )}
           {canUpdate && (
-            <DropdownItem
-              onClick={() => containerUpdate.mutate(name)}
-              loading={containerUpdate.isPending}
-            >
+            <DropdownItem onClick={() => setShowUpdateModal(true)}>
               Update
             </DropdownItem>
           )}
@@ -284,6 +290,25 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         <Box title="Labels">
           <GroupedLabels labels={container.labels} />
         </Box>
+      )}
+
+      {/* Update confirmation modal */}
+      {showUpdateModal && container.projectName && container.serviceName && (
+        <UpdateConfirmModal
+          open
+          onClose={() => setShowUpdateModal(false)}
+          onConfirm={handleUpdate}
+          title={`Update ${container.name}`}
+          projectName={container.projectName}
+          serviceName={container.serviceName}
+          images={[{
+            image: container.image,
+            currentVersion: updateInfo?.currentVersion,
+            latestVersion: updateInfo?.latestVersion,
+          }]}
+          isRunning={container.state === "running"}
+          loading={containerUpdate.isPending}
+        />
       )}
     </div>
   );

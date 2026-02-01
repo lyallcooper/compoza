@@ -16,7 +16,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui";
-import { UpdateAllModal } from "@/components/projects";
+import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
 import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate } from "@/hooks";
 import type { Project } from "@/types";
 
@@ -39,11 +39,6 @@ export default function ProjectsPage() {
     }
     return map;
   }, [imageUpdates]);
-
-  // Check if a project has any updates available
-  const projectHasUpdates = (project: Project): boolean => {
-    return project.services.some((s) => s.image && updatesMap.get(s.image));
-  };
 
   // Get projects with updates and their updatable images (including version info)
   const projectsWithUpdates = useMemo(() => {
@@ -122,14 +117,17 @@ export default function ProjectsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedProjects.map((project) => (
-                <ProjectRow
-                  key={project.name}
-                  project={project}
-                  hasUpdates={projectHasUpdates(project)}
-                  onClick={() => router.push(`/projects/${encodeURIComponent(project.name)}`)}
-                />
-              ))}
+              {sortedProjects.map((project) => {
+                const updateInfo = projectsWithUpdates.find((p) => p.name === project.name);
+                return (
+                  <ProjectRow
+                    key={project.name}
+                    project={project}
+                    updatableImages={updateInfo?.images || []}
+                    onClick={() => router.push(`/projects/${encodeURIComponent(project.name)}`)}
+                  />
+                );
+              })}
             </TableBody>
           </Table>
         </Box>
@@ -149,61 +147,90 @@ export default function ProjectsPage() {
   );
 }
 
+interface ImageUpdate {
+  image: string;
+  currentVersion?: string;
+  latestVersion?: string;
+}
+
 function ProjectRow({
   project,
-  hasUpdates,
+  updatableImages,
   onClick,
 }: {
   project: Project;
-  hasUpdates: boolean;
+  updatableImages: ImageUpdate[];
   onClick: () => void;
 }) {
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const projectUp = useProjectUp(project.name);
   const projectDown = useProjectDown(project.name);
   const projectUpdate = useProjectUpdate(project.name);
   const runningCount = project.services.filter((s) => s.status === "running").length;
+  const hasUpdates = updatableImages.length > 0;
+  const isRunning = project.status === "running" || project.status === "partial";
+
+  const handleUpdate = () => {
+    projectUpdate.mutate(undefined, {
+      onSuccess: () => setShowUpdateModal(false),
+    });
+  };
 
   return (
-    <TableRow clickable onClick={onClick}>
-      <TableCell>
-        <span className="font-medium">{project.name}</span>
-      </TableCell>
-      <TableCell className="hidden sm:table-cell text-muted">
-        {runningCount}/{project.services.length}
-      </TableCell>
-      <TableCell>
-        <ProjectStatusBadge status={project.status} />
-      </TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            onClick={() => projectUp.mutate()}
-            loading={projectUp.isPending}
-          >
-            Up
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => projectDown.mutate()}
-            loading={projectDown.isPending}
-            disabled={project.status === "stopped"}
-          >
-            Down
-          </Button>
-          {hasUpdates && (
+    <>
+      <TableRow clickable onClick={onClick}>
+        <TableCell>
+          <span className="font-medium">{project.name}</span>
+        </TableCell>
+        <TableCell className="hidden sm:table-cell text-muted">
+          {runningCount}/{project.services.length}
+        </TableCell>
+        <TableCell>
+          <ProjectStatusBadge status={project.status} />
+        </TableCell>
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-1">
             <Button
               size="sm"
-              variant="accent"
-              onClick={() => projectUpdate.mutate()}
-              loading={projectUpdate.isPending}
+              onClick={() => projectUp.mutate()}
+              loading={projectUp.isPending}
             >
-              Update
+              Up
             </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
+            <Button
+              size="sm"
+              onClick={() => projectDown.mutate()}
+              loading={projectDown.isPending}
+              disabled={project.status === "stopped"}
+            >
+              Down
+            </Button>
+            {hasUpdates && (
+              <Button
+                size="sm"
+                variant="accent"
+                onClick={() => setShowUpdateModal(true)}
+              >
+                Update
+              </Button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+
+      {showUpdateModal && (
+        <UpdateConfirmModal
+          open
+          onClose={() => setShowUpdateModal(false)}
+          onConfirm={handleUpdate}
+          title={`Update ${project.name}`}
+          projectName={project.name}
+          images={updatableImages}
+          isRunning={isRunning}
+          loading={projectUpdate.isPending}
+        />
+      )}
+    </>
   );
 }
 

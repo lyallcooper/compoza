@@ -47,9 +47,12 @@ export async function GET(request: NextRequest) {
       return success(getCacheStats());
     }
 
-    // Trigger initial check if cache is empty
+    // Trigger check if cache is empty (entries expire after 1 hour)
     const cached = getAllCachedUpdates();
-    if (cached.length === 0 && !initialCheckDone) {
+    if (cached.length === 0) {
+      // Reset flag so ensureInitialCheck actually runs
+      initialCheckDone = false;
+      initialCheckPromise = null;
       await ensureInitialCheck();
       return success(getAllCachedUpdates());
     }

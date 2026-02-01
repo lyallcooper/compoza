@@ -1,7 +1,8 @@
 import { spawn } from "child_process";
-import { writeFile, mkdir } from "fs/promises";
-import { join, dirname } from "path";
-import { getProjectsDir, getProject } from "./scanner";
+import { writeFile, mkdir, access, rm } from "fs/promises";
+import { join } from "path";
+import { getProjectsDir, getProject, toDockerPath } from "./scanner";
+import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
 
 interface ComposeResult {
   success: boolean;
@@ -9,19 +10,65 @@ interface ComposeResult {
   error?: string;
 }
 
+interface PreparedComposeCommand {
+  args: string[];
+  cleanup: (() => Promise<void>) | null;
+}
+
+async function prepareComposeCommand(
+  projectPath: string,
+  composeFile?: string
+): Promise<PreparedComposeCommand> {
+  const dockerPath = toDockerPath(projectPath);
+  const needsPreprocessing = isPathMappingActive() && composeFile;
+
+  let effectiveComposeFile = composeFile;
+  let cleanup: (() => Promise<void>) | null = null;
+
+  if (needsPreprocessing && composeFile) {
+    const result = await preprocessComposeFile(composeFile, projectPath);
+    effectiveComposeFile = result.tempFile;
+    cleanup = result.cleanup;
+  }
+
+  const args = ["compose"];
+
+  if (dockerPath !== projectPath) {
+    if (effectiveComposeFile) {
+      args.push("-f", effectiveComposeFile);
+    }
+    const envFile = join(projectPath, ".env");
+    try {
+      await access(envFile);
+      args.push("--env-file", envFile);
+    } catch {
+      // No .env file, that's fine
+    }
+    args.push("--project-directory", dockerPath);
+  }
+
+  return { args, cleanup };
+}
+
 async function runComposeCommand(
   projectPath: string,
   args: string[],
-  onOutput?: (data: string) => void
+  onOutput?: (data: string) => void,
+  composeFile?: string
 ): Promise<ComposeResult> {
+  const { args: composeArgs, cleanup } = await prepareComposeCommand(projectPath, composeFile);
+  composeArgs.push(...args);
+
+  console.log(`[Compose] Running: docker ${composeArgs.join(" ")}`);
+  console.log(`[Compose] CWD: ${projectPath}`);
+
   return new Promise((resolve) => {
-    const proc = spawn("docker", ["compose", ...args], {
+    const proc = spawn("docker", composeArgs, {
       cwd: projectPath,
       env: { ...process.env },
     });
 
     let output = "";
-    let error = "";
 
     proc.stdout.on("data", (data) => {
       const str = data.toString();
@@ -36,20 +83,26 @@ async function runComposeCommand(
       onOutput?.(str);
     });
 
-    proc.on("close", (code) => {
+    proc.on("close", async (code) => {
       console.log(`[Compose] Exit code: ${code}`);
       if (code !== 0) {
-        console.log(`[Compose] Error output: ${error || output}`);
+        console.log(`[Compose] Error output: ${output}`);
+      }
+      if (cleanup) {
+        await cleanup();
       }
       resolve({
         success: code === 0,
         output,
-        error: code !== 0 ? error || output : undefined,
+        error: code !== 0 ? output : undefined,
       });
     });
 
-    proc.on("error", (err) => {
+    proc.on("error", async (err) => {
       console.log(`[Compose] Spawn error: ${err.message}`);
+      if (cleanup) {
+        await cleanup();
+      }
       resolve({
         success: false,
         output,
@@ -74,7 +127,7 @@ export async function composeUp(
   if (options.build) args.push("--build");
   if (options.pull) args.push("--pull", "always");
 
-  return runComposeCommand(project.path, args, onOutput);
+  return runComposeCommand(project.path, args, onOutput, project.composeFile);
 }
 
 export async function composeDown(
@@ -91,7 +144,7 @@ export async function composeDown(
   if (options.volumes) args.push("-v");
   if (options.removeOrphans) args.push("--remove-orphans");
 
-  return runComposeCommand(project.path, args, onOutput);
+  return runComposeCommand(project.path, args, onOutput, project.composeFile);
 }
 
 export async function composePull(
@@ -103,7 +156,7 @@ export async function composePull(
     return { success: false, output: "", error: "Project not found" };
   }
 
-  return runComposeCommand(project.path, ["pull"], onOutput);
+  return runComposeCommand(project.path, ["pull"], onOutput, project.composeFile);
 }
 
 export async function composeLogs(
@@ -120,14 +173,18 @@ export async function composeLogs(
   if (options.tail) args.push("--tail", options.tail.toString());
   if (options.service) args.push(options.service);
 
-  return streamComposeCommand(project.path, args);
+  return streamComposeCommand(project.path, args, project.composeFile);
 }
 
 async function* streamComposeCommand(
   projectPath: string,
-  args: string[]
+  args: string[],
+  composeFile?: string
 ): AsyncGenerator<string, void, unknown> {
-  const proc = spawn("docker", ["compose", ...args], {
+  const { args: composeArgs, cleanup } = await prepareComposeCommand(projectPath, composeFile);
+  composeArgs.push(...args);
+
+  const proc = spawn("docker", composeArgs, {
     cwd: projectPath,
     env: { ...process.env },
   });
@@ -186,6 +243,10 @@ async function* streamComposeCommand(
     }
   } finally {
     proc.kill();
+    // Clean up temp file if preprocessing was used
+    if (cleanup) {
+      await cleanup();
+    }
   }
 }
 
@@ -258,7 +319,6 @@ export async function deleteProject(
   }
 
   // Then remove the directory
-  const { rm } = await import("fs/promises");
   try {
     await rm(project.path, { recursive: true });
     return { success: true, output: `Project "${name}" deleted` };

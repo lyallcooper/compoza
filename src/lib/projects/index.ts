@@ -1,4 +1,4 @@
-export { getProjectsDir, scanProjects, getProject, readComposeFile, readEnvFile } from "./scanner";
+export { getProjectsDir, getDockerProjectsDir, toDockerPath, scanProjects, getProject, readComposeFile, readEnvFile } from "./scanner";
 export {
   composeUp,
   composeDown,
@@ -9,3 +9,4 @@ export {
   createProject,
   deleteProject,
 } from "./compose";
+export { isPathMappingActive, preprocessComposeFile } from "./preprocess";

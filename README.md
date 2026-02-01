@@ -53,6 +53,7 @@ All configuration is via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PROJECTS_DIR` | Directory containing Docker Compose projects | `/home/user/docker` |
+| `DOCKER_PROJECTS_DIR` | Path to projects as seen by Docker daemon (for remote Docker) | Same as `PROJECTS_DIR` |
 | `DOCKER_HOST` | Docker socket or TCP endpoint | `/var/run/docker.sock` |
 | `PORT` | Port to listen on | `3000` |
 
@@ -77,6 +78,24 @@ volumes:
 ```
 
 For better security, consider using a Docker socket proxy like [tecnativa/docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy).
+
+### Remote Docker Host
+
+When running Compoza locally but connecting to a remote Docker host (e.g., via socket proxy), the paths may differ between your local machine and the Docker host.
+
+Example setup:
+- Local machine: compose files at `/Volumes/server/docker`
+- Docker host: same files at `/home/user/docker`
+
+Configure path mapping:
+
+```env
+PROJECTS_DIR=/Volumes/server/docker
+DOCKER_PROJECTS_DIR=/home/user/docker
+DOCKER_HOST=tcp://your-server:2375
+```
+
+This ensures compose commands use the correct paths on the Docker host while Compoza reads files from the local path.
 
 ## Keyboard Shortcuts
 

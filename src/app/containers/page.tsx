@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Spinner, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button, ContainerStateBadge } from "@/components/ui";
+import { Box, Spinner, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
 import { useContainers, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
 
 export default function ContainersPage() {
@@ -69,7 +69,7 @@ export default function ContainersPage() {
                     )}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-muted font-mono text-xs min-w-[150px]">
-                    <TruncatedImage image={container.image} />
+                    <TruncatedText text={container.image} maxLength={60} />
                   </TableCell>
                   <TableCell>
                     <ContainerStateBadge state={container.state} />
@@ -118,50 +118,3 @@ export default function ContainersPage() {
   );
 }
 
-function TruncatedImage({ image, maxLength = 60 }: { image: string; maxLength?: number }) {
-  if (image.length <= maxLength) {
-    return <span title={image}>{image}</span>;
-  }
-
-  const keepChars = Math.floor((maxLength - 3) / 2);
-  const truncated = `${image.slice(0, keepChars)}...${image.slice(-keepChars)}`;
-
-  return <span title={image}>{truncated}</span>;
-}
-
-function formatPort(p: { host?: number; container: number; protocol: string }) {
-  const showProtocol = p.protocol !== "tcp";
-  const protocolSuffix = showProtocol ? `/${p.protocol}` : "";
-
-  if (p.host) {
-    // Published port - compact format
-    if (p.host === p.container) {
-      return `${p.host}${protocolSuffix}`;
-    }
-    return `${p.host}:${p.container}${protocolSuffix}`;
-  }
-  // Internal-only port
-  return `${p.container}${protocolSuffix}`;
-}
-
-function PortsList({ ports, maxVisible = 3 }: { ports: { host?: number; container: number; protocol: string }[]; maxVisible?: number }) {
-  if (ports.length === 0) {
-    return <span>-</span>;
-  }
-
-  const allPorts = ports.map(formatPort).join(", ");
-  const visiblePorts = ports.slice(0, maxVisible);
-  const hiddenCount = ports.length - maxVisible;
-
-  return (
-    <span title={allPorts}>
-      {visiblePorts.map((p, i) => (
-        <span key={`${p.host}-${p.container}-${p.protocol}`}>
-          {p.host ? formatPort(p) : <em>{formatPort(p)}</em>}
-          {i < visiblePorts.length - 1 && ", "}
-        </span>
-      ))}
-      {hiddenCount > 0 && <span> +{hiddenCount}</span>}
-    </span>
-  );
-}

@@ -3,7 +3,7 @@
 import { useState, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge } from "@/components/ui";
+import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useStartContainer, useStopContainer, useImageUpdates } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
 
@@ -272,43 +272,3 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   );
 }
 
-function TruncatedText({ text, maxLength = 50 }: { text: string; maxLength?: number }) {
-  if (text.length <= maxLength) {
-    return <span title={text}>{text}</span>;
-  }
-  const keepChars = Math.floor((maxLength - 3) / 2);
-  const truncated = `${text.slice(0, keepChars)}...${text.slice(-keepChars)}`;
-  return <span title={text}>{truncated}</span>;
-}
-
-function formatPort(p: { host?: number; container: number; protocol: string }) {
-  const showProtocol = p.protocol !== "tcp";
-  const protocolSuffix = showProtocol ? `/${p.protocol}` : "";
-  if (p.host) {
-    if (p.host === p.container) {
-      return `${p.host}${protocolSuffix}`;
-    }
-    return `${p.host}:${p.container}${protocolSuffix}`;
-  }
-  return `${p.container}${protocolSuffix}`;
-}
-
-function PortsList({ ports, maxVisible = 3 }: { ports: { host?: number; container: number; protocol: string }[]; maxVisible?: number }) {
-  if (ports.length === 0) {
-    return <span>-</span>;
-  }
-  const allPorts = ports.map(formatPort).join(", ");
-  const visiblePorts = ports.slice(0, maxVisible);
-  const hiddenCount = ports.length - maxVisible;
-  return (
-    <span title={allPorts}>
-      {visiblePorts.map((p, i) => (
-        <span key={`${p.host}-${p.container}-${p.protocol}`}>
-          {p.host ? formatPort(p) : <em>{formatPort(p)}</em>}
-          {i < visiblePorts.length - 1 && ", "}
-        </span>
-      ))}
-      {hiddenCount > 0 && <span> +{hiddenCount}</span>}
-    </span>
-  );
-}

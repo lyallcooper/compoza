@@ -6,3 +6,6 @@ export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 export { Modal } from "./modal";
 export { Spinner } from "./spinner";
 export { ProjectStatusBadge, ContainerStateBadge } from "./status-badge";
+export { TruncatedText } from "./truncated-text";
+export { PortsList } from "./ports-list";
+export type { Port } from "./ports-list";

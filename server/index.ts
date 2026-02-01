@@ -1,0 +1,246 @@
+import { createServer } from "http";
+import { parse } from "url";
+import next from "next";
+import { Server as SocketServer } from "socket.io";
+import Docker from "dockerode";
+
+const dev = process.env.NODE_ENV !== "production";
+const hostname = process.env.HOSTNAME || "0.0.0.0";
+const port = parseInt(process.env.PORT || "3000", 10);
+
+// Update check interval (default: 30 minutes)
+const UPDATE_CHECK_INTERVAL = parseInt(process.env.UPDATE_CHECK_INTERVAL || "1800000", 10);
+
+const app = next({ dev, hostname, port });
+const handle = app.getRequestHandler();
+
+// Docker client
+const docker = new Docker({
+  socketPath: process.env.DOCKER_HOST || "/var/run/docker.sock",
+});
+
+// Track active exec sessions for cleanup
+const activeSessions = new Map<string, { exec: Docker.Exec; stream: NodeJS.ReadWriteStream }>();
+
+// Background update checker
+let updateCheckInterval: NodeJS.Timeout | null = null;
+
+async function runUpdateCheck() {
+  console.log("[Update Check] Starting background update check...");
+
+  try {
+    // Dynamically import to avoid issues with Next.js module resolution
+    const { scanProjects } = await import("../src/lib/projects/scanner");
+    const { checkImageUpdates } = await import("../src/lib/updates");
+
+    // Get all projects and their images
+    const projects = await scanProjects();
+    const images = new Set<string>();
+
+    for (const project of projects) {
+      for (const service of project.services) {
+        if (service.image) {
+          images.add(service.image);
+        }
+      }
+    }
+
+    const imageList = Array.from(images);
+    console.log(`[Update Check] Checking ${imageList.length} images from ${projects.length} projects`);
+
+    if (imageList.length > 0) {
+      // Check updates (this will populate the cache)
+      const results = await checkImageUpdates(imageList);
+      const updatesAvailable = results.filter((r) => r.updateAvailable).length;
+      console.log(`[Update Check] Complete. ${updatesAvailable} updates available.`);
+    } else {
+      console.log("[Update Check] No images to check.");
+    }
+  } catch (error) {
+    console.error("[Update Check] Error:", error);
+  }
+}
+
+function startUpdateChecker() {
+  // Run immediately on startup (after a short delay to let things initialize)
+  setTimeout(() => {
+    runUpdateCheck();
+  }, 10000); // 10 second delay
+
+  // Then run on interval
+  updateCheckInterval = setInterval(runUpdateCheck, UPDATE_CHECK_INTERVAL);
+  console.log(`[Update Check] Scheduled to run every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes`);
+}
+
+function stopUpdateChecker() {
+  if (updateCheckInterval) {
+    clearInterval(updateCheckInterval);
+    updateCheckInterval = null;
+  }
+}
+
+app.prepare().then(() => {
+  const httpServer = createServer((req, res) => {
+    const parsedUrl = parse(req.url!, true);
+    handle(req, res, parsedUrl);
+  });
+
+  // Socket.io server
+  const io = new SocketServer(httpServer, {
+    path: "/socket.io",
+    pingInterval: 25000,
+    pingTimeout: 60000,
+    cors: {
+      origin: dev ? "*" : undefined,
+    },
+  });
+
+  io.on("connection", (socket) => {
+    console.log(`[Socket.io] Client connected: ${socket.id}`);
+
+    let currentExec: Docker.Exec | null = null;
+    let currentStream: NodeJS.ReadWriteStream | null = null;
+
+    // Handle terminal exec request
+    socket.on("exec:start", async (data: { containerId: string; cmd?: string[] }) => {
+      const { containerId, cmd = ["/bin/sh"] } = data;
+
+      try {
+        const container = docker.getContainer(containerId);
+
+        // Verify container exists and is running
+        const info = await container.inspect();
+        if (info.State.Status !== "running") {
+          socket.emit("exec:error", { message: "Container is not running" });
+          return;
+        }
+
+        // Create exec instance
+        const exec = await container.exec({
+          Cmd: cmd,
+          AttachStdin: true,
+          AttachStdout: true,
+          AttachStderr: true,
+          Tty: true,
+          Env: ["TERM=xterm-256color"],
+        });
+
+        // Start exec and get stream
+        const stream = await exec.start({
+          hijack: true,
+          stdin: true,
+          Tty: true,
+        });
+
+        currentExec = exec;
+        currentStream = stream;
+
+        // Store session for cleanup
+        activeSessions.set(socket.id, { exec, stream });
+
+        socket.emit("exec:started");
+
+        // Stream output to client
+        stream.on("data", (chunk: Buffer) => {
+          socket.emit("exec:data", chunk.toString("utf8"));
+        });
+
+        stream.on("end", () => {
+          socket.emit("exec:end");
+          cleanup();
+        });
+
+        stream.on("error", (err: Error) => {
+          socket.emit("exec:error", { message: err.message });
+          cleanup();
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to start exec";
+        socket.emit("exec:error", { message });
+      }
+    });
+
+    // Handle input from client
+    socket.on("exec:input", (data: string) => {
+      if (currentStream) {
+        try {
+          currentStream.write(data);
+        } catch (error) {
+          console.error(`[Socket.io] Error writing to stream:`, error);
+          socket.emit("exec:error", { message: "Failed to write to terminal" });
+          cleanup();
+        }
+      }
+    });
+
+    // Handle terminal resize
+    socket.on("exec:resize", async (data: { cols: number; rows: number }) => {
+      if (currentExec) {
+        try {
+          await currentExec.resize({ h: data.rows, w: data.cols });
+        } catch {
+          // Resize may fail if exec has ended
+        }
+      }
+    });
+
+    // Cleanup function
+    const cleanup = () => {
+      if (currentStream) {
+        try {
+          currentStream.end();
+        } catch {
+          // Stream may already be closed
+        }
+        currentStream = null;
+      }
+      currentExec = null;
+      activeSessions.delete(socket.id);
+    };
+
+    // Handle disconnect
+    socket.on("disconnect", () => {
+      console.log(`[Socket.io] Client disconnected: ${socket.id}`);
+      cleanup();
+    });
+
+    // Handle explicit stop
+    socket.on("exec:stop", () => {
+      cleanup();
+      socket.emit("exec:end");
+    });
+  });
+
+  httpServer.listen(port, () => {
+    console.log(`> Ready on http://${hostname}:${port}`);
+
+    // Start background update checker
+    startUpdateChecker();
+  });
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log("Shutting down...");
+
+    // Stop update checker
+    stopUpdateChecker();
+
+    // Clean up all active sessions
+    for (const [socketId, session] of activeSessions) {
+      try {
+        session.stream.end();
+      } catch {
+        // Ignore errors during cleanup
+      }
+      activeSessions.delete(socketId);
+    }
+
+    io.close();
+    httpServer.close(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+});

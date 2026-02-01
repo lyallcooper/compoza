@@ -8,5 +8,6 @@ export { Spinner } from "./spinner";
 export { ProjectStatusBadge, ContainerStateBadge } from "./status-badge";
 export { TruncatedText } from "./truncated-text";
 export { TruncatedTextCopyHandler } from "./truncated-text-copy-handler";
+export { SelectableText } from "./selectable-text";
 export { PortsList } from "./ports-list";
 export type { Port } from "./ports-list";

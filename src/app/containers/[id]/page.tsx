@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
@@ -106,13 +106,17 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <div>
             <div className="text-muted">Container ID</div>
             <div className="font-mono text-xs">
-              <TruncatedText text={container.id} maxLength={24} />
+              <SelectableText>
+                <TruncatedText text={container.id} maxLength={24} />
+              </SelectableText>
             </div>
           </div>
           <div>
             <div className="text-muted">Image ID</div>
             <div className="font-mono text-xs">
-              <TruncatedText text={container.imageId} maxLength={24} />
+              <SelectableText>
+                <TruncatedText text={container.imageId} maxLength={24} />
+              </SelectableText>
             </div>
           </div>
           <div>

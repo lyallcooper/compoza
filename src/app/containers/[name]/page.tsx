@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
@@ -200,17 +200,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       {/* Labels */}
       {Object.keys(container.labels).length > 0 && (
         <Box title="Labels">
-          <div className="text-sm font-mono space-y-1 max-h-48 overflow-auto">
-            {Object.entries(container.labels).map(([key, value]) => (
-              <div key={key}>
-                <SelectableText className="text-muted">{key}</SelectableText>
-                <span className="text-muted">:</span>{" "}
-                <SelectableText>
-                  <TruncatedText text={value} maxLength={60} />
-                </SelectableText>
-              </div>
-            ))}
-          </div>
+          <GroupedLabels labels={container.labels} />
         </Box>
       )}
     </div>

@@ -11,3 +11,4 @@ export { TruncatedTextCopyHandler } from "./truncated-text-copy-handler";
 export { SelectableText } from "./selectable-text";
 export { PortsList } from "./ports-list";
 export type { Port } from "./ports-list";
+export { GroupedLabels } from "./grouped-labels";

@@ -137,15 +137,30 @@ export function useProjectUpdate(name: string) {
 
   return useMutation({
     mutationFn: async () => {
-      // Pull images and recreate containers
-      const res = await fetch(`/api/projects/${encodeURIComponent(name)}/up`, {
+      // Check current project status before pulling
+      const statusRes = await fetch(`/api/projects/${encodeURIComponent(name)}`);
+      const statusData: ApiResponse<Project> = await statusRes.json();
+      if (statusData.error) throw new Error(statusData.error);
+      const wasRunning = statusData.data?.status === "running" || statusData.data?.status === "partial";
+
+      // Pull latest images
+      const pullRes = await fetch(`/api/projects/${encodeURIComponent(name)}/pull`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pull: true }),
       });
-      const data: ApiResponse<{ output: string }> = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.data;
+      const pullData: ApiResponse<{ output: string }> = await pullRes.json();
+      if (pullData.error) throw new Error(pullData.error);
+
+      // Only recreate containers if project was running
+      if (wasRunning) {
+        const upRes = await fetch(`/api/projects/${encodeURIComponent(name)}/up`, {
+          method: "POST",
+        });
+        const upData: ApiResponse<{ output: string }> = await upRes.json();
+        if (upData.error) throw new Error(upData.error);
+        return { output: pullData.data?.output + "\n" + upData.data?.output, restarted: true };
+      }
+
+      return { output: pullData.data?.output, restarted: false };
     },
     onSuccess: async () => {
       // Clear update cache so pulled images get rechecked

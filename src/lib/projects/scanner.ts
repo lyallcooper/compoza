@@ -104,6 +104,7 @@ async function buildProject(
           name: serviceName,
           image: serviceConfig.image,
           containerId: container?.id,
+          containerName: container?.name,
           status: container?.state === "running" ? "running" : container ? "exited" : "unknown",
           ports: container?.ports,
         };

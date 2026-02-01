@@ -50,7 +50,7 @@ export default function ContainersPage() {
                 <TableRow
                   key={container.id}
                   clickable
-                  onClick={() => router.push(`/containers/${encodeURIComponent(container.id)}`)}
+                  onClick={() => router.push(`/containers/${encodeURIComponent(container.name)}`)}
                 >
                   <TableCell>{container.name}</TableCell>
                   <TableCell className="hidden sm:table-cell text-muted">

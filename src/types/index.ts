@@ -10,6 +10,7 @@ export interface ProjectService {
   name: string;
   image?: string;
   containerId?: string;
+  containerName?: string;
   status: "running" | "exited" | "paused" | "restarting" | "unknown";
   ports?: PortMapping[];
 }
@@ -105,5 +106,5 @@ export interface RouteParams<T extends Record<string, string>> {
   params: Promise<T>;
 }
 
-export type ContainerRouteProps = RouteParams<{ id: string }>;
+export type ContainerRouteProps = RouteParams<{ name: string }>;
 export type ProjectRouteProps = RouteParams<{ name: string }>;

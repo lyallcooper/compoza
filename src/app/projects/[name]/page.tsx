@@ -173,8 +173,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {project.services.map((service) => (
               <TableRow
                 key={service.name}
-                clickable={!!service.containerId}
-                onClick={service.containerId ? () => router.push(`/containers/${encodeURIComponent(service.containerId!)}`) : undefined}
+                clickable={!!service.containerName}
+                onClick={service.containerName ? () => router.push(`/containers/${encodeURIComponent(service.containerName!)}`) : undefined}
               >
                 <TableCell>
                   <div className="flex items-center gap-2">

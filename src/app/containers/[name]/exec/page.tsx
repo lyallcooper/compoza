@@ -8,8 +8,8 @@ import { useContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerExecPage({ params }: ContainerRouteProps) {
-  const { id } = use(params);
-  const { data: container, isLoading } = useContainer(id);
+  const { name } = use(params);
+  const { data: container, isLoading } = useContainer(name);
 
   if (isLoading) {
     return (
@@ -41,7 +41,7 @@ export default function ContainerExecPage({ params }: ContainerRouteProps) {
             Start the container to access the terminal.
           </p>
           <Link
-            href={`/containers/${encodeURIComponent(id)}`}
+            href={`/containers/${encodeURIComponent(name)}`}
             className="text-accent hover:underline mt-2 inline-block"
           >
             Back to container
@@ -56,7 +56,7 @@ export default function ContainerExecPage({ params }: ContainerRouteProps) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 flex-shrink-0">
         <Link
-          href={`/containers/${encodeURIComponent(id)}`}
+          href={`/containers/${encodeURIComponent(name)}`}
           className="text-muted hover:text-foreground"
         >
           &larr;
@@ -66,7 +66,7 @@ export default function ContainerExecPage({ params }: ContainerRouteProps) {
 
       {/* Terminal */}
       <Box title="Terminal" padding={false} className="flex-1 flex flex-col min-h-0">
-        <Terminal containerId={id} className="flex-1 min-h-0" />
+        <Terminal containerId={container.id} className="flex-1 min-h-0" />
       </Box>
     </div>
   );

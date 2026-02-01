@@ -8,9 +8,9 @@ import { useContainer, useContainerStats, useStartContainer, useStopContainer, u
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
-  const { id } = use(params);
-  const { data: container, isLoading, error } = useContainer(id);
-  const { data: stats } = useContainerStats(id, container?.state === "running");
+  const { name } = use(params);
+  const { data: container, isLoading, error } = useContainer(name);
+  const { data: stats } = useContainerStats(name, container?.state === "running");
   const startContainer = useStartContainer();
   const stopContainer = useStopContainer();
   const restartContainer = useRestartContainer();
@@ -50,24 +50,24 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <ContainerStateBadge state={container.state} />
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/containers/${encodeURIComponent(id)}/logs`}>
+          <Link href={`/containers/${encodeURIComponent(name)}/logs`}>
             <Button>Logs</Button>
           </Link>
           {container.state === "running" && (
-            <Link href={`/containers/${encodeURIComponent(id)}/exec`}>
+            <Link href={`/containers/${encodeURIComponent(name)}/exec`}>
               <Button>Terminal</Button>
             </Link>
           )}
           {container.state === "running" ? (
             <>
               <Button
-                onClick={() => stopContainer.mutate(id)}
+                onClick={() => stopContainer.mutate(name)}
                 loading={stopContainer.isPending}
               >
                 Stop
               </Button>
               <Button
-                onClick={() => restartContainer.mutate(id)}
+                onClick={() => restartContainer.mutate(name)}
                 loading={restartContainer.isPending}
               >
                 Restart
@@ -76,7 +76,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           ) : (
             <Button
               variant="primary"
-              onClick={() => startContainer.mutate(id)}
+              onClick={() => startContainer.mutate(name)}
               loading={startContainer.isPending}
             >
               Start

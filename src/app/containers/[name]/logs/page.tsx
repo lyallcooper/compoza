@@ -8,8 +8,8 @@ import { useContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerLogsPage({ params }: ContainerRouteProps) {
-  const { id } = use(params);
-  const { data: container, isLoading } = useContainer(id);
+  const { name } = use(params);
+  const { data: container, isLoading } = useContainer(name);
 
   if (isLoading) {
     return (
@@ -37,7 +37,7 @@ export default function ContainerLogsPage({ params }: ContainerRouteProps) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 flex-shrink-0">
         <Link
-          href={`/containers/${encodeURIComponent(id)}`}
+          href={`/containers/${encodeURIComponent(name)}`}
           className="text-muted hover:text-foreground"
         >
           &larr;
@@ -48,7 +48,7 @@ export default function ContainerLogsPage({ params }: ContainerRouteProps) {
       {/* Log viewer */}
       <Box title="Logs" padding={false} className="flex-1 flex flex-col min-h-0">
         <LogViewer
-          url={`/api/containers/${encodeURIComponent(id)}/logs?tail=100`}
+          url={`/api/containers/${encodeURIComponent(name)}/logs?tail=100`}
           className="flex-1 min-h-0"
         />
       </Box>

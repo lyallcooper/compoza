@@ -4,7 +4,7 @@ import { useState, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
-import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useStartContainer, useStopContainer, useImageUpdates } from "@/hooks";
+import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useStartContainer, useStopContainer, useRestartContainer, useImageUpdates } from "@/hooks";
 import type { ProjectRouteProps } from "@/types";
 
 export default function ProjectDetailPage({ params }: ProjectRouteProps) {
@@ -18,6 +18,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const projectUpdate = useProjectUpdate(decodedName);
   const startContainer = useStartContainer();
   const stopContainer = useStopContainer();
+  const restartContainer = useRestartContainer();
 
   // Get cached update info from server
   const { data: imageUpdates } = useImageUpdates();
@@ -198,13 +199,22 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
                   {service.containerId && (
                     <div className="flex gap-1">
                       {service.status === "running" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => stopContainer.mutate(service.containerId!)}
-                          loading={stopContainer.isPending && stopContainer.variables === service.containerId}
-                        >
-                          Stop
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => stopContainer.mutate(service.containerId!)}
+                            loading={stopContainer.isPending && stopContainer.variables === service.containerId}
+                          >
+                            Stop
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => restartContainer.mutate(service.containerId!)}
+                            loading={restartContainer.isPending && restartContainer.variables === service.containerId}
+                          >
+                            Restart
+                          </Button>
+                        </>
                       ) : (
                         <Button
                           size="sm"

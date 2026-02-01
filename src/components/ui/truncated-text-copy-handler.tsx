@@ -70,33 +70,116 @@ function findTruncatedElementsInSelection(
   return results;
 }
 
+/**
+ * Maps a partial selection within truncated text to the corresponding full text.
+ *
+ * For truncated text "abc...xyz" representing "abcHIDDENxyz":
+ * - Selecting "abc" → "abc"
+ * - Selecting "abc..." → "abcHIDDEN"
+ * - Selecting "...xyz" → "HIDDENxyz"
+ * - Selecting "xyz" → "xyz"
+ * - Selecting "abc...xyz" → "abcHIDDENxyz"
+ */
+function mapPartialSelection(
+  selStart: number,
+  selEnd: number,
+  keepChars: number,
+  fullText: string
+): string {
+  const fullLength = fullText.length;
+  const hiddenStart = keepChars;
+  const hiddenEnd = fullLength - keepChars;
+  const dotsStart = keepChars;
+  const dotsEnd = keepChars + 3;
+
+  let result = "";
+
+  // Prefix region: truncated [0, keepChars) → full [0, keepChars)
+  if (selStart < keepChars) {
+    const prefixSelEnd = Math.min(selEnd, keepChars);
+    result += fullText.slice(selStart, prefixSelEnd);
+  }
+
+  // Hidden region: truncated [keepChars, keepChars+3) → full [keepChars, fullLength-keepChars)
+  // If selection includes any part of "...", include the entire hidden middle
+  if (selStart < dotsEnd && selEnd > dotsStart) {
+    result += fullText.slice(hiddenStart, hiddenEnd);
+  }
+
+  // Suffix region: truncated [keepChars+3, truncatedLength) → full [fullLength-keepChars, fullLength)
+  if (selEnd > dotsEnd) {
+    const suffixSelStart = Math.max(selStart, dotsEnd) - dotsEnd;
+    const suffixSelEnd = selEnd - dotsEnd;
+    result += fullText.slice(fullLength - keepChars + suffixSelStart, fullLength - keepChars + suffixSelEnd);
+  }
+
+  return result;
+}
+
+function getSelectionOffsetWithin(element: Element, range: Range): { start: number; end: number } | null {
+  // Create a range that spans from the start of the element to the selection start
+  const preRange = document.createRange();
+  preRange.setStart(element, 0);
+
+  // Handle case where selection starts before this element
+  if (element.contains(range.startContainer)) {
+    preRange.setEnd(range.startContainer, range.startOffset);
+  } else {
+    preRange.setEnd(element, 0);
+  }
+
+  const start = preRange.toString().length;
+
+  // Calculate end position
+  const fullRange = document.createRange();
+  fullRange.setStart(element, 0);
+
+  if (element.contains(range.endContainer)) {
+    fullRange.setEnd(range.endContainer, range.endOffset);
+  } else {
+    fullRange.selectNodeContents(element);
+  }
+
+  const end = fullRange.toString().length;
+
+  return { start, end };
+}
+
 function buildFullText(
   selection: Selection,
   truncatedElements: Array<{ element: Element; fullText: string }>
 ): string | null {
-  // Get the selected text
   const selectedText = selection.toString();
+  const range = selection.getRangeAt(0);
 
-  // If there's only one truncated element and it's fully selected,
-  // just return its full text
+  // Handle single truncated element with smart partial selection
   if (truncatedElements.length === 1) {
     const { element, fullText } = truncatedElements[0];
     const truncatedText = element.textContent || "";
+    const keepCharsAttr = element.getAttribute("data-keep-chars");
+    const keepChars = keepCharsAttr ? parseInt(keepCharsAttr, 10) : null;
 
-    // Check if the truncated text appears in the selection
+    // If full truncated text is selected, replace with full text
     if (selectedText.includes(truncatedText)) {
       return selectedText.replace(truncatedText, fullText);
     }
 
-    // If partially selected, check if selection is entirely within this element
-    const range = selection.getRangeAt(0);
-    if (element.contains(range.startContainer) && element.contains(range.endContainer)) {
-      // Partial selection within truncated text - return full text
-      return fullText;
+    // Check if selection is within this element and we have keepChars info
+    if (element.contains(range.startContainer) && element.contains(range.endContainer) && keepChars !== null) {
+      const offsets = getSelectionOffsetWithin(element, range);
+      if (offsets) {
+        const mappedText = mapPartialSelection(offsets.start, offsets.end, keepChars, fullText);
+
+        // Only return if the mapping produced different text
+        const selectedWithin = truncatedText.slice(offsets.start, offsets.end);
+        if (mappedText !== selectedWithin) {
+          return mappedText;
+        }
+      }
     }
   }
 
-  // For multiple truncated elements, replace each occurrence
+  // For multiple truncated elements, replace each full occurrence
   let result = selectedText;
   for (const { element, fullText } of truncatedElements) {
     const truncatedText = element.textContent || "";

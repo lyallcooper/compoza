@@ -14,11 +14,16 @@ export function TruncatedText({ text, maxLength = 50, className }: TruncatedText
   const keepChars = Math.floor((maxLength - 3) / 2);
   const truncated = `${text.slice(0, keepChars)}...${text.slice(-keepChars)}`;
 
-  // Render truncated text with data attribute containing full text.
+  // Render truncated text with data attributes for the copy handler.
   // A global copy handler (TruncatedTextCopyHandler) intercepts copy events
-  // and substitutes the full text when truncated elements are in the selection.
+  // and maps partial selections back to the corresponding full text portions.
   return (
-    <span className={className} title={text} data-full-text={text}>
+    <span
+      className={className}
+      title={text}
+      data-full-text={text}
+      data-keep-chars={keepChars}
+    >
       {truncated}
     </span>
   );

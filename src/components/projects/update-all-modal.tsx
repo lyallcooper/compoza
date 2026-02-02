@@ -100,9 +100,8 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
         <div className="space-y-3">
           {/* Progress header */}
           {isRunning && (
-            <div className="flex items-center gap-2 text-sm text-muted">
-              <Spinner size="sm" />
-              <span>Updating project {current} of {total}...</span>
+            <div className="text-sm text-muted">
+              Updating project {current} of {total}...
             </div>
           )}
 

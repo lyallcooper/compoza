@@ -3,6 +3,7 @@ export interface CachedUpdate {
   updateAvailable: boolean;
   status: "checked" | "unknown" | "error";
   checkedAt: number;
+  expiresAt: number;
   // Digest information
   currentDigest?: string;
   latestDigest?: string;
@@ -23,17 +24,23 @@ export function getCachedUpdate(image: string): CachedUpdate | null {
   if (!cached) return null;
 
   // Return cached value if not expired
-  if (Date.now() - cached.checkedAt < CACHE_TTL) {
+  if (Date.now() < cached.expiresAt) {
     return cached;
   }
 
   return null;
 }
 
-export function setCachedUpdate(image: string, update: Omit<CachedUpdate, "checkedAt">): void {
+export function setCachedUpdate(
+  image: string,
+  update: Omit<CachedUpdate, "checkedAt" | "expiresAt">,
+  ttl: number = CACHE_TTL
+): void {
+  const now = Date.now();
   cache.set(image, {
     ...update,
-    checkedAt: Date.now(),
+    checkedAt: now,
+    expiresAt: now + ttl,
   });
 }
 
@@ -88,7 +95,7 @@ export function getAllCachedUpdates(): CachedUpdate[] {
   const results: CachedUpdate[] = [];
 
   for (const [, cached] of cache) {
-    if (now - cached.checkedAt < CACHE_TTL) {
+    if (now < cached.expiresAt) {
       results.push(cached);
     }
   }

@@ -186,10 +186,10 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           triggerVersionResolution(imageName, currentDigest, latestDigest);
         }
       } catch (error) {
-        // Distribution API failures are common (private registries, local images, etc.)
-        // Only log if it's not a typical 404/401/403 error
+        // Distribution API failures are common (private registries, local images, rate limits, etc.)
+        // Only log if it's not a typical expected error
         const statusCode = (error as { statusCode?: number }).statusCode;
-        if (statusCode && ![401, 403, 404].includes(statusCode)) {
+        if (statusCode && ![401, 403, 404, 429].includes(statusCode)) {
           console.warn(`[Update Check] Distribution API failed for ${imageName}:`, error);
         }
         const result: ImageUpdateInfo = {
@@ -198,7 +198,9 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           updateAvailable: false,
           status: "unknown",
         };
-        setCachedUpdate(imageName, result);
+        // Cache rate-limited results longer to avoid hammering the API
+        const ttl = statusCode === 429 ? 30 * 60 * 1000 : undefined; // 30 min for rate limits
+        setCachedUpdate(imageName, result, ttl);
         results.push(result);
       }
     } catch (error) {

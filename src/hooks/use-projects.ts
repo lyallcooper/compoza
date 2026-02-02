@@ -132,7 +132,8 @@ export function useProjectCompose(name: string) {
       const result = await apiFetch<{ content: string }>(
         `/api/projects/${encodeURIComponent(name)}/compose`
       );
-      return result?.content || "";
+      // Normalize line endings to match CodeMirror's internal format (LF)
+      return (result?.content || "").replace(/\r\n/g, "\n");
     },
     enabled: !!name,
   });
@@ -145,7 +146,9 @@ export function useProjectEnv(name: string) {
       const result = await apiFetch<{ content: string }>(
         `/api/projects/${encodeURIComponent(name)}/env`
       );
-      return result?.content || "";
+      // Normalize line endings to match CodeMirror's internal format (LF)
+      // This prevents false "unsaved changes" detection when the file has CRLF
+      return (result?.content || "").replace(/\r\n/g, "\n");
     },
     enabled: !!name,
   });

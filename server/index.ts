@@ -9,7 +9,7 @@ import Docker from "dockerode";
 config({ path: ".env.local" });
 config({ path: ".env" });
 
-const dev = process.env.NODE_ENV !== "production";
+const dev = process.env.NODE_ENV === "development";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 

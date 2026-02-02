@@ -56,6 +56,7 @@ All configuration is via environment variables:
 | `DOCKER_PROJECTS_DIR` | Path to projects as seen by Docker daemon (for remote Docker) | Same as `PROJECTS_DIR` |
 | `DOCKER_HOST` | Docker socket or TCP endpoint | `/var/run/docker.sock` |
 | `PORT` | Port to listen on | `3000` |
+| `COMPOZA_IMAGE` | Image name for self-update feature | `compoza:latest` |
 
 ### Registry Authentication
 

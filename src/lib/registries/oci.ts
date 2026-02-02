@@ -1,5 +1,6 @@
 import type { RegistryClient, TagInfo } from "./types";
 import { isSemverLike } from "./version";
+import { getCredentialsForTokenEndpoint } from "./credentials";
 
 interface OciTagListResponse {
   name: string;
@@ -39,30 +40,6 @@ interface OciImageConfig {
 
 // Cache tokens per registry/scope
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
-
-/**
- * Get registry credentials from environment variables.
- */
-function getRegistryCredentials(registry: string): { username: string; token: string } | null {
-  // Docker Hub: DOCKERHUB_USERNAME + DOCKERHUB_TOKEN
-  if (registry.includes("docker")) {
-    const username = process.env.DOCKERHUB_USERNAME;
-    const token = process.env.DOCKERHUB_TOKEN;
-    if (username && token) {
-      return { username, token };
-    }
-  }
-
-  // GHCR: GHCR_TOKEN (username can be anything for token auth)
-  if (registry.includes("ghcr.io")) {
-    const token = process.env.GHCR_TOKEN;
-    if (token) {
-      return { username: "token", token };
-    }
-  }
-
-  return null;
-}
 
 /**
  * OCI Distribution API client.
@@ -253,7 +230,7 @@ export class OciClient implements RegistryClient {
       try {
         // Use credentials if available (increases rate limits)
         const headers: Record<string, string> = {};
-        const creds = getRegistryCredentials(realm);
+        const creds = getCredentialsForTokenEndpoint(realm);
         if (creds) {
           headers["Authorization"] = `Basic ${Buffer.from(`${creds.username}:${creds.token}`).toString("base64")}`;
         }

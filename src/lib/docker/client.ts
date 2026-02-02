@@ -1,5 +1,6 @@
 import Docker from "dockerode";
 import type { DistributionInfo } from "@/types";
+import { getRegistryCredentials } from "@/lib/registries/credentials";
 
 let dockerClient: Docker | null = null;
 
@@ -26,34 +27,6 @@ export function resetDockerClient(): void {
 }
 
 /**
- * Get registry credentials from environment variables.
- * Returns auth config for Docker API calls.
- */
-function getRegistryAuth(imageName: string): { username: string; password: string } | null {
-  // Parse registry from image name
-  const isDockerHub = !imageName.includes("/") ||
-    (!imageName.split("/")[0].includes(".") && !imageName.split("/")[0].includes(":"));
-  const isGhcr = imageName.startsWith("ghcr.io/");
-
-  if (isDockerHub) {
-    const username = process.env.DOCKERHUB_USERNAME;
-    const password = process.env.DOCKERHUB_TOKEN;
-    if (username && password) {
-      return { username, password };
-    }
-  }
-
-  if (isGhcr) {
-    const token = process.env.GHCR_TOKEN;
-    if (token) {
-      return { username: "token", password: token };
-    }
-  }
-
-  return null;
-}
-
-/**
  * Get distribution info for an image from the registry.
  * The distribution() method exists on dockerode but is not in @types/dockerode.
  * Uses env var credentials if available.
@@ -67,6 +40,7 @@ export async function getImageDistribution(imageName: string): Promise<Distribut
     distribution: (options?: { authconfig?: { username: string; password: string } }) => Promise<DistributionInfo>;
   };
 
-  const authconfig = getRegistryAuth(imageName);
+  const creds = getRegistryCredentials(imageName);
+  const authconfig = creds ? { username: creds.username, password: creds.token } : undefined;
   return imageWithDistribution.distribution(authconfig ? { authconfig } : undefined);
 }

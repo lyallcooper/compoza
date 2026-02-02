@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Box, Spinner, ProjectStatusBadge } from "@/components/ui";
 import { useProjects, useContainers } from "@/hooks";
@@ -8,10 +9,28 @@ export default function Dashboard() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: containers, isLoading: containersLoading } = useContainers();
 
-  const runningProjects = projects?.filter((p) => p.status === "running").length ?? 0;
-  const totalProjects = projects?.length ?? 0;
-  const runningContainers = containers?.filter((c) => c.state === "running").length ?? 0;
-  const totalContainers = containers?.length ?? 0;
+  const { runningProjects, totalProjects, topProjects, hasMoreProjects } = useMemo(() => {
+    const running = projects?.filter((p) => p.status === "running").length ?? 0;
+    const total = projects?.length ?? 0;
+    const top = projects?.slice(0, 10) ?? [];
+    return {
+      runningProjects: running,
+      totalProjects: total,
+      topProjects: top,
+      hasMoreProjects: total > 10,
+    };
+  }, [projects]);
+
+  const { runningContainers, totalContainers, topRunningContainers, hasMoreRunning } = useMemo(() => {
+    const running = containers?.filter((c) => c.state === "running") ?? [];
+    const total = containers?.length ?? 0;
+    return {
+      runningContainers: running.length,
+      totalContainers: total,
+      topRunningContainers: running.slice(0, 10),
+      hasMoreRunning: running.length > 10,
+    };
+  }, [containers]);
 
   return (
     <div className="space-y-6">
@@ -50,7 +69,7 @@ export default function Dashboard() {
           <div className="p-4">
             <Spinner />
           </div>
-        ) : projects?.length === 0 ? (
+        ) : topProjects.length === 0 ? (
           <div className="p-4 text-muted">
             No projects found.{" "}
             <Link href="/projects" className="text-accent hover:underline">
@@ -59,7 +78,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {projects?.slice(0, 10).map((project) => (
+            {topProjects.map((project) => (
               <Link
                 key={project.name}
                 href={`/projects/${encodeURIComponent(project.name)}`}
@@ -76,10 +95,10 @@ export default function Dashboard() {
             ))}
           </div>
         )}
-        {projects && projects.length > 10 && (
+        {hasMoreProjects && (
           <div className="border-t border-border px-3 py-2">
             <Link href="/projects" className="text-accent hover:underline text-sm">
-              View all {projects.length} projects
+              View all {totalProjects} projects
             </Link>
           </div>
         )}
@@ -93,33 +112,30 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {containers?.filter((c) => c.state === "running").length === 0 ? (
+            {topRunningContainers.length === 0 ? (
               <div className="p-4 text-muted">No running containers</div>
             ) : (
               <div className="divide-y divide-border">
-                {containers
-                  ?.filter((c) => c.state === "running")
-                  .slice(0, 10)
-                  .map((container) => (
-                    <Link
-                      key={container.id}
-                      href={`/containers/${encodeURIComponent(container.id)}`}
-                      className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-                    >
-                      <div>
-                        <span>{container.name}</span>
-                        {container.projectName && (
-                          <span className="text-sm text-muted ml-2">
-                            ({container.projectName})
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-sm text-muted">{container.image}</span>
-                    </Link>
-                  ))}
+                {topRunningContainers.map((container) => (
+                  <Link
+                    key={container.id}
+                    href={`/containers/${encodeURIComponent(container.id)}`}
+                    className="flex items-center justify-between px-3 py-2 hover:bg-surface"
+                  >
+                    <div>
+                      <span>{container.name}</span>
+                      {container.projectName && (
+                        <span className="text-sm text-muted ml-2">
+                          ({container.projectName})
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted">{container.image}</span>
+                  </Link>
+                ))}
               </div>
             )}
-            {containers && containers.filter((c) => c.state === "running").length > 10 && (
+            {hasMoreRunning && (
               <div className="border-t border-border px-3 py-2">
                 <Link href="/containers" className="text-accent hover:underline text-sm">
                   View all containers

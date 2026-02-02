@@ -14,3 +14,4 @@ export type { Port } from "./ports-list";
 export { GroupedLabels } from "./grouped-labels";
 export { DropdownMenu, DropdownItem } from "./dropdown-menu";
 export { Toast } from "./toast";
+export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";

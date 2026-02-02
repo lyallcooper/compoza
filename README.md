@@ -124,7 +124,9 @@ Compoza reads files from `PROJECTS_DIR` and translates paths to `HOST_PROJECTS_D
 | `g p` | Go to Projects |
 | `g c` | Go to Containers |
 | `g s` | Go to Settings |
-| `?` | Show shortcuts (console) |
+| `Esc` | Close modal / Cancel |
+| `Cmd/Ctrl + S` | Save changes (in editor) |
+| `?` | Show keyboard shortcuts help |
 
 ## Tech Stack
 

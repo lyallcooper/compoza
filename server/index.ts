@@ -6,8 +6,9 @@ import { Server as SocketServer } from "socket.io";
 import Docker from "dockerode";
 
 // Load .env files (Next.js does this automatically, but our custom server doesn't)
-config({ path: ".env.local" });
-config({ path: ".env" });
+const dotenvDebug = process.env.NODE_ENV === "development";
+config({ path: ".env.local", debug: dotenvDebug });
+config({ path: ".env", debug: dotenvDebug });
 
 const dev = process.env.NODE_ENV === "development";
 const hostname = process.env.HOSTNAME || "0.0.0.0";

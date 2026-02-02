@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Box, Spinner, ProjectStatusBadge } from "@/components/ui";
+import { Box, Spinner, ProjectStatusBadge, TruncatedText } from "@/components/ui";
 import { useProjects, useContainers } from "@/hooks";
 
 export default function Dashboard() {
@@ -12,12 +12,12 @@ export default function Dashboard() {
   const { runningProjects, totalProjects, topProjects, hasMoreProjects } = useMemo(() => {
     const running = projects?.filter((p) => p.status === "running").length ?? 0;
     const total = projects?.length ?? 0;
-    const top = projects?.slice(0, 10) ?? [];
+    const top = projects?.slice(0, 8) ?? [];
     return {
       runningProjects: running,
       totalProjects: total,
       topProjects: top,
-      hasMoreProjects: total > 10,
+      hasMoreProjects: total > 8,
     };
   }, [projects]);
 
@@ -27,44 +27,30 @@ export default function Dashboard() {
     return {
       runningContainers: running.length,
       totalContainers: total,
-      topRunningContainers: running.slice(0, 10),
-      hasMoreRunning: running.length > 10,
+      topRunningContainers: running.slice(0, 8),
+      hasMoreRunning: running.length > 8,
     };
   }, [containers]);
 
+  const projectsTitle = projectsLoading
+    ? "Projects"
+    : `Projects (${runningProjects}/${totalProjects} running)`;
+
+  const containersTitle = containersLoading
+    ? "Containers"
+    : `Containers (${runningContainers}/${totalContainers} running)`;
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Box title="Projects">
-          {projectsLoading ? (
-            <Spinner />
-          ) : (
-            <div className="text-2xl font-bold">
-              <span className="text-success">{runningProjects}</span>
-              <span className="text-muted"> / {totalProjects}</span>
-            </div>
-          )}
-          <div className="text-sm text-muted">running</div>
-        </Box>
-
-        <Box title="Containers">
-          {containersLoading ? (
-            <Spinner />
-          ) : (
-            <div className="text-2xl font-bold">
-              <span className="text-success">{runningContainers}</span>
-              <span className="text-muted"> / {totalContainers}</span>
-            </div>
-          )}
-          <div className="text-sm text-muted">running</div>
-        </Box>
-      </div>
-
-      {/* Recent Projects */}
-      <Box title="Projects" padding={false}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Projects */}
+      <Box
+        title={
+          <Link href="/projects" className="hover:text-accent transition-colors">
+            {projectsTitle}
+          </Link>
+        }
+        padding={false}
+      >
         {projectsLoading ? (
           <div className="p-4">
             <Spinner />
@@ -84,10 +70,13 @@ export default function Dashboard() {
                 href={`/projects/${encodeURIComponent(project.name)}`}
                 className="flex items-center justify-between px-3 py-2 hover:bg-surface"
               >
-                <span>{project.name}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted">
-                    {project.services.length} service{project.services.length !== 1 ? "s" : ""}
+                <span className="truncate">{project.name}</span>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <span className="text-xs text-muted">
+                    {project.services.length}
+                    <span className="hidden sm:inline">
+                      {project.services.length === 1 ? " service\u00A0" : " services"}
+                    </span>
                   </span>
                   <ProjectStatusBadge status={project.status} />
                 </div>
@@ -105,44 +94,43 @@ export default function Dashboard() {
       </Box>
 
       {/* Running Containers */}
-      <Box title="Running Containers" padding={false}>
+      <Box
+        title={
+          <Link href="/containers" className="hover:text-accent transition-colors">
+            {containersTitle}
+          </Link>
+        }
+        padding={false}
+      >
         {containersLoading ? (
           <div className="p-4">
             <Spinner />
           </div>
+        ) : topRunningContainers.length === 0 ? (
+          <div className="p-4 text-muted">No running containers</div>
         ) : (
-          <>
-            {topRunningContainers.length === 0 ? (
-              <div className="p-4 text-muted">No running containers</div>
-            ) : (
-              <div className="divide-y divide-border">
-                {topRunningContainers.map((container) => (
-                  <Link
-                    key={container.id}
-                    href={`/containers/${encodeURIComponent(container.id)}`}
-                    className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-                  >
-                    <div>
-                      <span>{container.name}</span>
-                      {container.projectName && (
-                        <span className="text-sm text-muted ml-2">
-                          ({container.projectName})
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm text-muted">{container.image}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            {hasMoreRunning && (
-              <div className="border-t border-border px-3 py-2">
-                <Link href="/containers" className="text-accent hover:underline text-sm">
-                  View all containers
-                </Link>
-              </div>
-            )}
-          </>
+          <div className="divide-y divide-border">
+            {topRunningContainers.map((container) => (
+              <Link
+                key={container.id}
+                href={`/containers/${encodeURIComponent(container.id)}`}
+                className="flex items-center justify-between px-3 py-2 hover:bg-surface"
+              >
+                <span className="flex-shrink-0">{container.name}</span>
+                <TruncatedText
+                  text={container.image.split("/").pop() ?? ""}
+                  className="text-xs text-muted ml-2"
+                />
+              </Link>
+            ))}
+          </div>
+        )}
+        {hasMoreRunning && (
+          <div className="border-t border-border px-3 py-2">
+            <Link href="/containers" className="text-accent hover:underline text-sm">
+              View all {runningContainers} running
+            </Link>
+          </div>
         )}
       </Box>
     </div>

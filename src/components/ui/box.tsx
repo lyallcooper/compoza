@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 
 interface BoxProps {
-  title?: string;
+  title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;

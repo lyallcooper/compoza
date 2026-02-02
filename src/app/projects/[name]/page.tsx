@@ -247,11 +247,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           </Button>
           <Button
             variant={hasUpdates ? "accent" : "default"}
-            onClick={hasUpdates ? () => setShowUpdateModal(true) : handleUpdate}
-            loading={projectUpdate.isPending}
+            onClick={() => setShowUpdateModal(true)}
             disabled={!canUpdate}
           >
-            {hasUpdates ? "Update…" : "Update"}
+            Update…
           </Button>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">
             <Button>Logs</Button>
@@ -270,11 +269,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             Down
           </DropdownItem>
           <DropdownItem
-            onClick={hasUpdates ? () => setShowUpdateModal(true) : handleUpdate}
-            loading={projectUpdate.isPending}
+            onClick={() => setShowUpdateModal(true)}
             disabled={!canUpdate}
           >
-            {hasUpdates ? "Update…" : "Update"}
+            Update…
           </DropdownItem>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
             <DropdownItem>Logs</DropdownItem>
@@ -428,7 +426,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       )}
 
       {/* Update Modal */}
-      {showUpdateModal && (
+      {showUpdateModal && hasUpdates && (
         <UpdateConfirmModal
           open
           onClose={() => setShowUpdateModal(false)}
@@ -438,6 +436,29 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           isRunning={project.status === "running" || project.status === "partial"}
           loading={projectUpdate.isPending}
         />
+      )}
+
+      {/* Update Modal - No updates detected */}
+      {showUpdateModal && !hasUpdates && (
+        <Modal
+          open
+          onClose={() => setShowUpdateModal(false)}
+          title={`Update ${project.name}`}
+          footer={
+            <>
+              <Button onClick={() => setShowUpdateModal(false)} disabled={projectUpdate.isPending}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleUpdate} loading={projectUpdate.isPending}>
+                Pull Images
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-muted">
+            No updates detected. Do you want to pull images anyway?
+          </p>
+        </Modal>
       )}
     </div>
   );

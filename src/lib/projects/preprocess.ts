@@ -9,9 +9,27 @@ interface PreprocessResult {
   cleanup: () => Promise<void>;
 }
 
+interface BuildConfig {
+  context?: string;
+  dockerfile?: string;
+  [key: string]: unknown;
+}
+
+interface ExtendsConfig {
+  file?: string;
+  service: string;
+}
+
 interface ServiceConfig {
+  build?: string | BuildConfig;
   env_file?: string | string[] | EnvFileEntry[];
+  extends?: ExtendsConfig;
   volumes?: (string | VolumeConfig)[];
+  [key: string]: unknown;
+}
+
+interface FileConfigEntry {
+  file?: string;
   [key: string]: unknown;
 }
 
@@ -29,6 +47,8 @@ interface VolumeConfig {
 
 interface ComposeConfig {
   services?: Record<string, ServiceConfig>;
+  configs?: Record<string, FileConfigEntry>;
+  secrets?: Record<string, FileConfigEntry>;
   [key: string]: unknown;
 }
 
@@ -125,6 +145,57 @@ function rewriteVolumes(
   });
 }
 
+function rewriteBuild(
+  build: string | BuildConfig | undefined,
+  projectDir: string
+): string | BuildConfig | undefined {
+  if (!build) return build;
+
+  // Short syntax: build: ./path
+  if (typeof build === "string") {
+    return toAbsoluteHostPath(build, projectDir);
+  }
+
+  // Long syntax: build: { context: ..., dockerfile: ... }
+  const result = { ...build };
+  if (result.context) {
+    result.context = toAbsoluteHostPath(result.context, projectDir);
+  }
+  // dockerfile is relative to context, Docker handles this
+  return result;
+}
+
+function rewriteExtends(
+  ext: ExtendsConfig | undefined,
+  projectDir: string
+): ExtendsConfig | undefined {
+  if (!ext || !ext.file) return ext;
+
+  // extends.file is resolved by docker compose CLI relative to --project-directory
+  // Since we set --project-directory to the host path, we need to rewrite this
+  return {
+    ...ext,
+    file: toAbsoluteHostPath(ext.file, projectDir),
+  };
+}
+
+function rewriteFileConfigs(
+  configs: Record<string, FileConfigEntry> | undefined,
+  projectDir: string
+): Record<string, FileConfigEntry> | undefined {
+  if (!configs) return configs;
+
+  const result: Record<string, FileConfigEntry> = {};
+  for (const [name, config] of Object.entries(configs)) {
+    if (config.file) {
+      result[name] = { ...config, file: toAbsoluteHostPath(config.file, projectDir) };
+    } else {
+      result[name] = config;
+    }
+  }
+  return result;
+}
+
 export async function preprocessComposeFile(
   composeFilePath: string,
   projectDir: string
@@ -134,13 +205,27 @@ export async function preprocessComposeFile(
 
   if (config.services) {
     for (const service of Object.values(config.services)) {
+      if (service.build) {
+        service.build = rewriteBuild(service.build, projectDir);
+      }
       if (service.env_file) {
         service.env_file = rewriteEnvFiles(service.env_file, projectDir);
+      }
+      if (service.extends) {
+        service.extends = rewriteExtends(service.extends, projectDir);
       }
       if (service.volumes) {
         service.volumes = rewriteVolumes(service.volumes, projectDir);
       }
     }
+  }
+
+  // Top-level configs and secrets
+  if (config.configs) {
+    config.configs = rewriteFileConfigs(config.configs, projectDir);
+  }
+  if (config.secrets) {
+    config.secrets = rewriteFileConfigs(config.secrets, projectDir);
   }
 
   const tempDir = await mkdtemp(join(tmpdir(), "compoza-"));

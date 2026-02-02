@@ -15,13 +15,16 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   const titleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
 
-  const handleEscape = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    },
-    [onClose]
-  );
+  // Keep onClose ref updated without triggering effects
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") onCloseRef.current();
+  }, []);
 
   // Focus trap: keep focus within modal
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

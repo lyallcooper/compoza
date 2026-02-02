@@ -483,6 +483,7 @@ export class OciClient implements RegistryClient {
 
   /**
    * Extract version from annotations or labels.
+   * Returns whatever version string is set, regardless of format.
    */
   private extractVersionFromAnnotations(annotations?: Record<string, string>): string | null {
     if (!annotations) return null;
@@ -496,7 +497,7 @@ export class OciClient implements RegistryClient {
 
     for (const key of versionKeys) {
       const value = annotations[key];
-      if (value && isSemverLike(value)) {
+      if (value) {
         return value;
       }
     }

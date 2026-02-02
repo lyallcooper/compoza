@@ -21,6 +21,12 @@ interface UpdateConfirmModalProps {
   isRunning: boolean;
   /** Whether the update is in progress */
   loading?: boolean;
+  /** Whether the project has services with Dockerfile builds */
+  hasBuildServices?: boolean;
+  /** Whether to rebuild images */
+  rebuildImages?: boolean;
+  /** Callback when rebuild checkbox changes */
+  onRebuildChange?: (value: boolean) => void;
 }
 
 export function UpdateConfirmModal({
@@ -32,6 +38,9 @@ export function UpdateConfirmModal({
   images,
   isRunning,
   loading,
+  hasBuildServices,
+  rebuildImages,
+  onRebuildChange,
 }: UpdateConfirmModalProps) {
   const target = serviceName ? "service" : "project";
 
@@ -71,11 +80,24 @@ export function UpdateConfirmModal({
           </div>
         </div>
 
+        {/* Rebuild checkbox - only shown for projects with Dockerfile builds */}
+        {hasBuildServices && onRebuildChange && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={rebuildImages}
+              onChange={(e) => onRebuildChange(e.target.checked)}
+              className="accent-accent"
+            />
+            <span>Rebuild images from Dockerfile</span>
+          </label>
+        )}
+
         {/* Description of what will happen */}
         <p className="text-sm text-muted">
           {isRunning
-            ? `This will pull the latest image${images.length > 1 ? "s" : ""} and recreate the ${target}.`
-            : `This will pull the latest image${images.length > 1 ? "s" : ""}. The ${target} is not running, so it will not be restarted.`}
+            ? `This will pull the latest image${images.length > 1 ? "s" : ""}${rebuildImages ? ", rebuild Dockerfile images," : ""} and recreate the ${target}.`
+            : `This will pull the latest image${images.length > 1 ? "s" : ""}${rebuildImages ? " and rebuild Dockerfile images" : ""}. The ${target} is not running, so it will not be restarted.`}
         </p>
       </div>
     </Modal>

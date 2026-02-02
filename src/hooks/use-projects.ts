@@ -93,7 +93,7 @@ export function useProjectUpdate(name: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (options?: { rebuild?: boolean }) => {
       // Check current project status before pulling
       const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
       const wasRunning = project?.status === "running" || project?.status === "partial";
@@ -106,7 +106,8 @@ export function useProjectUpdate(name: string) {
       // Only recreate containers if project was running
       if (wasRunning) {
         const upResult = await apiPost<{ output: string }>(
-          `/api/projects/${encodeURIComponent(name)}/up`
+          `/api/projects/${encodeURIComponent(name)}/up`,
+          { build: options?.rebuild }
         );
         return {
           output: (pullResult?.output || "") + "\n" + (upResult?.output || ""),

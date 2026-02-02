@@ -107,6 +107,7 @@ async function buildProject(
           containerName: container?.name,
           status: container?.state === "running" ? "running" : container ? "exited" : "unknown",
           ports: container?.ports,
+          hasBuild: !!serviceConfig.build,
         };
 
         if (container?.state === "running") runningCount++;

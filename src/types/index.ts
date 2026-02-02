@@ -13,6 +13,8 @@ export interface ProjectService {
   containerName?: string;
   status: "running" | "exited" | "paused" | "restarting" | "unknown";
   ports?: PortMapping[];
+  /** Whether this service uses a Dockerfile (has build: config) */
+  hasBuild?: boolean;
 }
 
 export interface PortMapping {

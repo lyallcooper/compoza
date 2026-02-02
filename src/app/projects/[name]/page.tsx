@@ -122,6 +122,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [rebuildImages, setRebuildImages] = useState(false);
   const [actionOutput, setActionOutput] = useState<string | null>(null);
 
   // Check if project has any updates available
@@ -129,6 +130,12 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     if (!project) return false;
     return project.services.some((s) => s.image && updatesMap.get(s.image));
   }, [project, updatesMap]);
+
+  // Check if project has any services with Dockerfile builds
+  const hasBuildServices = useMemo(() => {
+    if (!project) return false;
+    return project.services.some((s) => s.hasBuild);
+  }, [project]);
 
   // Get images with updates for this project (with version info)
   const updatableImages = useMemo(() => {
@@ -194,12 +201,18 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
   const handleUpdate = async () => {
     try {
-      const result = await projectUpdate.mutateAsync();
+      const result = await projectUpdate.mutateAsync({ rebuild: rebuildImages });
       setActionOutput(result?.output || "Updated");
       setShowUpdateModal(false);
+      setRebuildImages(false);
     } catch (error) {
       console.error("[Project Update] Error:", error);
     }
+  };
+
+  const handleCloseUpdateModal = () => {
+    setShowUpdateModal(false);
+    setRebuildImages(false);
   };
 
   if (isLoading) {
@@ -429,12 +442,15 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       {showUpdateModal && hasUpdates && (
         <UpdateConfirmModal
           open
-          onClose={() => setShowUpdateModal(false)}
+          onClose={handleCloseUpdateModal}
           onConfirm={handleUpdate}
           title={`Update ${project.name}`}
           images={updatableImages}
           isRunning={project.status === "running" || project.status === "partial"}
           loading={projectUpdate.isPending}
+          hasBuildServices={hasBuildServices}
+          rebuildImages={rebuildImages}
+          onRebuildChange={setRebuildImages}
         />
       )}
 
@@ -442,22 +458,35 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       {showUpdateModal && !hasUpdates && (
         <Modal
           open
-          onClose={() => setShowUpdateModal(false)}
+          onClose={handleCloseUpdateModal}
           title={`Update ${project.name}`}
           footer={
             <>
-              <Button onClick={() => setShowUpdateModal(false)} disabled={projectUpdate.isPending}>
+              <Button onClick={handleCloseUpdateModal} disabled={projectUpdate.isPending}>
                 Cancel
               </Button>
               <Button variant="primary" onClick={handleUpdate} loading={projectUpdate.isPending}>
-                Pull Images
+                {rebuildImages ? "Rebuild" : "Pull Images"}
               </Button>
             </>
           }
         >
-          <p className="text-sm text-muted">
-            No updates detected. Do you want to pull images anyway?
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted">
+              No updates detected. Do you want to pull images anyway?
+            </p>
+            {hasBuildServices && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={rebuildImages}
+                  onChange={(e) => setRebuildImages(e.target.checked)}
+                  className="accent-accent"
+                />
+                <span>Rebuild images from Dockerfile</span>
+              </label>
+            )}
+          </div>
         </Modal>
       )}
     </div>

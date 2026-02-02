@@ -19,9 +19,50 @@ const CONTAINER_STATE_VARIANTS: Record<string, BadgeVariant> = {
   removing: "warning",
 };
 
-export function ProjectStatusBadge({ status }: { status: string }) {
+const DOT_COLORS: Record<BadgeVariant, string> = {
+  success: "bg-success",
+  warning: "bg-warning",
+  error: "bg-error",
+  default: "bg-muted",
+};
+
+interface ProjectStatusBadgeProps {
+  status: string;
+  compact?: boolean | "responsive";
+}
+
+export function ProjectStatusBadge({ status, compact }: ProjectStatusBadgeProps) {
+  const variant = PROJECT_STATUS_VARIANTS[status] || "default";
+
+  if (compact === true) {
+    return (
+      <span
+        className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
+        title={status}
+      />
+    );
+  }
+
+  if (compact === "responsive") {
+    return (
+      <>
+        <span className="sm:hidden">
+          <span
+            className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
+            title={status}
+          />
+        </span>
+        <span className="hidden sm:inline">
+          <Badge variant={variant}>
+            {status}
+          </Badge>
+        </span>
+      </>
+    );
+  }
+
   return (
-    <Badge variant={PROJECT_STATUS_VARIANTS[status] || "default"}>
+    <Badge variant={variant}>
       {status}
     </Badge>
   );

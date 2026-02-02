@@ -65,7 +65,7 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
     // Refresh stale images in background (don't await)
     if (staleImages.length > 0) {
       checkImagesDirectly(staleImages).catch((err) => {
-        console.error("Background update check failed:", err);
+        console.error(`Background update check failed for ${staleImages.length} images:`, staleImages.slice(0, 3).join(", "), err);
       });
     }
   }

@@ -236,8 +236,9 @@ export async function preprocessComposeFile(
     try {
       await unlink(tempFile);
       await rmdir(tempDir);
-    } catch {
-      // Ignore cleanup errors
+    } catch (err) {
+      // Log cleanup errors for debugging but don't fail the operation
+      console.warn(`[Preprocess] Failed to clean up temp file ${tempFile}:`, err);
     }
   };
 

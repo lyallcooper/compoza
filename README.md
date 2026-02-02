@@ -78,13 +78,20 @@ Mount the projects directory from the host into the container:
 
 ```yaml
 environment:
+  - PROJECTS_DIR=/home/user/docker
+volumes:
+  - ${PROJECTS_DIR}:${PROJECTS_DIR}:rw
+```
+
+If the path inside the container differs from the host path, set `HOST_PROJECTS_DIR`:
+
+```yaml
+environment:
   - HOST_PROJECTS_DIR=/home/user/docker
   - PROJECTS_DIR=/projects
 volumes:
   - ${HOST_PROJECTS_DIR}:${PROJECTS_DIR}:rw
 ```
-
-`HOST_PROJECTS_DIR` is the path on the Docker host, `PROJECTS_DIR` is the path inside the container. If both are the same, you only need to set `PROJECTS_DIR` (since `HOST_PROJECTS_DIR` defaults to it).
 
 ### Docker Socket Access
 

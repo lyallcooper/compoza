@@ -10,4 +10,5 @@ export {
   streamContainerLogs,
 } from "./containers";
 export type { ListContainersOptions } from "./containers";
-export { listImages, pullImage, removeImage, inspectImage, checkImageUpdate } from "./images";
+export { listImages, pullImage, removeImage, inspectImage, checkImageUpdate, pruneImages } from "./images";
+export type { PruneResult } from "./images";

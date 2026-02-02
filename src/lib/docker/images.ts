@@ -6,13 +6,17 @@ export async function listImages(): Promise<DockerImage[]> {
   const docker = getDocker();
   const images = await docker.listImages();
 
-  return images.map((img) => ({
-    id: img.Id,
-    tags: img.RepoTags || [],
-    size: img.Size,
-    created: img.Created,
-    digest: img.RepoDigests?.[0]?.split("@")[1],
-  }));
+  return images.map((img) => {
+    const repoDigest = img.RepoDigests?.[0];
+    return {
+      id: img.Id,
+      tags: img.RepoTags || [],
+      size: img.Size,
+      created: img.Created,
+      digest: repoDigest?.split("@")[1],
+      repository: repoDigest?.split("@")[0],
+    };
+  });
 }
 
 export async function pullImage(name: string, onProgress?: (progress: string) => void): Promise<void> {
@@ -61,6 +65,23 @@ export async function inspectImage(id: string): Promise<Dockerode.ImageInspectIn
     }
     return null;
   }
+}
+
+export interface PruneResult {
+  imagesDeleted: number;
+  spaceReclaimed: number;
+}
+
+export async function pruneImages(all = false): Promise<PruneResult> {
+  const docker = getDocker();
+  // Without filter: removes dangling images only (untagged + unused)
+  // With dangling: false: removes all unused images (equivalent to -a flag)
+  const result = await docker.pruneImages(all ? { filters: { dangling: ["false"] } } : {});
+
+  return {
+    imagesDeleted: result.ImagesDeleted?.length || 0,
+    spaceReclaimed: result.SpaceReclaimed || 0,
+  };
 }
 
 // Check if an image has an update available by comparing digests

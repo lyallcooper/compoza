@@ -25,3 +25,26 @@ export function usePullImage() {
     },
   });
 }
+
+export function useDeleteImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, force }: { id: string; force?: boolean }) =>
+      apiDelete<{ message: string }>(`/api/images/${encodeURIComponent(id)}`, { force }),
+    onSuccess: () => invalidateImageQueries(queryClient),
+  });
+}
+
+// Re-export PruneResult from docker lib for convenience
+export type { PruneResult } from "@/lib/docker";
+
+export function usePruneImages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (all: boolean = false) =>
+      apiPost<{ imagesDeleted: number; spaceReclaimed: number }>("/api/images/prune", { all }),
+    onSuccess: () => invalidateImageQueries(queryClient),
+  });
+}

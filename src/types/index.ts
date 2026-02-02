@@ -90,6 +90,8 @@ export interface DockerImage {
   size: number;
   created: number;
   digest?: string;
+  /** Repository name extracted from RepoDigests (useful for untagged images) */
+  repository?: string;
   updateAvailable?: boolean;
 }
 

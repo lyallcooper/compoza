@@ -19,7 +19,8 @@ export {
   useRestartContainer,
   useContainerUpdate,
 } from "./use-containers";
-export { useImages, usePullImage } from "./use-images";
+export { useImages, usePullImage, useDeleteImage, usePruneImages } from "./use-images";
+export type { PruneResult } from "./use-images";
 export { useImageUpdates, getProjectsWithUpdates } from "./use-image-updates";
 export type { ProjectWithUpdates } from "./use-image-updates";
 export { useKeyboardShortcuts } from "./use-keyboard-shortcuts";

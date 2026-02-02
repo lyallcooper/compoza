@@ -59,7 +59,7 @@ All configuration is via environment variables:
 
 ### Registry Authentication
 
-For image update checks, you can optionally authenticate with container registries to avoid rate limits.
+To check for image updates, Compoza queries container registries. Without authentication, Docker Hub limits requests to 100 per 6 hours per IP. Configure these env vars to authenticate:
 
 | Variable | Description |
 |----------|-------------|
@@ -67,7 +67,7 @@ For image update checks, you can optionally authenticate with container registri
 | `DOCKERHUB_TOKEN` | Docker Hub access token ([create one here](https://hub.docker.com/settings/security)) |
 | `GHCR_TOKEN` | GitHub Container Registry PAT with `read:packages` scope |
 
-**Note:** For the main update check (digest comparison), Docker Engine's own credentials are used. Run `docker login` on the host to authenticate Docker Engine with registries. The env vars above are used for version resolution API calls.
+Authenticated Docker Hub users get 200 requests per 6 hours. GHCR has no rate limits for authenticated users accessing public images.
 
 ## Deployment Notes
 

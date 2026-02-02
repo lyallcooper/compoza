@@ -57,6 +57,18 @@ All configuration is via environment variables:
 | `DOCKER_HOST` | Docker socket or TCP endpoint | `/var/run/docker.sock` |
 | `PORT` | Port to listen on | `3000` |
 
+### Registry Authentication
+
+For image update checks, you can optionally authenticate with container registries to avoid rate limits.
+
+| Variable | Description |
+|----------|-------------|
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token ([create one here](https://hub.docker.com/settings/security)) |
+| `GHCR_TOKEN` | GitHub Container Registry PAT with `read:packages` scope |
+
+**Note:** For the main update check (digest comparison), Docker Engine's own credentials are used. Run `docker login` on the host to authenticate Docker Engine with registries. The env vars above are used for version resolution API calls.
+
 ## Deployment Notes
 
 ### Volume Mounts

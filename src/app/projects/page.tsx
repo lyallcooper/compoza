@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
   Spinner,
-  Modal,
-  Input,
   ProjectStatusBadge,
   Table,
   TableHeader,
@@ -19,13 +18,12 @@ import {
   DropdownItem,
 } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
-import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate, getProjectsWithUpdates } from "@/hooks";
+import { useProjects, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate, getProjectsWithUpdates } from "@/hooks";
 import type { Project } from "@/types";
 
 export default function ProjectsPage() {
   const router = useRouter();
   const { data: projects, isLoading, error } = useProjects();
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
 
   // Get cached update info from server
@@ -56,9 +54,9 @@ export default function ProjectsPage() {
               Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
             </Button>
           )}
-          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            + New Project…
-          </Button>
+          <Link href="/projects/new">
+            <Button variant="primary">+ New Project</Button>
+          </Link>
         </div>
         {/* Dropdown menu - visible below sm */}
         <div className="sm:hidden">
@@ -68,9 +66,9 @@ export default function ProjectsPage() {
                 Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
               </DropdownItem>
             )}
-            <DropdownItem onClick={() => setShowCreateModal(true)}>
-              New Project…
-            </DropdownItem>
+            <Link href="/projects/new" className="block">
+              <DropdownItem>New Project</DropdownItem>
+            </Link>
           </DropdownMenu>
         </div>
       </div>
@@ -87,9 +85,9 @@ export default function ProjectsPage() {
         <Box>
           <div className="text-center py-8">
             <p className="text-muted mb-4">No projects found</p>
-            <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-              Create your first project…
-            </Button>
+            <Link href="/projects/new">
+              <Button variant="primary">Create your first project</Button>
+            </Link>
           </div>
         </Box>
       ) : (
@@ -118,10 +116,6 @@ export default function ProjectsPage() {
             </TableBody>
           </Table>
         </Box>
-      )}
-
-      {showCreateModal && (
-        <CreateProjectModal onClose={() => setShowCreateModal(false)} />
       )}
 
       {showUpdateAllModal && (
@@ -220,79 +214,3 @@ function ProjectRow({
   );
 }
 
-function CreateProjectModal({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [composeContent, setComposeContent] = useState(DEFAULT_COMPOSE);
-  const [envContent, setEnvContent] = useState("");
-  const createProject = useCreateProject();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await createProject.mutateAsync({ name, composeContent, envContent: envContent || undefined });
-      onClose();
-    } catch (error) {
-      console.error("[Create Project] Error:", error);
-    }
-  };
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title="New Project"
-      footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            loading={createProject.isPending}
-            disabled={!name || !composeContent}
-          >
-            Create
-          </Button>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Project Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="my-project"
-          pattern="[a-zA-Z0-9_-]+"
-          required
-        />
-        <div>
-          <label className="text-sm text-muted block mb-1">Compose File</label>
-          <textarea
-            value={composeContent}
-            onChange={(e) => setComposeContent(e.target.value)}
-            className="w-full h-48 border border-border bg-background p-2 text-sm font-mono resize-none focus:border-accent focus:outline-none"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-sm text-muted block mb-1">Environment Variables (optional)</label>
-          <textarea
-            value={envContent}
-            onChange={(e) => setEnvContent(e.target.value)}
-            className="w-full h-24 border border-border bg-background p-2 text-sm font-mono resize-none focus:border-accent focus:outline-none"
-            placeholder="KEY=value"
-          />
-        </div>
-        {createProject.error && (
-          <div className="text-error text-sm">{String(createProject.error)}</div>
-        )}
-      </form>
-    </Modal>
-  );
-}
-
-const DEFAULT_COMPOSE = `services:
-  app:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-`;

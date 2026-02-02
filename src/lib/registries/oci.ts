@@ -41,16 +41,26 @@ interface OciImageConfig {
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 /**
- * Get Docker Hub credentials from environment variables.
- * Uses DOCKERHUB_USERNAME + DOCKERHUB_TOKEN for authenticated API access.
+ * Get registry credentials from environment variables.
  */
-function getDockerHubCredentials(): { username: string; token: string } | null {
-  const username = process.env.DOCKERHUB_USERNAME;
-  const token = process.env.DOCKERHUB_TOKEN;
-
-  if (username && token) {
-    return { username, token };
+function getRegistryCredentials(registry: string): { username: string; token: string } | null {
+  // Docker Hub: DOCKERHUB_USERNAME + DOCKERHUB_TOKEN
+  if (registry.includes("docker")) {
+    const username = process.env.DOCKERHUB_USERNAME;
+    const token = process.env.DOCKERHUB_TOKEN;
+    if (username && token) {
+      return { username, token };
+    }
   }
+
+  // GHCR: GHCR_TOKEN (username can be anything for token auth)
+  if (registry.includes("ghcr.io")) {
+    const token = process.env.GHCR_TOKEN;
+    if (token) {
+      return { username: "token", token };
+    }
+  }
+
   return null;
 }
 
@@ -241,10 +251,10 @@ export class OciClient implements RegistryClient {
       const timeout = setTimeout(() => controller.abort(), 5000);
 
       try {
-        // Use credentials if available (increases Docker Hub rate limits)
+        // Use credentials if available (increases rate limits)
         const headers: Record<string, string> = {};
-        const creds = getDockerHubCredentials();
-        if (creds && realm.includes("docker")) {
+        const creds = getRegistryCredentials(realm);
+        if (creds) {
           headers["Authorization"] = `Basic ${Buffer.from(`${creds.username}:${creds.token}`).toString("base64")}`;
         }
 

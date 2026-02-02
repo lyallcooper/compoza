@@ -52,6 +52,8 @@ export function TableBody({ children, className = "" }: TableBodyProps) {
 }
 
 export function TableRow({ children, className = "", onClick, clickable }: TableRowProps) {
+  const isInteractive = clickable || !!onClick;
+
   const handleClick = onClick
     ? () => {
         // Don't trigger navigation if user is selecting text
@@ -63,12 +65,23 @@ export function TableRow({ children, className = "", onClick, clickable }: Table
       }
     : undefined;
 
+  const handleKeyDown = onClick
+    ? (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }
+    : undefined;
+
   return (
     <tr
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={isInteractive ? 0 : undefined}
       className={`
         border-b border-border last:border-b-0 hover:bg-surface
-        ${clickable || onClick ? "cursor-pointer" : ""}
+        ${isInteractive ? "cursor-pointer focus:outline-none focus:bg-surface" : ""}
         ${className}
       `}
     >

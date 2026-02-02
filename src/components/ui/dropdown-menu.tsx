@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { Button } from "./button";
 
 interface DropdownMenuProps {
@@ -20,27 +20,45 @@ interface DropdownItemProps {
 export function DropdownMenu({ label = "Actions", children, className = "" }: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      setOpen(false);
     }
+  }, []);
 
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape" && open) {
+      e.preventDefault();
+      setOpen(false);
+      buttonRef.current?.focus();
     }
   }, [open]);
 
+  useEffect(() => {
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, handleClickOutside]);
+
   return (
-    <div ref={menuRef} className={`relative ${className}`}>
-      <Button onClick={() => setOpen(!open)}>
-        {label} <span className="ml-1">{open ? "▴" : "▾"}</span>
+    <div ref={menuRef} className={`relative ${className}`} onKeyDown={handleKeyDown}>
+      <Button
+        ref={buttonRef}
+        onClick={() => setOpen(!open)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {label} <span className="ml-1" aria-hidden="true">{open ? "▴" : "▾"}</span>
       </Button>
       {open && (
-        <div className="absolute right-0 mt-1 min-w-[160px] bg-background border border-border rounded shadow-lg z-50">
+        <div
+          role="menu"
+          aria-orientation="vertical"
+          className="absolute right-0 mt-1 min-w-[160px] bg-background border border-border rounded shadow-lg z-50"
+        >
           <div className="py-1" onClick={() => setOpen(false)}>
             {children}
           </div>
@@ -55,9 +73,10 @@ export function DropdownItem({ children, onClick, disabled, variant = "default",
 
   return (
     <button
+      role="menuitem"
       onClick={onClick}
       disabled={disabled || loading}
-      className={`w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed`}
+      className={`w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:bg-surface`}
     >
       {loading ? "..." : children}
     </button>

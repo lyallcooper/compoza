@@ -74,11 +74,21 @@ Authenticated Docker Hub users get 200 requests per 6 hours. GHCR has no rate li
 
 ### Volume Mounts
 
-The projects directory **must be mounted at the same path** inside and outside the container. This ensures relative paths in compose files resolve correctly.
+The simplest setup mounts the projects directory at the same path inside and outside the container:
 
 ```yaml
 volumes:
   - ${PROJECTS_DIR}:${PROJECTS_DIR}:rw
+```
+
+If you need different paths (e.g., mounting at `/projects` inside the container while the host path is `/home/user/docker`), use `DOCKER_PROJECTS_DIR` for path mapping:
+
+```yaml
+environment:
+  - PROJECTS_DIR=/projects
+  - DOCKER_PROJECTS_DIR=/home/user/docker
+volumes:
+  - /home/user/docker:/projects:rw
 ```
 
 ### Docker Socket Access
@@ -94,13 +104,7 @@ For better security, consider using a Docker socket proxy like [tecnativa/docker
 
 ### Remote Docker Host
 
-When running Compoza locally but connecting to a remote Docker host (e.g., via socket proxy), the paths may differ between your local machine and the Docker host.
-
-Example setup:
-- Local machine: compose files at `/Volumes/server/docker`
-- Docker host: same files at `/home/user/docker`
-
-Configure path mapping:
+When connecting to a remote Docker host, use `DOCKER_PROJECTS_DIR` to map between local and remote paths:
 
 ```env
 PROJECTS_DIR=/Volumes/server/docker
@@ -108,7 +112,7 @@ DOCKER_PROJECTS_DIR=/home/user/docker
 DOCKER_HOST=tcp://your-server:2375
 ```
 
-This ensures compose commands use the correct paths on the Docker host while Compoza reads files from the local path.
+Compoza reads files from `PROJECTS_DIR` and translates paths to `DOCKER_PROJECTS_DIR` when running compose commands on the remote Docker daemon.
 
 ## Keyboard Shortcuts
 

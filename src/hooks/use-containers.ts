@@ -81,11 +81,12 @@ export function useContainerUpdate() {
 
   return useMutation({
     mutationFn: (id: string) =>
-      apiPost<{ output: string; restarted: boolean }>(
+      apiPost<{ output: string; restarted: boolean; image?: string }>(
         `/api/containers/${encodeURIComponent(id)}/update`
       ),
-    onSuccess: async (_data, id) => {
-      await clearUpdateCacheAndInvalidate(queryClient);
+    onSuccess: async (data, id) => {
+      const images = data?.image ? [data.image] : undefined;
+      await clearUpdateCacheAndInvalidate(queryClient, images);
       invalidateContainerQueries(queryClient, id);
     },
   });

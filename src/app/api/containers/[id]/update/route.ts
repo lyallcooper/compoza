@@ -53,7 +53,7 @@ export async function POST(
       clearCachedUpdates([container.image]);
     }
 
-    return success({ output, restarted });
+    return success({ output, restarted, image: container.image });
   } catch (err) {
     return error(getErrorMessage(err, "Failed to update container"));
   }

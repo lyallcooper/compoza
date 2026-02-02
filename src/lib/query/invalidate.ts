@@ -41,18 +41,53 @@ export function invalidateImageQueries(queryClient: QueryClient) {
 
 /**
  * Invalidate all queries after a major update (e.g., update all projects).
+ * Optimistically clears the updates cache to remove stale badges immediately.
  */
 export function invalidateAllQueries(queryClient: QueryClient) {
+  // Clear updates cache optimistically so badges disappear immediately
+  queryClient.setQueryData(queryKeys.images.updates, []);
+
   queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.images.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.images.updates });
 }
 
+interface ImageUpdateStatus {
+  image: string;
+  updateAvailable: boolean;
+  status: string;
+}
+
 /**
  * Clear update cache via API and invalidate image queries.
+ * If images are provided, optimistically removes them from the cache immediately
+ * so badges disappear without waiting for the server refresh.
  */
-export async function clearUpdateCacheAndInvalidate(queryClient: QueryClient) {
-  await fetch("/api/images/check-updates", { method: "DELETE" });
+export async function clearUpdateCacheAndInvalidate(
+  queryClient: QueryClient,
+  images?: string[]
+) {
+  // Optimistically update React Query cache to remove the updated images
+  // This makes badges disappear immediately instead of lingering during refetch
+  if (images && images.length > 0) {
+    const imageSet = new Set(images);
+    queryClient.setQueryData<ImageUpdateStatus[]>(
+      queryKeys.images.updates,
+      (old) => old?.filter((u) => !imageSet.has(u.image)) ?? []
+    );
+  } else {
+    // Clear all - reset to empty array
+    queryClient.setQueryData(queryKeys.images.updates, []);
+  }
+
+  // Clear server-side cache
+  await fetch("/api/images/check-updates", {
+    method: "DELETE",
+    headers: images ? { "Content-Type": "application/json" } : undefined,
+    body: images ? JSON.stringify({ images }) : undefined,
+  });
+
+  // Trigger background refresh
   invalidateImageQueries(queryClient);
 }

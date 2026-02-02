@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
-import { queryKeys, invalidateImageQueries } from "@/lib/query";
+import { queryKeys, invalidateImageQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
 import type { DockerImage } from "@/types";
 
 export function useImages() {
@@ -19,9 +19,8 @@ export function usePullImage() {
     mutationFn: (name: string) =>
       apiPost<{ message: string }>("/api/images/pull", { name }),
     onSuccess: async (_data, name) => {
-      // Clear update cache for this image so it gets rechecked
-      await apiDelete("/api/images/check-updates", { images: [name] });
-      invalidateImageQueries(queryClient);
+      // Clear update cache for this image and optimistically remove from UI
+      await clearUpdateCacheAndInvalidate(queryClient, [name]);
     },
   });
 }

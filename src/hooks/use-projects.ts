@@ -80,10 +80,21 @@ export function useProjectPull(name: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () =>
-      apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/pull`),
-    onSuccess: async () => {
-      await clearUpdateCacheAndInvalidate(queryClient);
+    mutationFn: async () => {
+      // Fetch project to get image names for cache clearing
+      const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
+      const images = project?.services
+        .map((s) => s.image)
+        .filter((img): img is string => !!img) || [];
+
+      const result = await apiPost<{ output: string }>(
+        `/api/projects/${encodeURIComponent(name)}/pull`
+      );
+
+      return { ...result, images };
+    },
+    onSuccess: async (data) => {
+      await clearUpdateCacheAndInvalidate(queryClient, data?.images);
       invalidateProjectQueries(queryClient, name);
     },
   });
@@ -97,6 +108,11 @@ export function useProjectUpdate(name: string) {
       // Check current project status before pulling
       const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
       const wasRunning = project?.status === "running" || project?.status === "partial";
+
+      // Collect images from project for cache clearing
+      const images = project?.services
+        .map((s) => s.image)
+        .filter((img): img is string => !!img) || [];
 
       // Pull latest images
       const pullResult = await apiPost<{ output: string }>(
@@ -112,13 +128,14 @@ export function useProjectUpdate(name: string) {
         return {
           output: (pullResult?.output || "") + "\n" + (upResult?.output || ""),
           restarted: true,
+          images,
         };
       }
 
-      return { output: pullResult?.output, restarted: false };
+      return { output: pullResult?.output, restarted: false, images };
     },
-    onSuccess: async () => {
-      await clearUpdateCacheAndInvalidate(queryClient);
+    onSuccess: async (data) => {
+      await clearUpdateCacheAndInvalidate(queryClient, data?.images);
       invalidateProjectQueries(queryClient, name);
       invalidateContainerQueries(queryClient);
     },

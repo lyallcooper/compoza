@@ -3,7 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useState } from "react";
 import { useKeyboardShortcuts } from "@/hooks";
-import { TruncatedTextCopyHandler, KeyboardShortcutsModal } from "@/components/ui";
+import { TruncatedTextCopyHandler, KeyboardShortcutsModal, BackgroundTaskToast } from "@/components/ui";
+import { BackgroundTasksProvider } from "@/contexts";
 
 function KeyboardShortcutsProvider({ children }: { children: ReactNode }) {
   const { showHelp, closeHelp } = useKeyboardShortcuts();
@@ -31,8 +32,11 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TruncatedTextCopyHandler />
-      <KeyboardShortcutsProvider>{children}</KeyboardShortcutsProvider>
+      <BackgroundTasksProvider>
+        <TruncatedTextCopyHandler />
+        <KeyboardShortcutsProvider>{children}</KeyboardShortcutsProvider>
+        <BackgroundTaskToast />
+      </BackgroundTasksProvider>
     </QueryClientProvider>
   );
 }

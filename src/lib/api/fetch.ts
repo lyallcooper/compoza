@@ -35,9 +35,11 @@ export async function apiFetch<T>(
  */
 export async function apiPost<T>(
   url: string,
-  body?: unknown
+  body?: unknown,
+  options?: Omit<FetchOptions, "method" | "body">
 ): Promise<T> {
   return apiFetch<T>(url, {
+    ...options,
     method: "POST",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,

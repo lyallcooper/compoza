@@ -1,5 +1,6 @@
 import { scanProjects, composePull, composeUp } from "@/lib/projects";
 import { clearCachedUpdates, getAllCachedUpdates } from "@/lib/updates";
+import { isProjectRunning } from "@/types";
 
 export type UpdateAllEvent =
   | { type: "start"; project: string; total: number; current: number }
@@ -52,7 +53,7 @@ export async function POST() {
           try {
             // Check if running
             send({ type: "progress", project: project.name, step: "checking" });
-            const wasRunning = project.status === "running" || project.status === "partial";
+            const wasRunning = isProjectRunning(project);
 
             // Pull images
             send({ type: "progress", project: project.name, step: "pulling" });

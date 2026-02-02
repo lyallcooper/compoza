@@ -7,8 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { YamlEditor, EnvEditor, UpdateConfirmModal } from "@/components/projects";
-import { useProject, useProjectUp, useProjectDown, useDeleteProject, useProjectUpdate, useImageUpdates, useProjectCompose, useProjectEnv } from "@/hooks";
-import type { ProjectRouteProps } from "@/types";
+import { useProject, useProjectUp, useProjectDown, useDeleteProject, useImageUpdates, useProjectCompose, useProjectEnv, useBackgroundProjectUpdate } from "@/hooks";
+import { isProjectRunning, type ProjectRouteProps } from "@/types";
 
 export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const { name } = use(params);
@@ -21,7 +21,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const projectUp = useProjectUp(decodedName);
   const projectDown = useProjectDown(decodedName);
   const deleteProject = useDeleteProject(decodedName);
-  const projectUpdate = useProjectUpdate(decodedName);
+  const { updateProject } = useBackgroundProjectUpdate(decodedName);
 
   // Editing state
   const [editedCompose, setEditedCompose] = useState<string | null>(null);
@@ -159,7 +159,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   }, [project, imageUpdates, updatesMap]);
 
   // Derived state for action button disabled states
-  const anyActionPending = projectUp.isPending || projectDown.isPending || projectUpdate.isPending;
+  const anyActionPending = projectUp.isPending || projectDown.isPending;
   const canUp = !anyActionPending && !hasChanges;
   const canDown = !anyActionPending && !hasChanges && project?.status !== "stopped";
   const canUpdate = !anyActionPending && !hasChanges;
@@ -201,15 +201,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     }
   };
 
-  const handleUpdate = async () => {
-    try {
-      const result = await projectUpdate.mutateAsync({ rebuild: rebuildImages });
-      setActionOutput(result?.output || "Updated");
-      setShowUpdateModal(false);
-      setRebuildImages(false);
-    } catch (error) {
-      console.error("[Project Update] Error:", error);
-    }
+  const handleUpdate = () => {
+    updateProject({ rebuild: rebuildImages });
+    setShowUpdateModal(false);
+    setRebuildImages(false);
   };
 
   const handleCloseUpdateModal = () => {
@@ -312,10 +307,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       )}
 
       {/* Error Messages */}
-      {(projectUp.error || projectDown.error || projectUpdate.error) && (
+      {(projectUp.error || projectDown.error) && (
         <Box>
           <div className="text-error text-sm">
-            {String(projectUp.error || projectDown.error || projectUpdate.error)}
+            {String(projectUp.error || projectDown.error)}
           </div>
         </Box>
       )}
@@ -451,8 +446,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           onConfirm={handleUpdate}
           title={`Update ${project.name}`}
           images={updatableImages}
-          isRunning={project.status === "running" || project.status === "partial"}
-          loading={projectUpdate.isPending}
+          isRunning={isProjectRunning(project)}
           hasBuildServices={hasBuildServices}
           rebuildImages={rebuildImages}
           onRebuildChange={setRebuildImages}
@@ -467,10 +461,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           title={`Update ${project.name}`}
           footer={
             <>
-              <Button onClick={handleCloseUpdateModal} disabled={projectUpdate.isPending}>
+              <Button onClick={handleCloseUpdateModal}>
                 Cancel
               </Button>
-              <Button variant="primary" onClick={handleUpdate} loading={projectUpdate.isPending}>
+              <Button variant="primary" onClick={handleUpdate}>
                 {rebuildImages ? "Rebuild" : "Pull Images"}
               </Button>
             </>

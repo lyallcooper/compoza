@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels, DropdownMenu, DropdownItem, Badge } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
-import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useContainerUpdate, useImageUpdates } from "@/hooks";
+import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
 import { formatDateTime } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
@@ -17,7 +17,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const startContainer = useStartContainer();
   const stopContainer = useStopContainer();
   const restartContainer = useRestartContainer();
-  const containerUpdate = useContainerUpdate();
+  const { updateContainer } = useBackgroundContainerUpdate();
 
   // Get current image info (digest and version) from update cache
   const imageInfo = useMemo(() => {
@@ -45,9 +45,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const handleUpdate = () => {
-    containerUpdate.mutate(name, {
-      onSuccess: () => setShowUpdateModal(false),
-    });
+    updateContainer({ containerId: name, containerName: container?.name || name });
+    setShowUpdateModal(false);
   };
 
   if (isLoading) {
@@ -329,7 +328,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             latestDigest: updateInfo?.latestDigest,
           }]}
           isRunning={container.state === "running"}
-          loading={containerUpdate.isPending}
         />
       )}
     </div>

@@ -18,8 +18,8 @@ import {
   DropdownItem,
 } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
-import { useProjects, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate, getProjectsWithUpdates } from "@/hooks";
-import type { Project } from "@/types";
+import { useProjects, useImageUpdates, useProjectUp, useProjectDown, useBackgroundProjectUpdate, getProjectsWithUpdates } from "@/hooks";
+import { isProjectRunning, type Project } from "@/types";
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -146,15 +146,13 @@ function ProjectRow({
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const projectUp = useProjectUp(project.name);
   const projectDown = useProjectDown(project.name);
-  const projectUpdate = useProjectUpdate(project.name);
+  const { updateProject } = useBackgroundProjectUpdate(project.name);
   const runningCount = project.services.filter((s) => s.status === "running").length;
   const hasUpdates = updatableImages.length > 0;
-  const isRunning = project.status === "running" || project.status === "partial";
 
   const handleUpdate = () => {
-    projectUpdate.mutate(undefined, {
-      onSuccess: () => setShowUpdateModal(false),
-    });
+    updateProject();
+    setShowUpdateModal(false);
   };
 
   return (
@@ -206,8 +204,7 @@ function ProjectRow({
           onConfirm={handleUpdate}
           title={`Update ${project.name}`}
           images={updatableImages}
-          isRunning={isRunning}
-          loading={projectUpdate.isPending}
+          isRunning={isProjectRunning(project)}
         />
       )}
     </>

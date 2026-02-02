@@ -4,18 +4,17 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Box, Spinner, ProjectStatusBadge, TruncatedText, Badge, Button, CollapsibleSection } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
-import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useProjectUpdate } from "@/hooks";
+import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useBackgroundProjectUpdate } from "@/hooks";
 import type { ProjectWithUpdates } from "@/hooks/use-image-updates";
 import type { Container } from "@/types";
 
 function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const [showModal, setShowModal] = useState(false);
-  const projectUpdate = useProjectUpdate(project.name);
+  const { updateProject } = useBackgroundProjectUpdate(project.name);
 
   const handleUpdate = () => {
-    projectUpdate.mutate(undefined, {
-      onSuccess: () => setShowModal(false),
-    });
+    updateProject();
+    setShowModal(false);
   };
 
   return (
@@ -55,7 +54,6 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
           title={`Update ${project.name}`}
           images={project.images}
           isRunning={project.isRunning}
-          loading={projectUpdate.isPending}
         />
       )}
     </>

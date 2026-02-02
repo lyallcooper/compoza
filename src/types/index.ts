@@ -1,9 +1,16 @@
+export type ProjectStatus = "running" | "partial" | "stopped" | "unknown";
+
 export interface Project {
   name: string;
   path: string;
   composeFile: string;
-  status: "running" | "partial" | "stopped" | "unknown";
+  status: ProjectStatus;
   services: ProjectService[];
+}
+
+/** Check if a project is running (fully or partially) */
+export function isProjectRunning(project: { status: ProjectStatus } | null | undefined): boolean {
+  return project?.status === "running" || project?.status === "partial";
 }
 
 export interface ProjectService {

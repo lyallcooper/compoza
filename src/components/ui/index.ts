@@ -16,3 +16,4 @@ export { DropdownMenu, DropdownItem } from "./dropdown-menu";
 export { Toast } from "./toast";
 export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
 export { CollapsibleSection } from "./collapsible-section";
+export { BackgroundTaskToast } from "./background-task-toast";

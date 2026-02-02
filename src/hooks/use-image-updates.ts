@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { queryKeys } from "@/lib/query";
-import type { Project } from "@/types";
+import { isProjectRunning, type Project } from "@/types";
 
 export interface ImageUpdateStatus {
   image: string;
@@ -67,7 +67,7 @@ export function getProjectsWithUpdates(
         }
       }
 
-      const isRunning = project.status === "running" || project.status === "partial";
+      const isRunning = isProjectRunning(project);
       return { name: project.name, isRunning, images };
     })
     .filter((p) => p.images.length > 0);

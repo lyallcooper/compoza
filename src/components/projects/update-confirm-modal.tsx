@@ -41,8 +41,6 @@ interface UpdateConfirmModalProps {
   images: ImageUpdate[];
   /** Whether the project/container is currently running */
   isRunning: boolean;
-  /** Whether the update is in progress */
-  loading?: boolean;
   /** Whether the project has services with Dockerfile builds */
   hasBuildServices?: boolean;
   /** Whether to rebuild images */
@@ -59,12 +57,16 @@ export function UpdateConfirmModal({
   serviceName,
   images,
   isRunning,
-  loading,
   hasBuildServices,
   rebuildImages,
   onRebuildChange,
 }: UpdateConfirmModalProps) {
   const target = serviceName ? "service" : "project";
+
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
 
   return (
     <Modal
@@ -73,10 +75,8 @@ export function UpdateConfirmModal({
       title={title}
       footer={
         <>
-          <Button onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button variant="accent" onClick={onConfirm} loading={loading}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="accent" onClick={handleConfirm}>
             Update
           </Button>
         </>

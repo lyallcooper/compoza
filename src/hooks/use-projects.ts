@@ -8,7 +8,7 @@ import {
   invalidateContainerQueries,
   clearUpdateCacheAndInvalidate,
 } from "@/lib/query";
-import type { Project } from "@/types";
+import { isProjectRunning, type Project } from "@/types";
 
 export function useProjects() {
   return useQuery({
@@ -107,7 +107,7 @@ export function useProjectUpdate(name: string) {
     mutationFn: async (options?: { rebuild?: boolean }) => {
       // Check current project status before pulling
       const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
-      const wasRunning = project?.status === "running" || project?.status === "partial";
+      const wasRunning = isProjectRunning(project);
 
       // Collect images from project for cache clearing
       const images = project?.services

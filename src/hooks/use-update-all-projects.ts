@@ -1,189 +1,161 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateAllQueries } from "@/lib/query";
+import { useBackgroundTasks } from "@/contexts";
 import type { UpdateAllEvent } from "@/app/api/projects/update-all/route";
-
-export interface ProjectProgress {
-  project: string;
-  step: "checking" | "pulling" | "restarting" | "complete" | "error";
-  restarted?: boolean;
-  error?: string;
-}
-
-interface UpdateAllState {
-  isRunning: boolean;
-  progress: ProjectProgress[];
-  currentProject: string | null;
-  total: number;
-  current: number;
-  summary: { updated: number; failed: number } | null;
-  error: string | null;
-}
-
-const initialState: UpdateAllState = {
-  isRunning: false,
-  progress: [],
-  currentProject: null,
-  total: 0,
-  current: 0,
-  summary: null,
-  error: null,
-};
 
 export function useUpdateAllProjects() {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<UpdateAllState>(initialState);
+  const { addTask, updateTask } = useBackgroundTasks();
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleEvent = useCallback((event: UpdateAllEvent) => {
-    setState((prev) => {
-      switch (event.type) {
-        case "start":
-          return {
-            ...prev,
-            currentProject: event.project,
-            total: event.total,
-            current: event.current,
-            progress: [
-              ...prev.progress,
-              { project: event.project, step: "checking" },
-            ],
-          };
+  const start = useCallback(
+    async (projectCount: number) => {
+      const taskId = `update-all-${Date.now()}`;
 
-        case "progress": {
-          const progress = prev.progress.map((p) =>
-            p.project === event.project ? { ...p, step: event.step } : p
-          );
-          return { ...prev, progress } as UpdateAllState;
-        }
+      abortControllerRef.current = new AbortController();
 
-        case "complete": {
-          const progress = prev.progress.map((p) =>
-            p.project === event.project
-              ? { ...p, step: "complete" as const, restarted: event.restarted }
-              : p
-          );
-          return { ...prev, progress };
-        }
+      let cancelled = false;
+      const cancel = () => {
+        cancelled = true;
+        abortControllerRef.current?.abort();
+        updateTask(taskId, {
+          status: "error",
+          error: "Cancelled",
+          cancel: undefined,
+        });
+      };
 
-        case "error": {
-          // If project is empty string, it's a general error
-          if (!event.project) {
-            return {
-              ...prev,
-              isRunning: false,
-              error: event.message,
-            };
-          }
-          const progress = prev.progress.map((p) =>
-            p.project === event.project
-              ? { ...p, step: "error" as const, error: event.message }
-              : p
-          );
-          return { ...prev, progress };
-        }
-
-        case "done":
-          return {
-            ...prev,
-            isRunning: false,
-            currentProject: null,
-            summary: event.summary,
-          };
-
-        default:
-          return prev;
-      }
-    });
-  }, []);
-
-  const start = useCallback(async () => {
-    setState({ ...initialState, isRunning: true });
-
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const response = await fetch("/api/projects/update-all", {
-        method: "POST",
-        signal: abortControllerRef.current.signal,
+      addTask({
+        id: taskId,
+        type: "update-all",
+        label: `Updating ${projectCount} project${projectCount !== 1 ? "s" : ""}`,
+        status: "running",
+        total: projectCount,
+        current: 0,
+        cancel,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status}`);
-      }
+      let current = 0;
+      let currentProject = "";
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
-      }
+      try {
+        const response = await fetch("/api/projects/update-all", {
+          method: "POST",
+          signal: abortControllerRef.current.signal,
+        });
 
-      const decoder = new TextDecoder();
-      let buffer = "";
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No response body");
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-        // Process complete SSE messages
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+        const handleEvent = (event: UpdateAllEvent) => {
+          switch (event.type) {
+            case "start":
+              current = event.current;
+              currentProject = event.project;
+              updateTask(taskId, {
+                current,
+                progress: `${currentProject}: Checking...`,
+              });
+              break;
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const event: UpdateAllEvent = JSON.parse(line.slice(6));
-              handleEvent(event);
-            } catch {
-              // Ignore parse errors
+            case "progress":
+              updateTask(taskId, {
+                progress: `${currentProject}: ${getStepText(event.step)}`,
+              });
+              break;
+
+            case "complete":
+              // Progress updated via done event summary
+              break;
+
+            case "error":
+              if (!event.project) {
+                updateTask(taskId, {
+                  status: "error",
+                  error: event.message,
+                  cancel: undefined,
+                });
+              }
+              break;
+
+            case "done":
+              updateTask(taskId, {
+                status: "complete",
+                progress: `${event.summary.updated} updated${event.summary.failed > 0 ? `, ${event.summary.failed} failed` : ""}`,
+                cancel: undefined,
+              });
+              break;
+          }
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event: UpdateAllEvent = JSON.parse(line.slice(6));
+                handleEvent(event);
+              } catch {
+                // Ignore parse errors
+              }
             }
           }
         }
-      }
 
-      // Process any remaining data
-      if (buffer.startsWith("data: ")) {
-        try {
-          const event: UpdateAllEvent = JSON.parse(buffer.slice(6));
-          handleEvent(event);
-        } catch {
-          // Ignore parse errors
+        if (buffer.startsWith("data: ")) {
+          try {
+            const event: UpdateAllEvent = JSON.parse(buffer.slice(6));
+            handleEvent(event);
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError" && !cancelled) {
+          updateTask(taskId, {
+            status: "error",
+            error: err instanceof Error ? err.message : "Unknown error",
+            cancel: undefined,
+          });
         }
       }
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        setState((prev) => ({
-          ...prev,
-          isRunning: false,
-          error: err instanceof Error ? err.message : "Unknown error",
-        }));
-      }
-    }
 
-    // Invalidate queries on completion
-    invalidateAllQueries(queryClient);
-  }, [queryClient, handleEvent]);
+      invalidateAllQueries(queryClient);
+    },
+    [queryClient, addTask, updateTask]
+  );
 
-  const cancel = useCallback(() => {
-    abortControllerRef.current?.abort();
-    setState((prev) => ({
-      ...prev,
-      isRunning: false,
-      error: "Cancelled",
-    }));
-  }, []);
+  return { start };
+}
 
-  const reset = useCallback(() => {
-    setState(initialState);
-  }, []);
-
-  return {
-    ...state,
-    start,
-    cancel,
-    reset,
-  };
+function getStepText(step: string): string {
+  switch (step) {
+    case "checking":
+      return "Checking...";
+    case "pulling":
+      return "Pulling images...";
+    case "restarting":
+      return "Restarting...";
+    default:
+      return step;
+  }
 }

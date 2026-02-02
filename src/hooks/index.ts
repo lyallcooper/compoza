@@ -25,7 +25,7 @@ export { useImageUpdates, getProjectsWithUpdates } from "./use-image-updates";
 export type { ProjectWithUpdates } from "./use-image-updates";
 export { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 export { useUpdateAllProjects } from "./use-update-all-projects";
-export type { ProjectProgress } from "./use-update-all-projects";
+export { useBackgroundProjectUpdate, useBackgroundContainerUpdate } from "./use-background-project-update";
 export { useCodeMirror, editorTheme } from "./use-codemirror";
 export { useEventSource, useStreamingFetch } from "./use-event-source";
 export type { EventSourceState, UseEventSourceOptions } from "./use-event-source";

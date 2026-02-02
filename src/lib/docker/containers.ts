@@ -1,5 +1,5 @@
 import { getDocker } from "./client";
-import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions } from "@/types";
+import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions, ContainerHealth } from "@/types";
 
 /**
  * Determine the update strategy for a container based on its labels.
@@ -46,9 +46,59 @@ function sortPorts(ports: PortMapping[]): PortMapping[] {
   });
 }
 
-export async function listContainers(all = true): Promise<Container[]> {
+/**
+ * Parse health status from Docker API response.
+ */
+function parseHealthStatus(status?: string): ContainerHealth["status"] {
+  if (!status) return "none";
+  const normalized = status.toLowerCase();
+  if (normalized === "healthy") return "healthy";
+  if (normalized === "unhealthy") return "unhealthy";
+  if (normalized === "starting") return "starting";
+  return "none";
+}
+
+export interface ListContainersOptions {
+  all?: boolean;
+  includeHealth?: boolean;
+}
+
+export async function listContainers(options: ListContainersOptions = {}): Promise<Container[]> {
+  const { all = true, includeHealth = false } = options;
   const docker = getDocker();
   const containers = await docker.listContainers({ all });
+
+  // Only fetch detailed info when health data is requested (adds N API calls)
+  let detailMap = new Map<string, {
+    restartCount: number;
+    health?: ContainerHealth;
+    exitCode?: number;
+  }>();
+
+  if (includeHealth) {
+    const detailedInfo = await Promise.all(
+      containers.map(async (c) => {
+        try {
+          const container = docker.getContainer(c.Id);
+          const info = await container.inspect();
+          return {
+            id: c.Id,
+            restartCount: info.RestartCount ?? 0,
+            health: info.State.Health
+              ? {
+                  status: parseHealthStatus(info.State.Health.Status),
+                  failingStreak: info.State.Health.FailingStreak,
+                }
+              : undefined,
+            exitCode: info.State.ExitCode,
+          };
+        } catch {
+          return { id: c.Id, restartCount: 0, health: undefined, exitCode: undefined };
+        }
+      })
+    );
+    detailMap = new Map(detailedInfo.map((d) => [d.id, d]));
+  }
 
   return containers.map((c) => {
     // Deduplicate ports (Docker returns duplicates for IPv4/IPv6 bindings)
@@ -71,6 +121,7 @@ export async function listContainers(all = true): Promise<Container[]> {
     const serviceName = labels["com.docker.compose.service"];
     const state = c.State as Container["state"];
     const updateStrategy = getUpdateStrategy(projectName, serviceName);
+    const detail = detailMap.get(c.Id);
 
     return {
       id: c.Id,
@@ -86,6 +137,9 @@ export async function listContainers(all = true): Promise<Container[]> {
       serviceName,
       updateStrategy,
       actions: getContainerActions(state, updateStrategy),
+      restartCount: detail?.restartCount,
+      health: detail?.health,
+      exitCode: detail?.exitCode,
     };
   });
 }
@@ -146,6 +200,14 @@ export async function getContainer(id: string): Promise<Container | null> {
       serviceName,
       updateStrategy,
       actions: getContainerActions(state, updateStrategy),
+      restartCount: info.RestartCount ?? 0,
+      health: info.State.Health
+        ? {
+            status: parseHealthStatus(info.State.Health.Status),
+            failingStreak: info.State.Health.FailingStreak,
+          }
+        : undefined,
+      exitCode: info.State.ExitCode,
     };
   } catch (error) {
     console.error(`[Docker] Failed to get container ${id}:`, error);

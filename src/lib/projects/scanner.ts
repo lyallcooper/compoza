@@ -56,7 +56,7 @@ export async function scanProjects(): Promise<Project[]> {
 
   try {
     const entries = await readdir(projectsDir, { withFileTypes: true });
-    const containers = await listContainers(true);
+    const containers = await listContainers({ all: true });
 
     // Filter to valid project directories
     const projectDirs = entries.filter(
@@ -172,7 +172,7 @@ export async function getProject(name: string): Promise<Project | null> {
     const composeFile = await findComposeFile(projectPath);
     if (!composeFile) return null;
 
-    const containers = await listContainers(true);
+    const containers = await listContainers({ all: true });
     return buildProject(name, projectPath, composeFile, containers);
   } catch (error) {
     console.error(`[Projects] Failed to get project ${name}:`, error);

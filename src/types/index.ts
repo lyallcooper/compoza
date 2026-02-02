@@ -42,6 +42,11 @@ export interface ContainerActions {
   canExec: boolean;
 }
 
+export interface ContainerHealth {
+  status: "healthy" | "unhealthy" | "starting" | "none";
+  failingStreak?: number;
+}
+
 export interface Container {
   id: string;
   name: string;
@@ -60,6 +65,12 @@ export interface Container {
   updateStrategy: ContainerUpdateStrategy;
   /** Available actions based on current state */
   actions: ContainerActions;
+  /** Number of times the container has restarted */
+  restartCount?: number;
+  /** Health check status */
+  health?: ContainerHealth;
+  /** Exit code if container has exited */
+  exitCode?: number;
 }
 
 export interface ContainerStats {

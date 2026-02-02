@@ -5,10 +5,17 @@ import { apiFetch, apiPost } from "@/lib/api";
 import { queryKeys, invalidateContainerQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
 import type { Container, ContainerStats } from "@/types";
 
-export function useContainers() {
+interface UseContainersOptions {
+  includeHealth?: boolean;
+}
+
+export function useContainers(options: UseContainersOptions = {}) {
+  const { includeHealth = false } = options;
   return useQuery({
-    queryKey: queryKeys.containers.all,
-    queryFn: () => apiFetch<Container[]>("/api/containers"),
+    queryKey: includeHealth ? queryKeys.containers.withHealth : queryKeys.containers.all,
+    queryFn: () => apiFetch<Container[]>(
+      includeHealth ? "/api/containers?includeHealth=true" : "/api/containers"
+    ),
   });
 }
 

@@ -7,6 +7,7 @@ export const queryKeys = {
   // Containers
   containers: {
     all: ["containers"] as const,
+    withHealth: ["containers", "with-health"] as const,
     detail: (id: string) => ["containers", id] as const,
     stats: (id: string) => ["containers", id, "stats"] as const,
   },

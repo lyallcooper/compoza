@@ -6,6 +6,28 @@ interface ImageUpdate {
   image: string;
   currentVersion?: string;
   latestVersion?: string;
+  currentDigest?: string;
+  latestDigest?: string;
+}
+
+/**
+ * Format the change indicator for an image update.
+ * Shows version change if available and different, otherwise falls back to digest prefix.
+ */
+function formatChange(img: ImageUpdate): string | null {
+  // Show version change if versions are different
+  if (img.currentVersion && img.latestVersion && img.currentVersion !== img.latestVersion) {
+    return `${img.currentVersion} → ${img.latestVersion}`;
+  }
+
+  // Fall back to digest prefix if we have both digests
+  if (img.currentDigest && img.latestDigest && img.currentDigest !== img.latestDigest) {
+    const current = img.currentDigest.replace("sha256:", "").slice(0, 8);
+    const latest = img.latestDigest.replace("sha256:", "").slice(0, 8);
+    return `${current} → ${latest}`;
+  }
+
+  return null;
 }
 
 interface UpdateConfirmModalProps {
@@ -67,16 +89,17 @@ export function UpdateConfirmModal({
             {images.length === 1 ? "Image to update:" : "Images to update:"}
           </div>
           <div className="space-y-1">
-            {images.map((img, idx) => (
-              <div key={`${img.image}-${idx}`} className="text-sm font-mono flex items-center gap-2">
-                <span className="truncate">{img.image}</span>
-                {img.currentVersion && img.latestVersion && img.currentVersion !== img.latestVersion && (
-                  <span className="text-accent whitespace-nowrap">
-                    {img.currentVersion} → {img.latestVersion}
-                  </span>
-                )}
-              </div>
-            ))}
+            {images.map((img, idx) => {
+              const change = formatChange(img);
+              return (
+                <div key={`${img.image}-${idx}`} className="text-sm font-mono flex items-center gap-2">
+                  <span className="truncate">{img.image}</span>
+                  {change && (
+                    <span className="text-accent whitespace-nowrap">{change}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

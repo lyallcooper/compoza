@@ -47,7 +47,7 @@ export default function ProjectsPage() {
       .map((project) => {
         // Get unique images with updates (dedupe if multiple services use same image)
         const seenImages = new Set<string>();
-        const images: { image: string; currentVersion?: string; latestVersion?: string }[] = [];
+        const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string }[] = [];
         for (const service of project.services) {
           if (service.image && updatesMap.get(service.image) && !seenImages.has(service.image)) {
             seenImages.add(service.image);
@@ -56,6 +56,8 @@ export default function ProjectsPage() {
               image: service.image,
               currentVersion: update?.currentVersion,
               latestVersion: update?.latestVersion,
+              currentDigest: update?.currentDigest,
+              latestDigest: update?.latestDigest,
             });
           }
         }

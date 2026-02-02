@@ -28,6 +28,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       hasUpdate: true,
       currentVersion: update.currentVersion,
       latestVersion: update.latestVersion,
+      currentDigest: update.currentDigest,
+      latestDigest: update.latestDigest,
     };
   }, [container, imageUpdates]);
 
@@ -304,6 +306,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             image: container.image,
             currentVersion: updateInfo?.currentVersion,
             latestVersion: updateInfo?.latestVersion,
+            currentDigest: updateInfo?.currentDigest,
+            latestDigest: updateInfo?.latestDigest,
           }]}
           isRunning={container.state === "running"}
           loading={containerUpdate.isPending}

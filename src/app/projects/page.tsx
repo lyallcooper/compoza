@@ -15,9 +15,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  DropdownMenu,
+  DropdownItem,
 } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
-import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate } from "@/hooks";
+import { useProjects, useCreateProject, useImageUpdates, useProjectUp, useProjectDown, useProjectUpdate, getProjectsWithUpdates } from "@/hooks";
 import type { Project } from "@/types";
 
 export default function ProjectsPage() {
@@ -29,42 +31,11 @@ export default function ProjectsPage() {
   // Get cached update info from server
   const { data: imageUpdates, isLoading: updatesLoading } = useImageUpdates();
 
-  // Build a map of image -> hasUpdate
-  const updatesMap = useMemo(() => {
-    const map = new Map<string, boolean>();
-    if (imageUpdates) {
-      for (const update of imageUpdates) {
-        map.set(update.image, update.updateAvailable);
-      }
-    }
-    return map;
-  }, [imageUpdates]);
-
-  // Get projects with updates and their updatable images (including version info)
-  const projectsWithUpdates = useMemo(() => {
-    if (!projects || !imageUpdates) return [];
-    return projects
-      .map((project) => {
-        // Get unique images with updates (dedupe if multiple services use same image)
-        const seenImages = new Set<string>();
-        const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string }[] = [];
-        for (const service of project.services) {
-          if (service.image && updatesMap.get(service.image) && !seenImages.has(service.image)) {
-            seenImages.add(service.image);
-            const update = imageUpdates.find((u) => u.image === service.image);
-            images.push({
-              image: service.image,
-              currentVersion: update?.currentVersion,
-              latestVersion: update?.latestVersion,
-              currentDigest: update?.currentDigest,
-              latestDigest: update?.latestDigest,
-            });
-          }
-        }
-        return { name: project.name, images };
-      })
-      .filter((p) => p.images.length > 0);
-  }, [projects, updatesMap, imageUpdates]);
+  // Get projects with updates and their updatable images
+  const projectsWithUpdates = useMemo(
+    () => getProjectsWithUpdates(projects, imageUpdates),
+    [projects, imageUpdates]
+  );
 
   const sortedProjects = useMemo(
     () => [...(projects || [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -78,7 +49,8 @@ export default function ProjectsPage() {
           <h1 className="text-xl font-semibold">Projects</h1>
           {updatesLoading && <Spinner size="sm" />}
         </div>
-        <div className="flex items-center gap-2">
+        {/* Buttons - visible on sm and up */}
+        <div className="hidden sm:flex items-center gap-2">
           {projectsWithUpdates.length > 0 && (
             <Button variant="accent" onClick={() => setShowUpdateAllModal(true)}>
               Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
@@ -87,6 +59,19 @@ export default function ProjectsPage() {
           <Button variant="primary" onClick={() => setShowCreateModal(true)}>
             + New Project…
           </Button>
+        </div>
+        {/* Dropdown menu - visible below sm */}
+        <div className="sm:hidden">
+          <DropdownMenu label="Actions">
+            {projectsWithUpdates.length > 0 && (
+              <DropdownItem variant="accent" onClick={() => setShowUpdateAllModal(true)}>
+                Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
+              </DropdownItem>
+            )}
+            <DropdownItem onClick={() => setShowCreateModal(true)}>
+              New Project…
+            </DropdownItem>
+          </DropdownMenu>
         </div>
       </div>
 

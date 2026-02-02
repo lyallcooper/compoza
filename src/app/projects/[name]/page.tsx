@@ -243,13 +243,15 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/projects" className="text-muted hover:text-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/projects" className="text-muted hover:text-foreground flex-shrink-0">
             &larr;
           </Link>
-          <h1 className="text-xl font-semibold">{project.name}</h1>
-          <ProjectStatusBadge status={project.status} />
+          <h1 className="text-xl font-semibold truncate">{project.name}</h1>
+          <span className="flex-shrink-0">
+            <ProjectStatusBadge status={project.status} compact="responsive" />
+          </span>
         </div>
 
         {/* Desktop actions */}
@@ -276,7 +278,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         </div>
 
         {/* Mobile actions dropdown */}
-        <DropdownMenu className="md:hidden">
+        <DropdownMenu className="md:hidden flex-shrink-0">
           <DropdownItem onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
             Up
           </DropdownItem>
@@ -284,6 +286,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             Down
           </DropdownItem>
           <DropdownItem
+            variant={hasUpdates ? "accent" : "default"}
             onClick={() => setShowUpdateModal(true)}
             disabled={!canUpdate}
           >

@@ -16,6 +16,8 @@ const port = parseInt(process.env.PORT || "3000", 10);
 
 // Update check interval (default: 30 minutes)
 const UPDATE_CHECK_INTERVAL = parseInt(process.env.UPDATE_CHECK_INTERVAL || "1800000", 10);
+// Timeout for update check - half the interval, minimum 2 minutes
+const UPDATE_CHECK_TIMEOUT = Math.max(UPDATE_CHECK_INTERVAL / 2, 120000);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -50,10 +52,15 @@ let updateCheckInterval: NodeJS.Timeout | null = null;
 async function runUpdateCheck() {
   console.log("[Update Check] Starting background update check...");
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPDATE_CHECK_TIMEOUT);
+
   try {
     // Trigger the API endpoint which handles the update check
     // This ensures we use the same module instance as the API routes
-    const res = await fetch(`http://${hostname}:${port}/api/images/check-updates`);
+    const res = await fetch(`http://${hostname}:${port}/api/images/check-updates`, {
+      signal: controller.signal,
+    });
     if (!res.ok) {
       throw new Error(`API returned ${res.status}`);
     }
@@ -62,7 +69,13 @@ async function runUpdateCheck() {
     const updatesAvailable = updates.filter((r: { updateAvailable: boolean }) => r.updateAvailable).length;
     console.log(`[Update Check] Complete. ${updates.length} images checked, ${updatesAvailable} updates available.`);
   } catch (error) {
-    console.error("[Update Check] Error:", error);
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error(`[Update Check] Timed out after ${UPDATE_CHECK_TIMEOUT / 1000} seconds`);
+    } else {
+      console.error("[Update Check] Error:", error);
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

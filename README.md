@@ -12,6 +12,20 @@ A TUI-inspired web application for managing Docker Compose projects, targeting h
 - **Self-Update**: Update the Compoza container itself
 - **TUI Aesthetic**: Clean, monospace design with light/dark mode support
 
+## Security
+
+**Compoza has no built-in authentication.** Any client that can reach the application has full access to manage your Docker containers and compose projects.
+
+You **must** deploy Compoza behind an authenticating reverse proxy (e.g., Traefik with Authelia, Nginx with basic auth, Cloudflare Access) or restrict network access to trusted clients only.
+
+**Security recommendations:**
+
+- **Never expose Compoza directly to the internet** without authentication
+- Use a reverse proxy with authentication (OAuth, basic auth, SSO)
+- Consider using a Docker socket proxy like [tecnativa/docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) to limit Docker API access
+- Store registry credentials (`DOCKERHUB_TOKEN`, `GHCR_TOKEN`) securely via environment variables, not in config files
+- Run Compoza on a trusted network segment
+
 ## Quick Start
 
 ### Docker Compose (Recommended)

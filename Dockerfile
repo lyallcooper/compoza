@@ -24,8 +24,9 @@ FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable pnpm
+# Install pnpm and Docker CLI (for compose operations)
+RUN corepack enable pnpm && \
+    apk add --no-cache docker-cli docker-cli-compose
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \

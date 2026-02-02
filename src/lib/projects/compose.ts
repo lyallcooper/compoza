@@ -11,7 +11,7 @@ import { log } from "@/lib/logger";
  * exposure of sensitive credentials to child processes.
  */
 function getComposeEnvironment(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {};
+  const env: Record<string, string | undefined> = {};
 
   // Essential system variables
   const systemVars = ["PATH", "HOME", "USER", "SHELL", "TERM", "LANG", "LC_ALL"];
@@ -42,7 +42,7 @@ function getComposeEnvironment(): NodeJS.ProcessEnv {
     }
   }
 
-  return env;
+  return env as NodeJS.ProcessEnv;
 }
 
 interface ComposeResult {

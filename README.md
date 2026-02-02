@@ -52,8 +52,8 @@ All configuration is via environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PROJECTS_DIR` | Directory containing Docker Compose projects | `/home/user/docker` |
-| `HOST_PROJECTS_DIR` | Path to projects as seen by Docker daemon (for remote Docker) | Same as `PROJECTS_DIR` |
+| `PROJECTS_DIR` | Path to projects inside the Compoza container | `/home/user/docker` |
+| `HOST_PROJECTS_DIR` | Path to projects on the Docker host | Same as `PROJECTS_DIR` |
 | `DOCKER_HOST` | Docker socket or TCP endpoint | `/var/run/docker.sock` |
 | `PORT` | Port to listen on | `3000` |
 | `COMPOZA_IMAGE` | Image name for self-update feature | `compoza:latest` |
@@ -74,22 +74,17 @@ Authenticated Docker Hub users get 200 requests per 6 hours. GHCR has no rate li
 
 ### Volume Mounts
 
-The simplest setup mounts the projects directory at the same path inside and outside the container:
-
-```yaml
-volumes:
-  - ${PROJECTS_DIR}:${PROJECTS_DIR}:rw
-```
-
-If you need different paths (e.g., mounting at `/projects` inside the container while the host path is `/home/user/docker`), use `HOST_PROJECTS_DIR` for path mapping:
+Mount the projects directory from the host into the container:
 
 ```yaml
 environment:
-  - PROJECTS_DIR=/projects
   - HOST_PROJECTS_DIR=/home/user/docker
+  - PROJECTS_DIR=/projects
 volumes:
-  - /home/user/docker:/projects:rw
+  - ${HOST_PROJECTS_DIR}:${PROJECTS_DIR}:rw
 ```
+
+`HOST_PROJECTS_DIR` is the path on the Docker host, `PROJECTS_DIR` is the path inside the container. If both are the same, you only need to set `PROJECTS_DIR` (since `HOST_PROJECTS_DIR` defaults to it).
 
 ### Docker Socket Access
 

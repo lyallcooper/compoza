@@ -38,8 +38,30 @@ interface OciImageConfig {
   };
 }
 
-// Cache tokens per registry/scope
+// Cache tokens per registry/scope with bounded size
+const TOKEN_CACHE_MAX_SIZE = 100;
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+
+/**
+ * Set a token in the cache, evicting oldest entries if cache is full.
+ */
+function setToken(key: string, token: string, expiresAt: number) {
+  // Evict expired tokens first
+  const now = Date.now();
+  for (const [k, v] of tokenCache) {
+    if (v.expiresAt < now) {
+      tokenCache.delete(k);
+    }
+  }
+
+  // If still at max size, delete the oldest entry (first in Map iteration order)
+  if (tokenCache.size >= TOKEN_CACHE_MAX_SIZE) {
+    const firstKey = tokenCache.keys().next().value;
+    if (firstKey) tokenCache.delete(firstKey);
+  }
+
+  tokenCache.set(key, { token, expiresAt });
+}
 
 /**
  * OCI Distribution API client.
@@ -150,22 +172,31 @@ export class OciClient implements RegistryClient {
 
   /**
    * Fetch with automatic anonymous token authentication.
+   * Handles the common pattern of: try with cached token, handle 401, retry with fresh token.
    */
-  private async fetchWithAuth(url: string, scope: string): Promise<Response> {
+  private async fetchWithAuth(
+    url: string,
+    scope: string,
+    options: {
+      method?: "GET" | "HEAD";
+      accept?: string;
+      timeoutMs?: number;
+    } = {}
+  ): Promise<Response> {
+    const { method = "GET", accept = "application/json", timeoutMs = 10000 } = options;
+
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       // Try with cached token first
       const cachedToken = this.getCachedToken(scope);
-      const headers: Record<string, string> = {
-        "Accept": "application/json",
-      };
+      const headers: Record<string, string> = { "Accept": accept };
       if (cachedToken) {
         headers["Authorization"] = `Bearer ${cachedToken}`;
       }
 
-      const response = await fetch(url, { headers, signal: controller.signal });
+      const response = await fetch(url, { method, headers, signal: controller.signal });
 
       // If unauthorized, try to get a token
       if (response.status === 401) {
@@ -173,13 +204,11 @@ export class OciClient implements RegistryClient {
         if (token) {
           // Retry with token
           const retryController = new AbortController();
-          const retryTimeout = setTimeout(() => retryController.abort(), 10000);
+          const retryTimeout = setTimeout(() => retryController.abort(), timeoutMs);
           try {
             return await fetch(url, {
-              headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`,
-              },
+              method,
+              headers: { "Accept": accept, "Authorization": `Bearer ${token}` },
               signal: retryController.signal,
             });
           } finally {
@@ -247,10 +276,7 @@ export class OciClient implements RegistryClient {
         const data: TokenResponse = await tokenRes.json();
 
         // Cache the token for 5 minutes
-        tokenCache.set(scope, {
-          token: data.token,
-          expiresAt: Date.now() + 5 * 60 * 1000,
-        });
+        setToken(scope, data.token, Date.now() + 5 * 60 * 1000);
 
         return data.token;
       } finally {
@@ -273,63 +299,30 @@ export class OciClient implements RegistryClient {
     return null;
   }
 
+  private static readonly MANIFEST_ACCEPT = [
+    "application/vnd.oci.image.index.v1+json",
+    "application/vnd.docker.distribution.manifest.list.v2+json",
+    "application/vnd.oci.image.manifest.v1+json",
+    "application/vnd.docker.distribution.manifest.v2+json",
+  ].join(", ");
+
   /**
    * Get the digest for a specific tag by fetching its manifest.
    */
   private async getManifestDigest(name: string, tag: string): Promise<string | null> {
     const url = `${this.baseUrl}/v2/${name}/manifests/${tag}`;
-    const acceptHeader = [
-      "application/vnd.oci.image.index.v1+json",
-      "application/vnd.docker.distribution.manifest.list.v2+json",
-      "application/vnd.oci.image.manifest.v1+json",
-      "application/vnd.docker.distribution.manifest.v2+json",
-    ].join(", ");
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await this.fetchWithAuth(url, name, {
+      method: "HEAD",
+      accept: OciClient.MANIFEST_ACCEPT,
+      timeoutMs: 5000,
+    });
 
-    try {
-      const cachedToken = this.getCachedToken(name);
-      const headers: Record<string, string> = { "Accept": acceptHeader };
-      if (cachedToken) {
-        headers["Authorization"] = `Bearer ${cachedToken}`;
-      }
-
-      let response = await fetch(url, {
-        method: "HEAD",
-        headers,
-        signal: controller.signal,
-      });
-
-      // If unauthorized, try to get a token and retry
-      if (response.status === 401) {
-        const token = await this.getAnonymousToken(response, name);
-        if (token) {
-          const retryController = new AbortController();
-          const retryTimeout = setTimeout(() => retryController.abort(), 5000);
-          try {
-            response = await fetch(url, {
-              method: "HEAD",
-              headers: {
-                "Accept": acceptHeader,
-                "Authorization": `Bearer ${token}`,
-              },
-              signal: retryController.signal,
-            });
-          } finally {
-            clearTimeout(retryTimeout);
-          }
-        }
-      }
-
-      if (!response.ok) {
-        return null;
-      }
-
-      return response.headers.get("docker-content-digest");
-    } finally {
-      clearTimeout(timeout);
+    if (!response.ok) {
+      return null;
     }
+
+    return response.headers.get("docker-content-digest");
   }
 
   /**
@@ -391,49 +384,18 @@ export class OciClient implements RegistryClient {
    */
   private async fetchManifest(name: string, reference: string): Promise<OciManifest | null> {
     const url = `${this.baseUrl}/v2/${name}/manifests/${reference}`;
-    const acceptHeader = [
-      "application/vnd.oci.image.index.v1+json",
-      "application/vnd.docker.distribution.manifest.list.v2+json",
-      "application/vnd.oci.image.manifest.v1+json",
-      "application/vnd.docker.distribution.manifest.v2+json",
-    ].join(", ");
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const response = await this.fetchWithAuth(url, name, {
+      accept: OciClient.MANIFEST_ACCEPT,
+    });
 
-    try {
-      const cachedToken = this.getCachedToken(name);
-      const headers: Record<string, string> = { "Accept": acceptHeader };
-      if (cachedToken) {
-        headers["Authorization"] = `Bearer ${cachedToken}`;
-      }
+    if (!response.ok) return null;
 
-      let response = await fetch(url, { headers, signal: controller.signal });
-
-      // Handle auth retry
-      if (response.status === 401) {
-        const token = await this.getAnonymousToken(response, name);
-        if (token) {
-          const retryController = new AbortController();
-          const retryTimeout = setTimeout(() => retryController.abort(), 10000);
-          try {
-            response = await fetch(url, {
-              headers: { ...headers, "Authorization": `Bearer ${token}` },
-              signal: retryController.signal,
-            });
-          } finally {
-            clearTimeout(retryTimeout);
-          }
-        }
-      }
-
-      if (!response.ok) return null;
-
-      return await response.json();
-    } finally {
-      clearTimeout(timeout);
-    }
+    return await response.json();
   }
+
+  private static readonly CONFIG_ACCEPT =
+    "application/vnd.oci.image.config.v1+json, application/vnd.docker.container.image.v1+json";
 
   /**
    * Fetch the image config blob and extract version from labels.
@@ -441,53 +403,23 @@ export class OciClient implements RegistryClient {
   private async getVersionFromConfig(name: string, configDigest: string): Promise<string | null> {
     const url = `${this.baseUrl}/v2/${name}/blobs/${configDigest}`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const response = await this.fetchWithAuth(url, name, {
+      accept: OciClient.CONFIG_ACCEPT,
+    });
 
-    try {
-      const cachedToken = this.getCachedToken(name);
-      const headers: Record<string, string> = {
-        "Accept": "application/vnd.oci.image.config.v1+json, application/vnd.docker.container.image.v1+json",
-      };
-      if (cachedToken) {
-        headers["Authorization"] = `Bearer ${cachedToken}`;
+    if (!response.ok) return null;
+
+    const config: OciImageConfig = await response.json();
+    const labels = config.config?.Labels;
+
+    if (labels) {
+      const version = this.extractVersionFromAnnotations(labels);
+      if (version) {
+        return version;
       }
-
-      let response = await fetch(url, { headers, signal: controller.signal });
-
-      // Handle auth retry
-      if (response.status === 401) {
-        const token = await this.getAnonymousToken(response, name);
-        if (token) {
-          const retryController = new AbortController();
-          const retryTimeout = setTimeout(() => retryController.abort(), 10000);
-          try {
-            response = await fetch(url, {
-              headers: { ...headers, "Authorization": `Bearer ${token}` },
-              signal: retryController.signal,
-            });
-          } finally {
-            clearTimeout(retryTimeout);
-          }
-        }
-      }
-
-      if (!response.ok) return null;
-
-      const config: OciImageConfig = await response.json();
-      const labels = config.config?.Labels;
-
-      if (labels) {
-        const version = this.extractVersionFromAnnotations(labels);
-        if (version) {
-          return version;
-        }
-      }
-
-      return null;
-    } finally {
-      clearTimeout(timeout);
     }
+
+    return null;
   }
 
   /**

@@ -13,7 +13,7 @@ interface DropdownItemProps {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
-  variant?: "default" | "danger";
+  variant?: "default" | "danger" | "accent";
   loading?: boolean;
 }
 
@@ -50,6 +50,7 @@ export function DropdownMenu({ label = "Actions", children, className = "" }: Dr
         onClick={() => setOpen(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
+        className="whitespace-nowrap"
       >
         {label} <span className="ml-1" aria-hidden="true">{open ? "▴" : "▾"}</span>
       </Button>
@@ -69,7 +70,11 @@ export function DropdownMenu({ label = "Actions", children, className = "" }: Dr
 }
 
 export function DropdownItem({ children, onClick, disabled, variant = "default", loading }: DropdownItemProps) {
-  const variantClasses = variant === "danger" ? "text-error hover:bg-error-muted" : "hover:bg-surface";
+  const variantClasses = {
+    default: "hover:bg-surface",
+    danger: "text-error hover:bg-error-muted",
+    accent: "text-accent hover:bg-accent-muted",
+  }[variant];
 
   return (
     <button

@@ -19,21 +19,24 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const restartContainer = useRestartContainer();
   const containerUpdate = useContainerUpdate();
 
-  // Check if this container has an update available and get version info
-  const updateInfo = useMemo(() => {
+  // Get current image info (digest and version) from update cache
+  const imageInfo = useMemo(() => {
     if (!container?.image || !imageUpdates) return null;
     const update = imageUpdates.find((u) => u.image === container.image);
-    if (!update?.updateAvailable) return null;
+    if (!update) return null;
     return {
-      hasUpdate: true,
-      currentVersion: update.currentVersion,
-      latestVersion: update.latestVersion,
       currentDigest: update.currentDigest,
+      currentVersion: update.currentVersion,
       latestDigest: update.latestDigest,
+      latestVersion: update.latestVersion,
+      updateAvailable: update.updateAvailable,
     };
   }, [container, imageUpdates]);
 
-  const hasUpdate = updateInfo?.hasUpdate ?? false;
+  const hasUpdate = imageInfo?.updateAvailable ?? false;
+
+  // Build update info for the modal (only when update available)
+  const updateInfo = hasUpdate ? imageInfo : null;
 
   // Use domain model's computed actions
   const canUpdate = container?.actions.canUpdate && hasUpdate;
@@ -237,6 +240,22 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 </SelectableText>
               </div>
             </div>
+            {imageInfo?.currentDigest && (
+              <div>
+                <div className="text-muted">Digest</div>
+                <div className="font-mono text-xs">
+                  <SelectableText>
+                    <TruncatedText text={imageInfo.currentDigest} maxLength={24} />
+                  </SelectableText>
+                </div>
+              </div>
+            )}
+            {imageInfo?.currentVersion && (
+              <div>
+                <div className="text-muted">Version</div>
+                <div>{imageInfo.currentVersion}</div>
+              </div>
+            )}
             <div>
               <div className="text-muted">Created</div>
               <div>{formatDateTime(new Date(container.created * 1000))}</div>

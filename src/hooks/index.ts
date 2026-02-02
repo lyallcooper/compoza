@@ -20,7 +20,8 @@ export {
   useContainerUpdate,
 } from "./use-containers";
 export { useImages, usePullImage } from "./use-images";
-export { useImageUpdates } from "./use-image-updates";
+export { useImageUpdates, getProjectsWithUpdates } from "./use-image-updates";
+export type { ProjectWithUpdates } from "./use-image-updates";
 export { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 export { useUpdateAllProjects } from "./use-update-all-projects";
 export type { ProjectProgress } from "./use-update-all-projects";

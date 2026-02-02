@@ -1,8 +1,49 @@
 import { spawn } from "child_process";
 import { writeFile, mkdir, access, rm } from "fs/promises";
 import { join } from "path";
-import { getProjectsDir, getProject, toHostPath } from "./scanner";
+import { getProjectsDir, getProject, toHostPath, isValidProjectName } from "./scanner";
 import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
+import { log } from "@/lib/logger";
+
+/**
+ * Build a filtered environment for Docker Compose subprocesses.
+ * Only passes through variables that Docker Compose needs, avoiding
+ * exposure of sensitive credentials to child processes.
+ */
+function getComposeEnvironment(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+
+  // Essential system variables
+  const systemVars = ["PATH", "HOME", "USER", "SHELL", "TERM", "LANG", "LC_ALL"];
+  for (const key of systemVars) {
+    if (process.env[key]) {
+      env[key] = process.env[key];
+    }
+  }
+
+  // Docker-specific variables
+  const dockerVars = [
+    "DOCKER_HOST",
+    "DOCKER_TLS_VERIFY",
+    "DOCKER_CERT_PATH",
+    "DOCKER_CONFIG",
+    "DOCKER_BUILDKIT",
+  ];
+  for (const key of dockerVars) {
+    if (process.env[key]) {
+      env[key] = process.env[key];
+    }
+  }
+
+  // Docker Compose specific variables (COMPOSE_*)
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("COMPOSE_")) {
+      env[key] = process.env[key];
+    }
+  }
+
+  return env;
+}
 
 interface ComposeResult {
   success: boolean;
@@ -59,13 +100,12 @@ async function runComposeCommand(
   const { args: composeArgs, cleanup } = await prepareComposeCommand(projectPath, composeFile);
   composeArgs.push(...args);
 
-  console.log(`[Compose] Running: docker ${composeArgs.join(" ")}`);
-  console.log(`[Compose] CWD: ${projectPath}`);
+  log.compose.debug("Running command", { command: `docker ${composeArgs.join(" ")}`, cwd: projectPath });
 
   return new Promise((resolve) => {
     const proc = spawn("docker", composeArgs, {
       cwd: projectPath,
-      env: { ...process.env },
+      env: getComposeEnvironment(),
     });
 
     let output = "";
@@ -84,9 +124,10 @@ async function runComposeCommand(
     });
 
     proc.on("close", async (code) => {
-      console.log(`[Compose] Exit code: ${code}`);
       if (code !== 0) {
-        console.log(`[Compose] Error output: ${output}`);
+        log.compose.warn("Command failed", { exitCode: code, output: output.slice(0, 500) });
+      } else {
+        log.compose.debug("Command completed", { exitCode: code });
       }
       if (cleanup) {
         await cleanup();
@@ -99,7 +140,7 @@ async function runComposeCommand(
     });
 
     proc.on("error", async (err) => {
-      console.log(`[Compose] Spawn error: ${err.message}`);
+      log.compose.error("Spawn error", err);
       if (cleanup) {
         await cleanup();
       }
@@ -212,7 +253,7 @@ async function* streamComposeCommand(
 
   const proc = spawn("docker", composeArgs, {
     cwd: projectPath,
-    env: { ...process.env },
+    env: getComposeEnvironment(),
   });
 
   const lines: string[] = [];
@@ -291,6 +332,10 @@ export async function saveComposeFile(projectName: string, content: string): Pro
 }
 
 export async function saveEnvFile(projectName: string, content: string): Promise<ComposeResult> {
+  if (!isValidProjectName(projectName)) {
+    return { success: false, output: "", error: "Invalid project name" };
+  }
+
   const projectsDir = getProjectsDir();
   const envPath = join(projectsDir, projectName, ".env");
 
@@ -307,6 +352,10 @@ export async function createProject(
   composeContent: string,
   envContent?: string
 ): Promise<ComposeResult> {
+  if (!isValidProjectName(name)) {
+    return { success: false, output: "", error: "Invalid project name" };
+  }
+
   const projectsDir = getProjectsDir();
   const projectPath = join(projectsDir, name);
   const composePath = join(projectPath, "compose.yaml");

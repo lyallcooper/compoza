@@ -6,6 +6,20 @@ import { listContainers } from "@/lib/docker";
 
 const COMPOSE_FILENAMES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 
+/**
+ * Valid project name pattern: alphanumeric, hyphens, underscores only.
+ * Prevents path traversal attacks (e.g., "../../../etc/passwd").
+ */
+const VALID_PROJECT_NAME = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * Validate a project name to prevent path traversal.
+ * Returns true if the name is safe to use in file paths.
+ */
+export function isValidProjectName(name: string): boolean {
+  return VALID_PROJECT_NAME.test(name) && name.length > 0 && name.length <= 255;
+}
+
 export function getProjectsDir(): string {
   return process.env.PROJECTS_DIR || "/home/user/docker";
 }
@@ -39,23 +53,33 @@ export function toHostPath(localPath: string): string {
 
 export async function scanProjects(): Promise<Project[]> {
   const projectsDir = getProjectsDir();
-  const projects: Project[] = [];
 
   try {
     const entries = await readdir(projectsDir, { withFileTypes: true });
     const containers = await listContainers(true);
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name.startsWith(".")) continue;
+    // Filter to valid project directories
+    const projectDirs = entries.filter(
+      (entry) => entry.isDirectory() && !entry.name.startsWith(".")
+    );
 
-      const projectPath = join(projectsDir, entry.name);
-      const composeFile = await findComposeFile(projectPath);
+    // Process projects in parallel with concurrency limit
+    const CONCURRENCY = 10;
+    const projects: Project[] = [];
 
-      if (composeFile) {
-        const project = await buildProject(entry.name, projectPath, composeFile, containers);
-        projects.push(project);
-      }
+    for (let i = 0; i < projectDirs.length; i += CONCURRENCY) {
+      const batch = projectDirs.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(async (entry) => {
+          const projectPath = join(projectsDir, entry.name);
+          const composeFile = await findComposeFile(projectPath);
+          if (composeFile) {
+            return buildProject(entry.name, projectPath, composeFile, containers);
+          }
+          return null;
+        })
+      );
+      projects.push(...batchResults.filter((p): p is Project => p !== null));
     }
 
     return projects.sort((a, b) => a.name.localeCompare(b.name));
@@ -133,6 +157,11 @@ async function buildProject(
 }
 
 export async function getProject(name: string): Promise<Project | null> {
+  if (!isValidProjectName(name)) {
+    console.warn(`[Projects] Invalid project name rejected: ${name}`);
+    return null;
+  }
+
   const projectsDir = getProjectsDir();
   const projectPath = join(projectsDir, name);
 
@@ -164,6 +193,11 @@ export async function readComposeFile(projectName: string): Promise<string | nul
 }
 
 export async function readEnvFile(projectName: string): Promise<string | null> {
+  if (!isValidProjectName(projectName)) {
+    console.warn(`[Projects] Invalid project name rejected: ${projectName}`);
+    return null;
+  }
+
   const projectsDir = getProjectsDir();
   const envPath = join(projectsDir, projectName, ".env");
 

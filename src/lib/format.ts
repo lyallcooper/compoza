@@ -24,3 +24,24 @@ export function formatDate(date: Date): string {
 export function formatTime(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
+
+/**
+ * Format bytes into human-readable format: "1.5 GB"
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
+}
+
+/**
+ * Extract short ID from Docker image/container ID: "sha256:abc123..." -> "abc123..."
+ */
+export function formatShortId(id: string): string {
+  const hash = id.replace(/^sha256:/, "");
+  return hash.slice(0, 12);
+}

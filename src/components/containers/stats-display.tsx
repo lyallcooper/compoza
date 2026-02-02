@@ -1,6 +1,7 @@
 "use client";
 
 import type { ContainerStats } from "@/types";
+import { formatBytes } from "@/lib/format";
 
 interface StatsDisplayProps {
   stats: ContainerStats;
@@ -34,14 +35,4 @@ export function StatsDisplay({ stats }: StatsDisplayProps) {
       </div>
     </div>
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
 }

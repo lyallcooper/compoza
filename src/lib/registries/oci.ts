@@ -41,6 +41,20 @@ interface OciImageConfig {
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 /**
+ * Get Docker Hub credentials from environment variables.
+ * Uses DOCKERHUB_USERNAME + DOCKERHUB_TOKEN for authenticated API access.
+ */
+function getDockerHubCredentials(): { username: string; token: string } | null {
+  const username = process.env.DOCKERHUB_USERNAME;
+  const token = process.env.DOCKERHUB_TOKEN;
+
+  if (username && token) {
+    return { username, token };
+  }
+  return null;
+}
+
+/**
  * OCI Distribution API client.
  * Works with GHCR, lscr.io, and other OCI-compliant registries.
  * Handles anonymous token authentication for public images.
@@ -227,7 +241,15 @@ export class OciClient implements RegistryClient {
       const timeout = setTimeout(() => controller.abort(), 5000);
 
       try {
+        // Use credentials if available (increases Docker Hub rate limits)
+        const headers: Record<string, string> = {};
+        const creds = getDockerHubCredentials();
+        if (creds && realm.includes("docker")) {
+          headers["Authorization"] = `Basic ${Buffer.from(`${creds.username}:${creds.token}`).toString("base64")}`;
+        }
+
         const tokenRes = await fetch(tokenUrl.toString(), {
+          headers,
           signal: controller.signal,
         });
 

@@ -299,7 +299,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           onClose={() => setShowUpdateModal(false)}
           onConfirm={handleUpdate}
           title={`Update ${container.name}`}
-          projectName={container.projectName}
           serviceName={container.serviceName}
           images={[{
             image: container.image,

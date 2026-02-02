@@ -13,8 +13,6 @@ interface UpdateConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  /** Project name for compose commands */
-  projectName: string;
   /** Service name if updating a single service (container update) */
   serviceName?: string;
   /** Images being updated with version info */
@@ -30,18 +28,12 @@ export function UpdateConfirmModal({
   onClose,
   onConfirm,
   title,
-  projectName,
   serviceName,
   images,
   isRunning,
   loading,
 }: UpdateConfirmModalProps) {
-  // Build the commands that will be run
-  const serviceArg = serviceName ? ` ${serviceName}` : "";
-  const commands = [
-    `docker compose -p ${projectName} pull${serviceArg}`,
-    ...(isRunning ? [`docker compose -p ${projectName} up -d${serviceArg}`] : []),
-  ];
+  const target = serviceName ? "service" : "project";
 
   return (
     <Modal
@@ -79,22 +71,12 @@ export function UpdateConfirmModal({
           </div>
         </div>
 
-        {/* Commands to run */}
-        <div>
-          <div className="text-sm text-muted mb-2">Commands:</div>
-          <div className="bg-surface border border-border p-2 font-mono text-xs space-y-1">
-            {commands.map((cmd, idx) => (
-              <div key={idx} className="text-foreground">
-                $ {cmd}
-              </div>
-            ))}
-          </div>
-          {!isRunning && (
-            <div className="text-xs text-muted mt-1">
-              Container is not running, so it will not be restarted.
-            </div>
-          )}
-        </div>
+        {/* Description of what will happen */}
+        <p className="text-sm text-muted">
+          {isRunning
+            ? `This will pull the latest image${images.length > 1 ? "s" : ""} and recreate the ${target}.`
+            : `This will pull the latest image${images.length > 1 ? "s" : ""}. The ${target} is not running, so it will not be restarted.`}
+        </p>
       </div>
     </Modal>
   );

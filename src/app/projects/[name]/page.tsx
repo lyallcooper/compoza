@@ -434,7 +434,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           onClose={() => setShowUpdateModal(false)}
           onConfirm={handleUpdate}
           title={`Update ${project.name}`}
-          projectName={project.name}
           images={updatableImages}
           isRunning={project.status === "running" || project.status === "partial"}
           loading={projectUpdate.isPending}

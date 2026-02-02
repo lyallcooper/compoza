@@ -224,7 +224,6 @@ function ProjectRow({
           onClose={() => setShowUpdateModal(false)}
           onConfirm={handleUpdate}
           title={`Update ${project.name}`}
-          projectName={project.name}
           images={updatableImages}
           isRunning={isRunning}
           loading={projectUpdate.isPending}

@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { writeFile, mkdir, access, rm } from "fs/promises";
 import { join } from "path";
-import { getProjectsDir, getProject, toDockerPath } from "./scanner";
+import { getProjectsDir, getProject, toHostPath } from "./scanner";
 import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
 
 interface ComposeResult {
@@ -19,7 +19,7 @@ async function prepareComposeCommand(
   projectPath: string,
   composeFile?: string
 ): Promise<PreparedComposeCommand> {
-  const dockerPath = toDockerPath(projectPath);
+  const hostPath = toHostPath(projectPath);
   const needsPreprocessing = isPathMappingActive() && composeFile;
 
   let effectiveComposeFile = composeFile;
@@ -33,7 +33,7 @@ async function prepareComposeCommand(
 
   const args = ["compose"];
 
-  if (dockerPath !== projectPath) {
+  if (hostPath !== projectPath) {
     if (effectiveComposeFile) {
       args.push("-f", effectiveComposeFile);
     }
@@ -44,7 +44,7 @@ async function prepareComposeCommand(
     } catch {
       // No .env file, that's fine
     }
-    args.push("--project-directory", dockerPath);
+    args.push("--project-directory", hostPath);
   }
 
   return { args, cleanup };

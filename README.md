@@ -53,7 +53,7 @@ All configuration is via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PROJECTS_DIR` | Directory containing Docker Compose projects | `/home/user/docker` |
-| `DOCKER_PROJECTS_DIR` | Path to projects as seen by Docker daemon (for remote Docker) | Same as `PROJECTS_DIR` |
+| `HOST_PROJECTS_DIR` | Path to projects as seen by Docker daemon (for remote Docker) | Same as `PROJECTS_DIR` |
 | `DOCKER_HOST` | Docker socket or TCP endpoint | `/var/run/docker.sock` |
 | `PORT` | Port to listen on | `3000` |
 | `COMPOZA_IMAGE` | Image name for self-update feature | `compoza:latest` |
@@ -81,12 +81,12 @@ volumes:
   - ${PROJECTS_DIR}:${PROJECTS_DIR}:rw
 ```
 
-If you need different paths (e.g., mounting at `/projects` inside the container while the host path is `/home/user/docker`), use `DOCKER_PROJECTS_DIR` for path mapping:
+If you need different paths (e.g., mounting at `/projects` inside the container while the host path is `/home/user/docker`), use `HOST_PROJECTS_DIR` for path mapping:
 
 ```yaml
 environment:
   - PROJECTS_DIR=/projects
-  - DOCKER_PROJECTS_DIR=/home/user/docker
+  - HOST_PROJECTS_DIR=/home/user/docker
 volumes:
   - /home/user/docker:/projects:rw
 ```
@@ -104,15 +104,15 @@ For better security, consider using a Docker socket proxy like [tecnativa/docker
 
 ### Remote Docker Host
 
-When connecting to a remote Docker host, use `DOCKER_PROJECTS_DIR` to map between local and remote paths:
+When connecting to a remote Docker host, use `HOST_PROJECTS_DIR` to map between local and remote paths:
 
 ```env
 PROJECTS_DIR=/Volumes/server/docker
-DOCKER_PROJECTS_DIR=/home/user/docker
+HOST_PROJECTS_DIR=/home/user/docker
 DOCKER_HOST=tcp://your-server:2375
 ```
 
-Compoza reads files from `PROJECTS_DIR` and translates paths to `DOCKER_PROJECTS_DIR` when running compose commands on the remote Docker daemon.
+Compoza reads files from `PROJECTS_DIR` and translates paths to `HOST_PROJECTS_DIR` when running compose commands on the remote Docker daemon.
 
 ## Keyboard Shortcuts
 

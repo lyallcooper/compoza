@@ -1,4 +1,4 @@
-export { getProjectsDir, getDockerProjectsDir, toDockerPath, scanProjects, getProject, readComposeFile, readEnvFile } from "./scanner";
+export { getProjectsDir, getHostProjectsDir, toHostPath, scanProjects, getProject, readComposeFile, readEnvFile } from "./scanner";
 export {
   composeUp,
   composeDown,

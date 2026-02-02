@@ -2,7 +2,7 @@ import { readFile, writeFile, unlink, mkdtemp, rmdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join, isAbsolute, resolve } from "path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { getProjectsDir, getDockerProjectsDir, toDockerPath } from "./scanner";
+import { getProjectsDir, getHostProjectsDir, toHostPath } from "./scanner";
 
 interface PreprocessResult {
   tempFile: string;
@@ -33,7 +33,7 @@ interface ComposeConfig {
 }
 
 export function isPathMappingActive(): boolean {
-  return getProjectsDir() !== getDockerProjectsDir();
+  return getProjectsDir() !== getHostProjectsDir();
 }
 
 function toAbsoluteLocalPath(relativePath: string, projectDir: string): string {
@@ -41,17 +41,17 @@ function toAbsoluteLocalPath(relativePath: string, projectDir: string): string {
   return resolve(projectDir, relativePath);
 }
 
-function toAbsoluteDockerPath(relativePath: string, projectDir: string): string {
+function toAbsoluteHostPath(relativePath: string, projectDir: string): string {
   if (isAbsolute(relativePath)) {
     // If absolute and within PROJECTS_DIR, translate it
     const localBase = getProjectsDir();
     if (relativePath.startsWith(localBase)) {
-      return toDockerPath(relativePath);
+      return toHostPath(relativePath);
     }
     return relativePath;
   }
   const absoluteLocal = resolve(projectDir, relativePath);
-  return toDockerPath(absoluteLocal);
+  return toHostPath(absoluteLocal);
 }
 
 function rewriteEnvFiles(
@@ -86,13 +86,13 @@ function rewriteVolumes(
     // Long syntax (object with type: "bind")
     if (typeof volume === "object" && volume !== null) {
       if (volume.type === "bind" && volume.source && !isAbsolute(volume.source)) {
-        return { ...volume, source: toAbsoluteDockerPath(volume.source, projectDir) };
+        return { ...volume, source: toAbsoluteHostPath(volume.source, projectDir) };
       }
       // If source is absolute and within PROJECTS_DIR, translate it
       if (volume.type === "bind" && volume.source && isAbsolute(volume.source)) {
         const localBase = getProjectsDir();
         if (volume.source.startsWith(localBase)) {
-          return { ...volume, source: toDockerPath(volume.source) };
+          return { ...volume, source: toHostPath(volume.source) };
         }
       }
       return volume;
@@ -113,12 +113,12 @@ function rewriteVolumes(
       if (isAbsolute(source)) {
         const localBase = getProjectsDir();
         if (source.startsWith(localBase)) {
-          return toDockerPath(source) + rest;
+          return toHostPath(source) + rest;
         }
         return volume;
       }
 
-      return toAbsoluteDockerPath(source, projectDir) + rest;
+      return toAbsoluteHostPath(source, projectDir) + rest;
     }
 
     return volume;

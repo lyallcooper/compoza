@@ -11,27 +11,27 @@ export function getProjectsDir(): string {
 }
 
 /**
- * Get the projects directory as seen by the Docker daemon.
- * Used when running compose commands with a remote Docker host.
+ * Get the projects directory as seen by the Docker host.
+ * Used for path translation when Compoza's path differs from the host's.
  * Defaults to PROJECTS_DIR if not set.
  */
-export function getDockerProjectsDir(): string {
-  return process.env.DOCKER_PROJECTS_DIR || getProjectsDir();
+export function getHostProjectsDir(): string {
+  return process.env.HOST_PROJECTS_DIR || getProjectsDir();
 }
 
 /**
- * Translate a local project path to the path as seen by Docker daemon.
+ * Translate a local project path to the path as seen by the Docker host.
  */
-export function toDockerPath(localPath: string): string {
+export function toHostPath(localPath: string): string {
   const localBase = getProjectsDir();
-  const dockerBase = getDockerProjectsDir();
+  const hostBase = getHostProjectsDir();
 
-  if (localBase === dockerBase) {
+  if (localBase === hostBase) {
     return localPath;
   }
 
   if (localPath.startsWith(localBase)) {
-    return dockerBase + localPath.slice(localBase.length);
+    return hostBase + localPath.slice(localBase.length);
   }
 
   return localPath;

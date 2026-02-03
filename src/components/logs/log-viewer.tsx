@@ -6,6 +6,7 @@ import { useEventSource } from "@/hooks";
 import { formatTime } from "@/lib/format";
 
 const MAX_LOG_LINES = 10000;
+const SCROLL_THRESHOLD = 50;
 
 interface LogMessage {
   line?: string;
@@ -19,14 +20,19 @@ interface LogViewerProps {
 
 export function LogViewer({ url, className = "" }: LogViewerProps) {
   const [logs, setLogs] = useState<string[]>([]);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isFollowingRef = useRef(true);
+
+  // Check if scrolled to bottom
+  const isAtBottom = useCallback(() => {
+    if (!containerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    return scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD;
+  }, []);
 
   const handleMessage = useCallback((data: LogMessage) => {
-    if (data.error) {
-      // Error is handled by the hook's error state
-      return;
-    }
+    if (data.error) return;
     if (data.line) {
       setLogs((prev) => {
         const newLogs = [...prev, data.line!];
@@ -35,9 +41,10 @@ export function LogViewer({ url, className = "" }: LogViewerProps) {
     }
   }, []);
 
-  // Clear logs when connection opens (happens on URL change due to new EventSource)
   const handleOpen = useCallback(() => {
     setLogs([]);
+    setIsFollowing(true);
+    isFollowingRef.current = true;
   }, []);
 
   const { connected, error } = useEventSource<LogMessage>({
@@ -46,19 +53,21 @@ export function LogViewer({ url, className = "" }: LogViewerProps) {
     onOpen: handleOpen,
   });
 
-  // Auto-scroll
+  // Auto-scroll when following and new logs arrive
   useEffect(() => {
-    if (autoScroll && containerRef.current) {
+    if (isFollowingRef.current && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [logs, autoScroll]);
+  }, [logs]);
 
-  const handleScroll = () => {
-    if (!containerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-    setAutoScroll(isAtBottom);
-  };
+  // Handle user scroll - detach when scrolling up, reattach at bottom
+  const handleScroll = useCallback(() => {
+    const atBottom = isAtBottom();
+    if (atBottom !== isFollowingRef.current) {
+      isFollowingRef.current = atBottom;
+      setIsFollowing(atBottom);
+    }
+  }, [isAtBottom]);
 
   const handleClear = () => {
     setLogs([]);
@@ -82,11 +91,18 @@ export function LogViewer({ url, className = "" }: LogViewerProps) {
           <label className="flex items-center gap-1 text-sm text-muted">
             <input
               type="checkbox"
-              checked={autoScroll}
-              onChange={(e) => setAutoScroll(e.target.checked)}
+              checked={isFollowing}
+              onChange={(e) => {
+                const follow = e.target.checked;
+                isFollowingRef.current = follow;
+                setIsFollowing(follow);
+                if (follow && containerRef.current) {
+                  containerRef.current.scrollTop = containerRef.current.scrollHeight;
+                }
+              }}
               className="accent-accent"
             />
-            Auto-scroll
+            Follow
           </label>
           <Button size="sm" onClick={handleClear}>
             Clear

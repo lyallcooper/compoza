@@ -4,7 +4,7 @@ import { useState, useEffect, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Box, Button, Badge, Spinner, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast } from "@/components/ui";
+import { Box, Button, Badge, Spinner, Modal, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast, ResponsiveTable, ColumnDef } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { YamlEditor, EnvEditor, UpdateConfirmModal } from "@/components/projects";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useImageUpdates, useProjectCompose, useProjectEnv, useBackgroundProjectUpdate } from "@/hooks";
@@ -317,49 +317,76 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
       {/* Services */}
       <Box title="Services" padding={false}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Service</TableHead>
-              <TableHead className="hidden sm:table-cell">Image</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden sm:table-cell">Ports</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {project.services.map((service) => (
-              <TableRow
-                key={service.name}
-                clickable={!!service.containerName}
-                onClick={service.containerName ? () => router.push(`/containers/${encodeURIComponent(service.containerName!)}`) : undefined}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{service.name}</span>
-                    {service.image && updatesMap.get(service.image) && (
-                      <Badge variant="accent">update</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell text-muted font-mono text-xs">
-                  <TruncatedText text={service.image || "-"} maxLength={50} />
-                </TableCell>
-                <TableCell>
-                  <ContainerStateBadge state={service.status} />
-                </TableCell>
-                <TableCell className="hidden sm:table-cell text-muted text-xs">
-                  <PortsList ports={service.ports || []} />
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  {service.containerId && (
-                    <ContainerActions containerId={service.containerId} state={service.status} />
+        <ResponsiveTable
+          data={project.services}
+          keyExtractor={(s) => s.name}
+          onRowClick={(s) => s.containerName ? router.push(`/containers/${encodeURIComponent(s.containerName)}`) : undefined}
+          columns={[
+            {
+              key: "service",
+              header: "Service",
+              cardPosition: "header",
+              render: (s) => (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{s.name}</span>
+                  {s.image && updatesMap.get(s.image) && (
+                    <Badge variant="accent">update</Badge>
                   )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </div>
+              ),
+              renderCard: (s) => (
+                <div className="flex items-center gap-2">
+                  <span>{s.name}</span>
+                  {s.image && updatesMap.get(s.image) && (
+                    <Badge variant="accent">update</Badge>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: "image",
+              header: "Image",
+              cardPosition: "body",
+              className: "hidden sm:table-cell",
+              render: (s) => (
+                <span className="text-muted font-mono">
+                  <TruncatedText text={s.image || "-"} maxLength={50} />
+                </span>
+              ),
+              renderCard: (s) => s.image ? (
+                <span className="font-mono">
+                  <TruncatedText text={s.image} maxLength={40} />
+                </span>
+              ) : null,
+            },
+            {
+              key: "status",
+              header: "Status",
+              cardPosition: "body",
+              render: (s) => <ContainerStateBadge state={s.status} />,
+            },
+            {
+              key: "ports",
+              header: "Ports",
+              cardPosition: "body",
+              className: "hidden sm:table-cell",
+              render: (s) => (
+                <span className="text-muted">
+                  <PortsList ports={s.ports || []} />
+                </span>
+              ),
+              renderCard: (s) => (s.ports?.length ?? 0) > 0 ? <PortsList ports={s.ports || []} /> : null,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              cardPosition: "footer",
+              render: (s) => s.containerId ? (
+                <ContainerActions containerId={s.containerId} state={s.status} />
+              ) : null,
+            },
+          ] satisfies ColumnDef<typeof project.services[number]>[]}
+        />
       </Box>
 
       {/* Files */}

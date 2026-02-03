@@ -4,19 +4,16 @@ import { useState, useMemo } from "react";
 import {
   Box,
   Spinner,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
   Button,
   Badge,
   Modal,
+  ResponsiveTable,
+  ColumnDef,
 } from "@/components/ui";
 import { PullImageModal } from "@/components/images";
 import { useImages, useDeleteImage, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
 import type { PruneResult } from "@/hooks";
+import type { DockerImage } from "@/types";
 import { formatBytes, formatDateTime, formatShortId } from "@/lib/format";
 
 export default function ImagesPage() {
@@ -113,6 +110,89 @@ export default function ImagesPage() {
     }
   };
 
+  const columns: ColumnDef<DockerImage>[] = [
+    {
+      key: "tags",
+      header: "Tags",
+      cardPosition: "header",
+      render: (image) => (
+        <div className="space-y-1">
+          {image.tags.length > 0 ? (
+            image.tags.map((tag) => (
+              <div key={tag} className="font-mono">
+                {tag}
+              </div>
+            ))
+          ) : (
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="font-mono">{image.repository || formatShortId(image.id)}</span>
+                <Badge variant="default">untagged</Badge>
+              </div>
+              {image.repository && (
+                <div className="font-mono text-muted">{formatShortId(image.id)}</div>
+              )}
+            </div>
+          )}
+        </div>
+      ),
+      renderCard: (image) => (
+        <div className="font-mono">
+          {image.tags.length > 0 ? image.tags[0] : (image.repository || formatShortId(image.id))}
+          {image.tags.length === 0 && <Badge variant="default" className="ml-2">untagged</Badge>}
+        </div>
+      ),
+    },
+    {
+      key: "size",
+      header: "Size",
+      cardPosition: "body",
+      className: "hidden sm:table-cell",
+      render: (image) => <span className="text-muted">{formatBytes(image.size)}</span>,
+    },
+    {
+      key: "created",
+      header: "Created",
+      cardPosition: "body",
+      className: "hidden sm:table-cell",
+      render: (image) => (
+        <span className="text-muted">{formatDateTime(new Date(image.created * 1000))}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cardPosition: "body",
+      render: (image) => (
+        <div className="flex flex-wrap gap-1">
+          {hasUpdate(image.tags) && (
+            <Badge variant="accent">Update</Badge>
+          )}
+          {!usedImageIds.has(image.id) && (
+            <Badge variant="warning">Unused</Badge>
+          )}
+          {!hasUpdate(image.tags) && usedImageIds.has(image.id) && (
+            <span className="text-muted">-</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      cardPosition: "footer",
+      render: (image) => (
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => setDeleteTarget({ id: image.id, tags: image.tags, repository: image.repository })}
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -141,72 +221,11 @@ export default function ImagesPage() {
         </Box>
       ) : (
         <Box padding={false}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tags</TableHead>
-                <TableHead className="hidden sm:table-cell">Size</TableHead>
-                <TableHead className="hidden sm:table-cell">Created</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedImages.map((image) => (
-                <TableRow key={image.id}>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {image.tags.length > 0 ? (
-                        image.tags.map((tag) => (
-                          <div key={tag} className="font-mono text-xs">
-                            {tag}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs">{image.repository || formatShortId(image.id)}</span>
-                            <Badge variant="default">untagged</Badge>
-                          </div>
-                          {image.repository && (
-                            <div className="font-mono text-xs text-muted">{formatShortId(image.id)}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted">
-                    {formatBytes(image.size)}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted text-xs">
-                    {formatDateTime(new Date(image.created * 1000))}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {hasUpdate(image.tags) && (
-                        <Badge variant="accent">Update</Badge>
-                      )}
-                      {!usedImageIds.has(image.id) && (
-                        <Badge variant="warning">Unused</Badge>
-                      )}
-                      {!hasUpdate(image.tags) && usedImageIds.has(image.id) && (
-                        <span className="text-xs text-muted">-</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => setDeleteTarget({ id: image.id, tags: image.tags, repository: image.repository })}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ResponsiveTable
+            data={sortedImages}
+            columns={columns}
+            keyExtractor={(image) => image.id}
+          />
         </Box>
       )}
 

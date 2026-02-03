@@ -3,9 +3,10 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Spinner, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ContainerStateBadge, TruncatedText, PortsList } from "@/components/ui";
+import { Box, Spinner, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { useContainers } from "@/hooks";
+import type { Container } from "@/types";
 
 export default function ContainersPage() {
   const router = useRouter();
@@ -15,6 +16,86 @@ export default function ContainersPage() {
     () => [...(containers || [])].sort((a, b) => a.name.localeCompare(b.name)),
     [containers]
   );
+
+  const columns: ColumnDef<Container>[] = [
+    {
+      key: "name",
+      header: "Name",
+      cardPosition: "header",
+      render: (c) => c.name,
+    },
+    {
+      key: "project",
+      header: "Project",
+      cardPosition: "body",
+      className: "hidden sm:table-cell",
+      render: (c) => (
+        <span className="text-muted">
+          {c.projectName ? (
+            <Link
+              href={`/projects/${encodeURIComponent(c.projectName)}`}
+              className="hover:text-foreground hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {c.projectName}
+            </Link>
+          ) : (
+            "-"
+          )}
+        </span>
+      ),
+      renderCard: (c) =>
+        c.projectName ? (
+          <Link
+            href={`/projects/${encodeURIComponent(c.projectName)}`}
+            className="text-accent hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {c.projectName}
+          </Link>
+        ) : null,
+    },
+    {
+      key: "image",
+      header: "Image",
+      cardPosition: "body",
+      className: "hidden sm:table-cell",
+      render: (c) => (
+        <span className="text-muted font-mono">
+          <TruncatedText text={c.image} maxLength={60} />
+        </span>
+      ),
+      renderCard: (c) => (
+        <span className="font-mono">
+          <TruncatedText text={c.image} maxLength={40} />
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cardPosition: "body",
+      render: (c) => <ContainerStateBadge state={c.state} />,
+    },
+    {
+      key: "ports",
+      header: "Ports",
+      cardPosition: "body",
+      className: "hidden sm:table-cell",
+      render: (c) => (
+        <span className="text-muted">
+          <PortsList ports={c.ports} />
+        </span>
+      ),
+      renderCard: (c) => c.ports.length > 0 ? <PortsList ports={c.ports} /> : null,
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      cardPosition: "footer",
+      render: (c) => <ContainerActions containerId={c.id} state={c.state} />,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -34,57 +115,14 @@ export default function ContainersPage() {
         </Box>
       ) : (
         <Box padding={false}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Project</TableHead>
-                <TableHead className="hidden sm:table-cell">Image</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden sm:table-cell">Ports</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedContainers.map((container) => (
-                <TableRow
-                  key={container.id}
-                  clickable
-                  onClick={() => router.push(`/containers/${encodeURIComponent(container.name)}`)}
-                >
-                  <TableCell>{container.name}</TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted">
-                    {container.projectName ? (
-                      <Link
-                        href={`/projects/${encodeURIComponent(container.projectName)}`}
-                        className="hover:text-foreground hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {container.projectName}
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted font-mono text-xs min-w-[150px]">
-                    <TruncatedText text={container.image} maxLength={60} />
-                  </TableCell>
-                  <TableCell>
-                    <ContainerStateBadge state={container.state} />
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted text-xs">
-                    <PortsList ports={container.ports} />
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <ContainerActions containerId={container.id} state={container.state} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ResponsiveTable
+            data={sortedContainers}
+            columns={columns}
+            keyExtractor={(c) => c.id}
+            onRowClick={(c) => router.push(`/containers/${encodeURIComponent(c.name)}`)}
+          />
         </Box>
       )}
     </div>
   );
 }
-

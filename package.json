@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "dev:next": "next dev",
-    "build": "next build",
-    "start": "node --import tsx server/index.ts",
+    "build": "next build && tsc -p server/tsconfig.json",
+    "start": "node server/dist/index.js",
     "lint": "eslint"
   },
   "dependencies": {
@@ -27,11 +27,11 @@
     "react-dom": "19.2.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "tsx": "^4.21.0",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "tsx": "^4.21.0",
     "@types/dockerode": "^4.0.1",
     "@types/node": "^20",
     "@types/react": "^19",

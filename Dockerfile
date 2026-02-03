@@ -15,9 +15,12 @@ RUN pnpm install --frozen-lockfile
 # Copy source
 COPY . .
 
-# Build with standalone output
+# Build Next.js with standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
+
+# Compile custom server to JavaScript
+RUN npx tsc -p server/tsconfig.json
 
 # Production stage
 FROM node:24-alpine AS runner
@@ -36,14 +39,14 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Copy custom server
-COPY --from=builder /app/server ./server
+# Copy compiled server (just the JS, not TypeScript)
+COPY --from=builder /app/server/dist/index.js ./server/index.js
 
 # Generate server package.json from main package.json and install deps
 COPY --from=builder /app/package.json /tmp/package.json
 RUN node -e " \
   const pkg = require('/tmp/package.json'); \
-  const serverDeps = ['dockerode', 'dotenv', 'socket.io', 'tsx']; \
+  const serverDeps = ['dockerode', 'dotenv', 'socket.io']; \
   const deps = {}; \
   serverDeps.forEach(d => { if (pkg.dependencies[d]) deps[d] = pkg.dependencies[d]; }); \
   const serverPkg = { name: 'compoza-server', private: true, dependencies: deps }; \
@@ -61,4 +64,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "--import", "./server/node_modules/tsx/dist/esm/index.mjs", "server/index.ts"]
+CMD ["node", "server/index.js"]

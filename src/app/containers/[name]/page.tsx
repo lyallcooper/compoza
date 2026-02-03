@@ -81,7 +81,7 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
   ];
 
   return (
-    <Box title="Environment Variables" padding={false} className="break-inside-avoid">
+    <Box title="Environment Variables" padding={false} className="break-inside-avoid" collapsible>
       <ResponsiveTable
         data={sortedEntries}
         columns={columns}
@@ -285,13 +285,13 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       <div className="columns-1 md:columns-2 gap-6 space-y-6">
         {/* Stats - only shown for running containers */}
         {container.state === "running" && (
-          <Box title="Stats" padding={false} className="break-inside-avoid">
+          <Box title="Stats" padding={false} className="break-inside-avoid" collapsible>
             <StatsDisplay stats={stats} loading={!stats} />
           </Box>
         )}
 
         {/* Details */}
-        <Box title="Details" padding={false} className="break-inside-avoid">
+        <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
           <ResponsiveTable
             data={[
               {
@@ -388,7 +388,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Ports */}
         {sortedPorts.length > 0 && (
-          <Box title="Ports" padding={false} className="break-inside-avoid">
+          <Box title="Ports" padding={false} className="break-inside-avoid" collapsible>
             <ResponsiveTable
               data={sortedPorts}
               keyExtractor={(p) => `${p.container}-${p.protocol}`}
@@ -427,7 +427,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Mounts */}
         {sortedMounts.length > 0 && (
-          <Box title="Mounts" padding={false} className="break-inside-avoid">
+          <Box title="Mounts" padding={false} className="break-inside-avoid" collapsible>
             <ResponsiveTable
               data={sortedMounts}
               keyExtractor={(m) => m.destination}
@@ -479,7 +479,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Networks */}
         {sortedNetworks.length > 0 && (
-          <Box title="Networks" padding={false} className="break-inside-avoid">
+          <Box title="Networks" padding={false} className="break-inside-avoid" collapsible>
             <ResponsiveTable
               data={sortedNetworks}
               keyExtractor={(n) => n.name}
@@ -543,7 +543,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Labels */}
         {Object.keys(container.labels).length > 0 && (
-          <Box title="Labels" className="break-inside-avoid">
+          <Box title="Labels" className="break-inside-avoid" collapsible>
             <GroupedLabels labels={container.labels} />
           </Box>
         )}

@@ -74,12 +74,21 @@ export interface PruneResult {
 
 export async function pruneImages(all = false): Promise<PruneResult> {
   const docker = getDocker();
+
+  // Count top-level images before prune to report accurate deletion count
+  // Docker's ImagesDeleted includes layers, not just top-level images
+  const imagesBefore = await docker.listImages();
+  const countBefore = imagesBefore.length;
+
   // Without filter: removes dangling images only (untagged + unused)
   // With dangling: false: removes all unused images (equivalent to -a flag)
   const result = await docker.pruneImages(all ? { filters: { dangling: ["false"] } } : {});
 
+  const imagesAfter = await docker.listImages();
+  const countAfter = imagesAfter.length;
+
   return {
-    imagesDeleted: result.ImagesDeleted?.length || 0,
+    imagesDeleted: countBefore - countAfter,
     spaceReclaimed: result.SpaceReclaimed || 0,
   };
 }

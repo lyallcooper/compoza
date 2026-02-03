@@ -137,7 +137,7 @@ export function ResponsiveTable<T>({
                           <span className="text-muted shrink-0">{label}</span>
                         )}
                         <span
-                          className={`text-foreground ${label ? "text-right" : ""}`}
+                          className={`text-foreground min-w-0 overflow-hidden ${label ? "text-right" : ""}`}
                         >
                           {content}
                         </span>

@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
             let restarted = false;
             if (wasRunning) {
               send({ type: "progress", project: project.name, step: "restarting" });
+
               const upResult = await composeUp(project.name);
 
               if (!upResult.success) {

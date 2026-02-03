@@ -97,7 +97,8 @@ function stopUpdateChecker() {
 
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
-    const url = new URL(req.url!, `http://${req.headers.host}`);
+    // Parse URL path and query (req.url is path only, not full URL)
+    const url = new URL(req.url!, "http://localhost");
     const query: Record<string, string | string[]> = {};
     url.searchParams.forEach((value, key) => {
       const existing = query[key];
@@ -107,21 +108,14 @@ app.prepare().then(() => {
         query[key] = value;
       }
     });
-    const parsedUrl = {
+    // Only provide path-related properties, leave host/protocol null
+    // to match what url.parse(req.url, true) returned
+    handle(req, res, {
       pathname: url.pathname,
       query,
-      search: url.search,
-      href: url.href,
-      path: url.pathname + url.search,
-      hash: url.hash,
-      host: url.host,
-      hostname: url.hostname,
-      port: url.port,
-      protocol: url.protocol,
-      auth: null,
-      slashes: true,
-    };
-    handle(req, res, parsedUrl);
+      search: url.search || null,
+      path: req.url!,
+    } as Parameters<typeof handle>[2]);
   });
 
   // Socket.io server

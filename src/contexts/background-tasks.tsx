@@ -15,7 +15,7 @@ export interface BackgroundTask {
   progress?: string;
   total?: number;
   current?: number;
-  status: "running" | "complete" | "error";
+  status: "running" | "complete" | "error" | "disconnected";
   error?: string;
   cancel?: () => void;
 }

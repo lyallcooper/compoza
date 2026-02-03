@@ -13,8 +13,9 @@ function TaskItem({ task }: { task: BackgroundTask }) {
   const isRunning = task.status === "running";
   const isError = task.status === "error";
   const isComplete = task.status === "complete";
+  const isDisconnected = task.status === "disconnected";
 
-  // Auto-dismiss completed tasks after delay (but not errors)
+  // Auto-dismiss completed tasks after delay (not errors or disconnected)
   useEffect(() => {
     if (!isComplete) return;
 
@@ -37,7 +38,7 @@ function TaskItem({ task }: { task: BackgroundTask }) {
     <div className="flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          {isRunning && <Spinner size="sm" />}
+          {(isRunning || isDisconnected) && <Spinner size="sm" />}
           {isComplete && <span className="text-success">✓</span>}
           {isError && <span className="text-error">✗</span>}
           <span className="font-medium truncate">{task.label}</span>

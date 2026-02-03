@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateAllQueries } from "@/lib/query";
+import { handleDisconnection } from "@/lib/reconnect";
 import { useBackgroundTasks } from "@/contexts";
 import type { UpdateAllEvent } from "@/app/api/projects/update-all/route";
 
@@ -147,13 +148,9 @@ export function useUpdateAllProjects() {
           }
         }
       } catch (err) {
-        if ((err as Error).name !== "AbortError" && !cancelled) {
-          updateTask(taskId, {
-            status: "error",
-            error: err instanceof Error ? err.message : "Unknown error",
-            cancel: undefined,
-          });
-        }
+        if ((err as Error).name === "AbortError" || cancelled) return;
+        await handleDisconnection(taskId, updateTask, queryClient);
+        return;
       }
 
       invalidateAllQueries(queryClient);

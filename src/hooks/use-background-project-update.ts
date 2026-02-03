@@ -8,6 +8,7 @@ import {
   invalidateContainerQueries,
   clearUpdateCacheAndInvalidate,
 } from "@/lib/query";
+import { handleDisconnection } from "@/lib/reconnect";
 import { useBackgroundTasks } from "@/contexts";
 import { isProjectRunning, type Project } from "@/types";
 
@@ -94,13 +95,8 @@ export function useBackgroundProjectUpdate(projectName: string) {
         invalidateProjectQueries(queryClient, projectName);
         invalidateContainerQueries(queryClient);
       } catch (err) {
-        if ((err as Error).name !== "AbortError" && !cancelled) {
-          updateTask(taskId, {
-            status: "error",
-            error: err instanceof Error ? err.message : "Unknown error",
-            cancel: undefined,
-          });
-        }
+        if ((err as Error).name === "AbortError" || cancelled) return;
+        await handleDisconnection(taskId, updateTask, queryClient);
       }
     },
     [projectName, queryClient, addTask, updateTask]
@@ -157,13 +153,8 @@ export function useBackgroundContainerUpdate() {
         await clearUpdateCacheAndInvalidate(queryClient, images);
         invalidateContainerQueries(queryClient, containerId);
       } catch (err) {
-        if ((err as Error).name !== "AbortError" && !cancelled) {
-          updateTask(taskId, {
-            status: "error",
-            error: err instanceof Error ? err.message : "Unknown error",
-            cancel: undefined,
-          });
-        }
+        if ((err as Error).name === "AbortError" || cancelled) return;
+        await handleDisconnection(taskId, updateTask, queryClient);
       }
     },
     [queryClient, addTask, updateTask]

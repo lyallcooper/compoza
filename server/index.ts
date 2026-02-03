@@ -1,16 +1,13 @@
 import { createServer } from "http";
-import { parse } from "url";
 import { config } from "dotenv";
 import next from "next";
 import { Server as SocketServer } from "socket.io";
 import Docker from "dockerode";
 
 // Load .env files (Next.js does this automatically, but our custom server doesn't)
-const dotenvDebug = process.env.NODE_ENV === "development";
-config({ path: ".env.local", debug: dotenvDebug });
-config({ path: ".env", debug: dotenvDebug });
-
 const dev = process.env.NODE_ENV === "development";
+config({ path: ".env.local", debug: dev, quiet: !dev });
+config({ path: ".env", debug: dev, quiet: !dev });
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
@@ -99,7 +96,30 @@ function stopUpdateChecker() {
 
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
-    const parsedUrl = parse(req.url!, true);
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+    const query: Record<string, string | string[]> = {};
+    url.searchParams.forEach((value, key) => {
+      const existing = query[key];
+      if (existing) {
+        query[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+      } else {
+        query[key] = value;
+      }
+    });
+    const parsedUrl = {
+      pathname: url.pathname,
+      query,
+      search: url.search,
+      href: url.href,
+      path: url.pathname + url.search,
+      hash: url.hash,
+      host: url.host,
+      hostname: url.hostname,
+      port: url.port,
+      protocol: url.protocol,
+      auth: null,
+      slashes: true,
+    };
     handle(req, res, parsedUrl);
   });
 

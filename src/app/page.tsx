@@ -137,24 +137,23 @@ export default function Dashboard() {
     : `Containers (${runningContainers}/${totalContainers} running)`;
 
   return (
-    <div className="space-y-6">
+    <div className="columns-1 md:columns-2 gap-6 space-y-6">
       {/* Updates Available */}
-      {!updatesLoading && !projectsLoading && (
+      {!updatesLoading && !projectsLoading && projectsWithUpdates.length > 0 && (
         <CollapsibleSection
           title="Updates"
           count={projectsWithUpdates.length}
           variant="accent"
           defaultExpanded={projectsWithUpdates.length <= 5}
+          className="break-inside-avoid"
           action={
-            projectsWithUpdates.length > 0 && (
-              <Button
-                size="sm"
-                variant="accent"
-                onClick={() => setShowUpdateAllModal(true)}
-              >
-                Update All…
-              </Button>
-            )
+            <Button
+              size="sm"
+              variant="accent"
+              onClick={() => setShowUpdateAllModal(true)}
+            >
+              Update All…
+            </Button>
           }
         >
           <div className="divide-y divide-border">
@@ -173,12 +172,13 @@ export default function Dashboard() {
       )}
 
       {/* Needs Attention */}
-      {!containersLoading && (
+      {!containersLoading && containersNeedingAttention.length > 0 && (
         <CollapsibleSection
           title="Needs Attention"
           count={containersNeedingAttention.length}
           variant="warning"
           defaultExpanded={containersNeedingAttention.length <= 5}
+          className="break-inside-avoid"
         >
           <div className="divide-y divide-border">
             {containersNeedingAttention.map(({ container, issues }) => (
@@ -210,100 +210,99 @@ export default function Dashboard() {
         </CollapsibleSection>
       )}
 
-      {/* Projects and Containers Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Projects */}
-        <Box
-          title={
-            <Link href="/projects" className="hover:text-accent transition-colors">
-              {projectsTitle}
+      {/* Projects */}
+      <Box
+        title={
+          <Link href="/projects" className="hover:text-accent transition-colors">
+            {projectsTitle}
+          </Link>
+        }
+        padding={false}
+        className="break-inside-avoid"
+      >
+        {projectsLoading ? (
+          <div className="p-4">
+            <Spinner />
+          </div>
+        ) : topProjects.length === 0 ? (
+          <div className="p-4 text-muted">
+            No projects found.{" "}
+            <Link href="/projects" className="text-accent hover:underline">
+              Create one
             </Link>
-          }
-          padding={false}
-        >
-          {projectsLoading ? (
-            <div className="p-4">
-              <Spinner />
-            </div>
-          ) : topProjects.length === 0 ? (
-            <div className="p-4 text-muted">
-              No projects found.{" "}
-              <Link href="/projects" className="text-accent hover:underline">
-                Create one
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {topProjects.map((project) => (
-                <Link
-                  key={project.name}
-                  href={`/projects/${encodeURIComponent(project.name)}`}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-                >
-                  <span className="truncate">{project.name}</span>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                    <span className="text-xs text-muted">
-                      {project.services.length}
-                      <span className="hidden sm:inline">
-                        {project.services.length === 1 ? " service\u00A0" : " services"}
-                      </span>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {topProjects.map((project) => (
+              <Link
+                key={project.name}
+                href={`/projects/${encodeURIComponent(project.name)}`}
+                className="flex items-center justify-between px-3 py-2 hover:bg-surface"
+              >
+                <span className="truncate">{project.name}</span>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <span className="text-xs text-muted">
+                    {project.services.length}
+                    <span className="hidden sm:inline">
+                      {project.services.length === 1 ? " service\u00A0" : " services"}
                     </span>
-                    <ProjectStatusBadge status={project.status} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-          {hasMoreProjects && (
-            <div className="border-t border-border px-3 py-2">
-              <Link href="/projects" className="text-accent hover:underline text-sm">
-                View all {totalProjects} projects
+                  </span>
+                  <ProjectStatusBadge status={project.status} />
+                </div>
               </Link>
-            </div>
-          )}
-        </Box>
-
-        {/* Running Containers */}
-        <Box
-          title={
-            <Link href="/containers" className="hover:text-accent transition-colors">
-              {containersTitle}
+            ))}
+          </div>
+        )}
+        {hasMoreProjects && (
+          <div className="border-t border-border px-3 py-2">
+            <Link href="/projects" className="text-accent hover:underline text-sm">
+              View all {totalProjects} projects
             </Link>
-          }
-          padding={false}
-        >
-          {containersLoading ? (
-            <div className="p-4">
-              <Spinner />
-            </div>
-          ) : topRunningContainers.length === 0 ? (
-            <div className="p-4 text-muted">No running containers</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {topRunningContainers.map((container) => (
-                <Link
-                  key={container.id}
-                  href={`/containers/${encodeURIComponent(container.name)}`}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-                >
-                  <span className="flex-shrink-0">{container.name}</span>
-                  <TruncatedText
-                    text={container.image.split("/").pop() ?? ""}
-                    className="text-xs text-muted ml-2"
-                  />
-                </Link>
-              ))}
-            </div>
-          )}
-          {hasMoreRunning && (
-            <div className="border-t border-border px-3 py-2">
-              <Link href="/containers" className="text-accent hover:underline text-sm">
-                View all {runningContainers} running
+          </div>
+        )}
+      </Box>
+
+      {/* Running Containers */}
+      <Box
+        title={
+          <Link href="/containers" className="hover:text-accent transition-colors">
+            {containersTitle}
+          </Link>
+        }
+        padding={false}
+        className="break-inside-avoid"
+      >
+        {containersLoading ? (
+          <div className="p-4">
+            <Spinner />
+          </div>
+        ) : topRunningContainers.length === 0 ? (
+          <div className="p-4 text-muted">No running containers</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {topRunningContainers.map((container) => (
+              <Link
+                key={container.id}
+                href={`/containers/${encodeURIComponent(container.name)}`}
+                className="flex items-center justify-between px-3 py-2 hover:bg-surface"
+              >
+                <span className="flex-shrink-0">{container.name}</span>
+                <TruncatedText
+                  text={container.image.split("/").pop() ?? ""}
+                  className="text-xs text-muted ml-2"
+                />
               </Link>
-            </div>
-          )}
-        </Box>
-      </div>
+            ))}
+          </div>
+        )}
+        {hasMoreRunning && (
+          <div className="border-t border-border px-3 py-2">
+            <Link href="/containers" className="text-accent hover:underline text-sm">
+              View all {runningContainers} running
+            </Link>
+          </div>
+        )}
+      </Box>
     </div>
   );
 }

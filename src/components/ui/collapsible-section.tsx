@@ -11,6 +11,7 @@ interface CollapsibleSectionProps {
   children: ReactNode;
   defaultExpanded?: boolean;
   action?: ReactNode;
+  className?: string;
 }
 
 export function CollapsibleSection({
@@ -20,6 +21,7 @@ export function CollapsibleSection({
   children,
   defaultExpanded = true,
   action,
+  className,
 }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -41,6 +43,7 @@ export function CollapsibleSection({
       }
       actions={action}
       padding={false}
+      className={className}
     >
       {expanded && children}
     </Box>

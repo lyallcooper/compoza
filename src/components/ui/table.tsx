@@ -94,12 +94,12 @@ export function TableRow({ children, className = "", onClick, clickable }: Table
 
 export function TableHead({ children, className = "" }: TableHeadProps) {
   return (
-    <th className={`px-3 py-2 text-left text-xs font-semibold bg-surface-subtle ${className}`}>
+    <th className={`px-3 py-1.5 text-left text-xs font-semibold bg-surface-subtle ${className}`}>
       {children}
     </th>
   );
 }
 
 export function TableCell({ children, className = "", onClick }: TableCellProps) {
-  return <td className={`px-3 py-2 ${className}`} onClick={onClick}>{children}</td>;
+  return <td className={`px-3 py-1.5 ${className}`} onClick={onClick}>{children}</td>;
 }

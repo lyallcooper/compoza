@@ -14,16 +14,16 @@ function TaskItem({ task }: { task: BackgroundTask }) {
   const isError = task.status === "error";
   const isComplete = task.status === "complete";
 
-  // Auto-dismiss completed/errored tasks after delay
+  // Auto-dismiss completed tasks after delay (but not errors)
   useEffect(() => {
-    if (isRunning) return;
+    if (!isComplete) return;
 
     const timer = setTimeout(() => {
       removeTask(task.id);
     }, AUTO_DISMISS_DELAY);
 
     return () => clearTimeout(timer);
-  }, [isRunning, task.id, removeTask]);
+  }, [isComplete, task.id, removeTask]);
 
   const handleCancel = () => {
     task.cancel?.();
@@ -46,7 +46,7 @@ function TaskItem({ task }: { task: BackgroundTask }) {
           <div className="text-xs text-muted mt-0.5 truncate">{task.progress}</div>
         )}
         {task.error && (
-          <div className="text-xs text-error mt-0.5 truncate">{task.error}</div>
+          <div className="text-xs text-error mt-1 whitespace-pre-line">{task.error}</div>
         )}
       </div>
       <div className="flex-shrink-0">

@@ -41,6 +41,7 @@ export function useUpdateAllProjects() {
 
       let current = 0;
       let currentProject = "";
+      const errors: string[] = [];
 
       try {
         const response = await fetch("/api/projects/update-all", {
@@ -84,7 +85,11 @@ export function useUpdateAllProjects() {
               break;
 
             case "error":
-              if (!event.project) {
+              if (event.project) {
+                // Track individual project errors
+                errors.push(`${event.project}: ${event.message}`);
+              } else {
+                // Global error - show immediately
                 updateTask(taskId, {
                   status: "error",
                   error: event.message,
@@ -94,11 +99,20 @@ export function useUpdateAllProjects() {
               break;
 
             case "done":
-              updateTask(taskId, {
-                status: "complete",
-                progress: `${event.summary.updated} updated${event.summary.failed > 0 ? `, ${event.summary.failed} failed` : ""}`,
-                cancel: undefined,
-              });
+              if (event.summary.failed > 0 && errors.length > 0) {
+                updateTask(taskId, {
+                  status: "error",
+                  progress: `${event.summary.updated} updated, ${event.summary.failed} failed`,
+                  error: errors.join("\n"),
+                  cancel: undefined,
+                });
+              } else {
+                updateTask(taskId, {
+                  status: "complete",
+                  progress: `${event.summary.updated} updated`,
+                  cancel: undefined,
+                });
+              }
               break;
           }
         };

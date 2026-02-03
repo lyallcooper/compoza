@@ -137,9 +137,16 @@ export default function ImagesPage() {
         </div>
       ),
       renderCard: (image) => (
-        <div className="font-mono">
-          {image.tags.length > 0 ? image.tags[0] : (image.repository || formatShortId(image.id))}
-          {image.tags.length === 0 && <Badge variant="default" className="ml-2">untagged</Badge>}
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono">
+              {image.tags.length > 0 ? image.tags[0] : (image.repository || formatShortId(image.id))}
+            </span>
+            {image.tags.length === 0 && <Badge variant="default">untagged</Badge>}
+          </div>
+          {image.tags.length === 0 && image.repository && (
+            <div className="font-mono text-xs text-muted">{formatShortId(image.id)}</div>
+          )}
         </div>
       ),
     },

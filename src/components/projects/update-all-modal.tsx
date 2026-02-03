@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { useUpdateAllProjects } from "@/hooks";
 
@@ -21,10 +22,35 @@ interface UpdateAllModalProps {
 
 export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
   const { start } = useUpdateAllProjects();
-  const projectCount = projects.length;
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(projects.map((p) => p.name))
+  );
+
+  const selectedCount = selected.size;
+  const allSelected = selectedCount === projects.length;
+
+  const toggleProject = (name: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(projects.map((p) => p.name)));
+    }
+  };
 
   const handleUpdate = () => {
-    start(projects.map((p) => p.name));
+    start(Array.from(selected));
     onClose();
   };
 
@@ -32,38 +58,60 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
     <Modal
       open
       onClose={onClose}
-      title="Update All Projects"
+      title="Update Projects"
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="accent" onClick={handleUpdate}>
-            Update {projectCount} Project{projectCount !== 1 ? "s" : ""}
+          <Button
+            variant="accent"
+            onClick={handleUpdate}
+            disabled={selectedCount === 0}
+          >
+            Update {selectedCount} Project{selectedCount !== 1 ? "s" : ""}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <p className="text-muted">
-          The following projects have image updates available. Running projects
-          will be restarted with the new images.
+          Select projects to update. Running projects will be restarted with the new images.
         </p>
         <div className="space-y-3 max-h-64 overflow-y-auto">
+          {projects.length > 1 && (
+            <label className="flex items-center gap-2 text-xs text-muted mb-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                className="rounded border-border"
+              />
+              <span>Select all</span>
+            </label>
+          )}
           {projects.map((project) => (
-            <div key={project.name} className="text-sm">
-              <div className="font-medium">{project.name}</div>
-              <div className="text-muted text-xs pl-3 space-y-0.5">
-                {project.images.map(({ image, currentVersion, latestVersion }, idx) => (
-                  <div key={`${image}-${idx}`} className="flex items-center gap-2">
-                    <span className="font-mono truncate">{image}</span>
-                    {currentVersion && latestVersion && currentVersion !== latestVersion && (
-                      <span className="text-accent whitespace-nowrap">
-                        {currentVersion} → {latestVersion}
-                      </span>
-                    )}
-                  </div>
-                ))}
+            <label key={project.name} className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.has(project.name)}
+                onChange={() => toggleProject(project.name)}
+                className="rounded border-border mt-0.5"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{project.name}</div>
+                <div className="text-muted text-xs space-y-0.5">
+                  {project.images.map(({ image, currentVersion, latestVersion }, idx) => (
+                    <div key={`${image}-${idx}`} className="flex items-center gap-2">
+                      <span className="font-mono truncate">{image}</span>
+                      {currentVersion && latestVersion && currentVersion !== latestVersion && (
+                        <span className="text-accent whitespace-nowrap">
+                          {currentVersion} → {latestVersion}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            </label>
           ))}
         </div>
       </div>

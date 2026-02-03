@@ -184,7 +184,7 @@ export default function Dashboard() {
             {containersNeedingAttention.map(({ container, issues }) => (
               <Link
                 key={container.id}
-                href={`/containers/${encodeURIComponent(container.id)}`}
+                href={`/containers/${encodeURIComponent(container.name)}`}
                 className="flex items-center justify-between px-3 py-2 hover:bg-surface"
               >
                 <div className="flex flex-col">
@@ -283,7 +283,7 @@ export default function Dashboard() {
               {topRunningContainers.map((container) => (
                 <Link
                   key={container.id}
-                  href={`/containers/${encodeURIComponent(container.id)}`}
+                  href={`/containers/${encodeURIComponent(container.name)}`}
                   className="flex items-center justify-between px-3 py-2 hover:bg-surface"
                 >
                   <span className="flex-shrink-0">{container.name}</span>

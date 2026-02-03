@@ -160,7 +160,7 @@ export async function spawnUpdaterContainer(
       "docker", "compose",
       "-f", hostComposeFile,
       "--project-directory", hostProjectDir,
-      "up", "-d",
+      "up", "-d", "--force-recreate",
     ],
     Env: env.length > 0 ? env : undefined,
     HostConfig: {

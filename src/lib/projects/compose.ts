@@ -5,15 +5,39 @@ import { getProjectsDir, getProject, toHostPath, isValidProjectName } from "./sc
 import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
 import { log } from "@/lib/logger";
 import { getDocker, getSelfProjectName } from "@/lib/docker";
+import { spawnUpdaterContainer } from "@/lib/updates";
 import type { ProjectService } from "@/types";
 
 /**
  * Check if the given project name matches our own container's project.
- * Used to enable fire-and-forget mode for self-updates.
  */
 async function isSelfProject(projectName: string): Promise<boolean> {
   const selfProject = await getSelfProjectName();
   return selfProject !== null && selfProject === projectName;
+}
+
+/**
+ * Handle self-update via updater container.
+ * Returns null if not a self-update, or the result if it is.
+ */
+async function handleSelfUpdate(
+  projectName: string,
+  composeFile: string
+): Promise<ComposeResult | null> {
+  if (!(await isSelfProject(projectName))) {
+    return null;
+  }
+
+  try {
+    await spawnUpdaterContainer(projectName, composeFile);
+    return { success: true, output: "Update initiated via updater container" };
+  } catch (error) {
+    return {
+      success: false,
+      output: "",
+      error: error instanceof Error ? error.message : "Failed to spawn updater",
+    };
+  }
 }
 
 /**
@@ -65,11 +89,6 @@ interface ComposeResult {
 interface RunComposeOptions {
   onOutput?: (data: string) => void;
   composeFile?: string;
-  /**
-   * Fire-and-forget mode: spawns detached so process survives if parent dies.
-   * Used for self-updates where Compoza's container will be recreated.
-   */
-  fireAndForget?: boolean;
 }
 
 interface PreparedComposeCommand {
@@ -117,31 +136,14 @@ async function runComposeCommand(
   args: string[],
   options: RunComposeOptions = {}
 ): Promise<ComposeResult> {
-  const { onOutput, composeFile, fireAndForget } = options;
+  const { onOutput, composeFile } = options;
   const { args: composeArgs, cleanup } = await prepareComposeCommand(projectPath, composeFile);
   composeArgs.push(...args);
 
   log.compose.debug("Running command", {
     command: `docker ${composeArgs.join(" ")}`,
     cwd: projectPath,
-    fireAndForget,
   });
-
-  // Fire-and-forget mode: spawn detached so process survives parent death
-  // Used for self-updates where our container will be recreated
-  if (fireAndForget) {
-    const proc = spawn("docker", composeArgs, {
-      cwd: projectPath,
-      env: getComposeEnvironment(),
-      detached: true,
-      stdio: "ignore",
-    });
-    proc.unref();
-
-    // Don't attempt cleanup - our process will die before it completes anyway,
-    // and the container recreation will clean up any temp files
-    return { success: true, output: "Command started (fire-and-forget)" };
-  }
 
   return new Promise((resolve) => {
     const proc = spawn("docker", composeArgs, {
@@ -204,18 +206,20 @@ export async function composeUp(
     return { success: false, output: "", error: "Project not found" };
   }
 
+  // If updating ourselves, use the updater container approach
+  const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile);
+  if (selfUpdateResult) {
+    return selfUpdateResult;
+  }
+
   const args = ["up"];
   if (options.detach !== false) args.push("-d");
   if (options.build) args.push("--build");
   if (options.pull) args.push("--pull", "always");
 
-  // Auto-detect if we're updating ourselves
-  const fireAndForget = await isSelfProject(projectName);
-
   return runComposeCommand(project.path, args, {
     onOutput,
     composeFile: project.composeFile,
-    fireAndForget,
   });
 }
 
@@ -271,13 +275,15 @@ export async function composeUpService(
     return { success: false, output: "", error: "Project not found" };
   }
 
-  // Auto-detect if we're updating ourselves
-  const fireAndForget = await isSelfProject(projectName);
+  // If updating ourselves, use the updater container approach
+  const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile);
+  if (selfUpdateResult) {
+    return selfUpdateResult;
+  }
 
   return runComposeCommand(project.path, ["up", "-d", serviceName], {
     onOutput,
     composeFile: project.composeFile,
-    fireAndForget,
   });
 }
 

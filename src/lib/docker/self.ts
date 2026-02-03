@@ -46,7 +46,7 @@ export async function getSelfProjectName(): Promise<string | null> {
 
     return null;
   } catch {
-    // Detection failed - not critical, just means we won't use fire-and-forget
+    // Detection failed - not critical, just means auto-restart won't work
     return null;
   }
 }
@@ -70,9 +70,16 @@ async function getOwnContainerId(): Promise<string | null> {
   }
 
   // Try to get from /proc/self/mountinfo (cgroupv2)
+  // This handles both /docker/containers/<id> and /docker/<id> patterns
   try {
     const mountinfo = await readFile("/proc/self/mountinfo", "utf8");
-    const match = mountinfo.match(/\/docker\/containers\/([0-9a-f]{64})/);
+    // Try /docker/containers/<id> first (more specific)
+    let match = mountinfo.match(/\/docker\/containers\/([0-9a-f]{64})/);
+    if (match) {
+      return match[1];
+    }
+    // Fall back to /docker/<id> pattern
+    match = mountinfo.match(/\/docker\/([0-9a-f]{64})/);
     if (match) {
       return match[1];
     }

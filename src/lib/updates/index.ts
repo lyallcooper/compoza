@@ -3,7 +3,7 @@ export { checkImageUpdates } from "./image-updates";
 export type { ImageUpdateInfo } from "./image-updates";
 
 // Self-update (updating Compoza itself)
-export { selfUpdate } from "./self-update";
+export { selfUpdate, spawnUpdaterContainer } from "./self-update";
 export type { SelfUpdateResult } from "./self-update";
 
 // Shared utilities

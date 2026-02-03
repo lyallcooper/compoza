@@ -2,7 +2,7 @@
 
 import { use, useMemo, useState } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, GroupedLabels, DropdownMenu, DropdownItem, Badge } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
@@ -36,47 +36,57 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
     [env]
   );
 
-  return (
-    <Box title="Environment Variables" padding={false}>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Key</TableHead>
-            <TableHead>Value</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedEntries.map(([key, value]) => {
-            const isSensitive = isSensitiveEnvVar(key);
-            const isRevealed = revealedKeys.has(key);
-            const displayValue = isSensitive && !isRevealed ? "••••••••" : value;
+  const columns: ColumnDef<[string, string]>[] = [
+    {
+      key: "key",
+      header: "Key",
+      cardPosition: "header",
+      render: ([key]) => (
+        <span className="font-mono text-xs font-medium">
+          <SelectableText>{key}</SelectableText>
+        </span>
+      ),
+    },
+    {
+      key: "value",
+      header: "Value",
+      cardPosition: "body",
+      cardLabel: false,
+      render: ([key, value]) => {
+        const isSensitive = isSensitiveEnvVar(key);
+        const isRevealed = revealedKeys.has(key);
+        const displayValue = isSensitive && !isRevealed ? "••••••••" : value;
 
-            return (
-              <TableRow key={key}>
-                <TableCell className="font-mono text-xs font-medium whitespace-nowrap">
-                  <SelectableText>{key}</SelectableText>
-                </TableCell>
-                <TableCell className="font-mono text-xs whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <SelectableText>
-                      <TruncatedText text={displayValue} maxLength={50} />
-                    </SelectableText>
-                    {isSensitive && (
-                      <button
-                        onClick={() => toggleReveal(key)}
-                        className="text-muted hover:text-foreground text-xs shrink-0"
-                        title={isRevealed ? "Hide" : "Reveal"}
-                      >
-                        {isRevealed ? "hide" : "reveal"}
-                      </button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+        return (
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <SelectableText>
+              <TruncatedText text={displayValue} maxLength={50} />
+            </SelectableText>
+            {isSensitive && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleReveal(key);
+                }}
+                className="text-muted hover:text-foreground text-xs shrink-0"
+                title={isRevealed ? "Hide" : "Reveal"}
+              >
+                {isRevealed ? "hide" : "reveal"}
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <Box title="Environment Variables" padding={false} className="break-inside-avoid">
+      <ResponsiveTable
+        data={sortedEntries}
+        columns={columns}
+        keyExtractor={([key]) => key}
+      />
     </Box>
   );
 }
@@ -112,6 +122,28 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
   // Use domain model's computed actions
   const canUpdate = container?.actions.canUpdate && hasUpdate;
+
+  // Sorted data for deterministic table ordering
+  const sortedPorts = useMemo(
+    () => [...(container?.ports ?? [])].sort((a, b) =>
+      a.container - b.container || a.protocol.localeCompare(b.protocol)
+    ),
+    [container?.ports]
+  );
+
+  const sortedMounts = useMemo(
+    () => [...(container?.mounts ?? [])].sort((a, b) =>
+      a.destination.localeCompare(b.destination)
+    ),
+    [container?.mounts]
+  );
+
+  const sortedNetworks = useMemo(
+    () => [...(container?.networks ?? [])].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    ),
+    [container?.networks]
+  );
 
   // Update modal state
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -249,229 +281,278 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         </DropdownMenu>
       </div>
 
-      {/* Stats - only shown for running containers */}
-      {container.state === "running" && (
-        <Box title="Stats">
-          {stats ? (
-            <StatsDisplay stats={stats} />
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <div className="text-muted">CPU</div>
-                <div className="text-muted">--</div>
-              </div>
-              <div>
-                <div className="text-muted">Memory</div>
-                <div className="text-muted">--</div>
-                <div className="text-xs text-muted">&nbsp;</div>
-              </div>
-              <div>
-                <div className="text-muted">Network I/O</div>
-                <div className="text-muted">--</div>
-              </div>
-              <div>
-                <div className="text-muted">Disk I/O</div>
-                <div className="text-muted">--</div>
-              </div>
-            </div>
-          )}
-        </Box>
-      )}
+      {/* Content sections - columns layout for masonry-like flow */}
+      <div className="columns-1 md:columns-2 gap-6 space-y-6">
+        {/* Stats - only shown for running containers */}
+        {container.state === "running" && (
+          <Box title="Stats" padding={false} className="break-inside-avoid">
+            <StatsDisplay stats={stats} loading={!stats} />
+          </Box>
+        )}
 
-      {/* Details and Ports side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Details */}
-        <Box title="Details">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <div className="text-muted">Image</div>
-              <div className="font-mono text-xs">
-                <SelectableText>
-                  <TruncatedText text={container.image} maxLength={50} />
-                </SelectableText>
-              </div>
-            </div>
-            <div>
-              <div className="text-muted">Status</div>
-              <div>{container.status}</div>
-            </div>
-            <div>
-              <div className="text-muted">Container ID</div>
-              <div className="font-mono text-xs">
-                <SelectableText>
-                  <TruncatedText text={container.id} maxLength={24} />
-                </SelectableText>
-              </div>
-            </div>
-            <div>
-              <div className="text-muted">Image ID</div>
-              <div className="font-mono text-xs">
-                <SelectableText>
-                  <TruncatedText text={container.imageId} maxLength={24} />
-                </SelectableText>
-              </div>
-            </div>
-            {imageInfo?.currentDigest && (
-              <div>
-                <div className="text-muted">Digest</div>
-                <div className="font-mono text-xs">
-                  <SelectableText>
-                    <TruncatedText text={imageInfo.currentDigest} maxLength={24} />
-                  </SelectableText>
-                </div>
-              </div>
-            )}
-            {imageInfo?.currentVersion && (
-              <div>
-                <div className="text-muted">Version</div>
-                <div>{imageInfo.currentVersion}</div>
-              </div>
-            )}
-            <div>
-              <div className="text-muted">Created</div>
-              <div>{formatDateTime(new Date(container.created * 1000))}</div>
-            </div>
-            {container.projectName && (
-              <div>
-                <div className="text-muted">Project</div>
-                <div>
-                  <Link
-                    href={`/projects/${encodeURIComponent(container.projectName)}`}
-                    className="text-accent hover:underline"
-                  >
-                    {container.projectName}
-                  </Link>
-                  {container.serviceName && (
-                    <span className="text-muted"> / {container.serviceName}</span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        <Box title="Details" padding={false} className="break-inside-avoid">
+          <ResponsiveTable
+            data={[
+              {
+                label: "Image",
+                value: (
+                  <span className="font-mono">
+                    <SelectableText>
+                      <TruncatedText text={container.image} maxLength={50} />
+                    </SelectableText>
+                  </span>
+                ),
+              },
+              { label: "Status", value: container.status },
+              {
+                label: "Container ID",
+                value: (
+                  <span className="font-mono">
+                    <SelectableText>
+                      <TruncatedText text={container.id} maxLength={24} />
+                    </SelectableText>
+                  </span>
+                ),
+              },
+              {
+                label: "Image ID",
+                value: (
+                  <span className="font-mono">
+                    <SelectableText>
+                      <TruncatedText text={container.imageId} maxLength={24} />
+                    </SelectableText>
+                  </span>
+                ),
+              },
+              ...(imageInfo?.currentDigest
+                ? [{
+                    label: "Digest",
+                    value: (
+                      <span className="font-mono">
+                        <SelectableText>
+                          <TruncatedText text={imageInfo.currentDigest} maxLength={24} />
+                        </SelectableText>
+                      </span>
+                    ),
+                  }]
+                : []),
+              ...(imageInfo?.currentVersion
+                ? [{ label: "Version", value: imageInfo.currentVersion }]
+                : []),
+              {
+                label: "Created",
+                value: formatDateTime(new Date(container.created * 1000)),
+              },
+              ...(container.projectName
+                ? [{
+                    label: "Project",
+                    value: (
+                      <>
+                        <Link
+                          href={`/projects/${encodeURIComponent(container.projectName)}`}
+                          className="text-accent hover:underline"
+                        >
+                          {container.projectName}
+                        </Link>
+                        {container.serviceName && (
+                          <span className="text-muted"> / {container.serviceName}</span>
+                        )}
+                      </>
+                    ),
+                  }]
+                : []),
+            ]}
+            keyExtractor={(row) => row.label}
+            columns={[
+              {
+                key: "label",
+                header: "Property",
+                cardPosition: "body",
+                cardLabel: false,
+                className: "w-1/3",
+                render: (row) => <span className="text-muted">{row.label}</span>,
+                renderCard: (row) => <span className="text-muted shrink-0">{row.label}</span>,
+              },
+              {
+                key: "value",
+                header: "Value",
+                cardPosition: "body",
+                cardLabel: false,
+                render: (row) => row.value,
+              },
+            ]}
+            showHeader={false}
+          />
         </Box>
 
         {/* Ports */}
-        {container.ports.length > 0 && (
-          <Box title="Ports" padding={false}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Host</TableHead>
-                  <TableHead>Container</TableHead>
-                  <TableHead>Protocol</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {container.ports.map((p, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-mono">
+        {sortedPorts.length > 0 && (
+          <Box title="Ports" padding={false} className="break-inside-avoid">
+            <ResponsiveTable
+              data={sortedPorts}
+              keyExtractor={(p) => `${p.container}-${p.protocol}`}
+              columns={[
+                {
+                  key: "host",
+                  header: "Host",
+                  cardPosition: "header",
+                  render: (p) => (
+                    <span className="font-mono">
                       {p.host || <span className="text-muted">-</span>}
-                    </TableCell>
-                    <TableCell className="font-mono">{p.container}</TableCell>
-                    <TableCell className="text-muted">{p.protocol}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </span>
+                  ),
+                  renderCard: (p) => (
+                    <span className="font-mono">
+                      {p.host || "-"} → {p.container}
+                    </span>
+                  ),
+                },
+                {
+                  key: "container",
+                  header: "Container",
+                  cardPosition: "hidden",
+                  render: (p) => <span className="font-mono">{p.container}</span>,
+                },
+                {
+                  key: "protocol",
+                  header: "Protocol",
+                  cardPosition: "body",
+                  render: (p) => <span className="text-muted">{p.protocol}</span>,
+                },
+              ] satisfies ColumnDef<typeof container.ports[number]>[]}
+            />
           </Box>
         )}
+
+        {/* Mounts */}
+        {sortedMounts.length > 0 && (
+          <Box title="Mounts" padding={false} className="break-inside-avoid">
+            <ResponsiveTable
+              data={sortedMounts}
+              keyExtractor={(m) => m.destination}
+              columns={[
+                {
+                  key: "type",
+                  header: "Type",
+                  cardPosition: "body",
+                  render: (m) => <span className="capitalize text-muted">{m.type}</span>,
+                },
+                {
+                  key: "source",
+                  header: "Source",
+                  cardPosition: "body",
+                  render: (m) => (
+                    <span className="font-mono">
+                      <SelectableText>
+                        <TruncatedText text={m.source || "-"} maxLength={35} />
+                      </SelectableText>
+                    </span>
+                  ),
+                },
+                {
+                  key: "destination",
+                  header: "Destination",
+                  cardPosition: "header",
+                  render: (m) => (
+                    <span className="font-mono">
+                      <SelectableText>
+                        <TruncatedText text={m.destination} maxLength={35} />
+                      </SelectableText>
+                    </span>
+                  ),
+                },
+                {
+                  key: "mode",
+                  header: "Mode",
+                  cardPosition: "body",
+                  render: (m) => (
+                    <span className="text-muted">
+                      {m.rw ? (m.mode || "rw") : <span className="text-warning">ro</span>}
+                  </span>
+                ),
+              },
+            ] satisfies ColumnDef<typeof container.mounts[number]>[]}
+            />
+          </Box>
+        )}
+
+        {/* Networks */}
+        {sortedNetworks.length > 0 && (
+          <Box title="Networks" padding={false} className="break-inside-avoid">
+            <ResponsiveTable
+              data={sortedNetworks}
+              keyExtractor={(n) => n.name}
+              columns={[
+                {
+                  key: "name",
+                  header: "Name",
+                  cardPosition: "header",
+                  render: (n) => (
+                    <span className="font-medium">
+                      <SelectableText>{n.name}</SelectableText>
+                    </span>
+                  ),
+                },
+                {
+                  key: "ipAddress",
+                  header: "IP Address",
+                  cardPosition: "body",
+                  render: (n) => (
+                    <span className="font-mono">
+                      {n.ipAddress ? (
+                        <SelectableText>{n.ipAddress}</SelectableText>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </span>
+                  ),
+                },
+                {
+                  key: "gateway",
+                  header: "Gateway",
+                  cardPosition: "body",
+                  render: (n) => (
+                    <span className="font-mono">
+                      {n.gateway ? (
+                        <SelectableText>{n.gateway}</SelectableText>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </span>
+                  ),
+                },
+                {
+                  key: "macAddress",
+                  header: "MAC Address",
+                  cardPosition: "body",
+                  render: (n) => (
+                    <span className="font-mono">
+                      {n.macAddress ? (
+                        <SelectableText>{n.macAddress}</SelectableText>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </span>
+                  ),
+                },
+              ] satisfies ColumnDef<typeof container.networks[number]>[]}
+            />
+          </Box>
+        )}
+
+        {/* Labels */}
+        {Object.keys(container.labels).length > 0 && (
+          <Box title="Labels" className="break-inside-avoid">
+            <GroupedLabels labels={container.labels} />
+          </Box>
+        )}
+
+        {/* Environment Variables */}
+        {Object.keys(container.env).length > 0 && (
+          <EnvironmentVariablesSection env={container.env} />
+        )}
       </div>
-
-      {/* Environment Variables */}
-      {Object.keys(container.env).length > 0 && (
-        <EnvironmentVariablesSection env={container.env} />
-      )}
-
-      {/* Mounts */}
-      {container.mounts.length > 0 && (
-        <Box title="Mounts" padding={false}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead>Mode</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {container.mounts.map((m, i) => (
-                <TableRow key={i}>
-                  <TableCell className="whitespace-nowrap">
-                    <span className="capitalize">{m.type}</span>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">
-                    <SelectableText>
-                      <TruncatedText text={m.source || "-"} maxLength={35} />
-                    </SelectableText>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">
-                    <SelectableText>
-                      <TruncatedText text={m.destination} maxLength={35} />
-                    </SelectableText>
-                  </TableCell>
-                  <TableCell className="text-muted whitespace-nowrap">
-                    {m.rw ? (m.mode || "rw") : <span className="text-warning">ro</span>}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Box>
-      )}
-
-      {/* Networks */}
-      {container.networks.length > 0 && (
-        <Box title="Networks" padding={false}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead>Gateway</TableHead>
-                <TableHead>MAC Address</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {container.networks.map((n, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-medium whitespace-nowrap">
-                    <SelectableText>{n.name}</SelectableText>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">
-                    {n.ipAddress ? (
-                      <SelectableText>{n.ipAddress}</SelectableText>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">
-                    {n.gateway ? (
-                      <SelectableText>{n.gateway}</SelectableText>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs whitespace-nowrap">
-                    {n.macAddress ? (
-                      <SelectableText>{n.macAddress}</SelectableText>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Box>
-      )}
-
-      {/* Labels */}
-      {Object.keys(container.labels).length > 0 && (
-        <Box title="Labels">
-          <GroupedLabels labels={container.labels} />
-        </Box>
-      )}
 
       {/* Update confirmation modal */}
       {showUpdateModal && container.projectName && container.serviceName && (

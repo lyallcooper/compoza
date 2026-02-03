@@ -17,3 +17,5 @@ export { Toast } from "./toast";
 export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
 export { CollapsibleSection } from "./collapsible-section";
 export { BackgroundTaskToast } from "./background-task-toast";
+export { ResponsiveTable } from "./responsive-table";
+export type { ColumnDef, ResponsiveTableProps } from "./responsive-table";

@@ -36,9 +36,11 @@ interface TableCellProps {
 }
 
 export function Table({ children, className = "" }: TableProps) {
+  // Only apply w-full if no width class is provided
+  const hasWidthClass = /\bw-(full|auto|fit|screen|min|max|\d|\/|\[)/.test(className);
   return (
     <div className="overflow-x-auto">
-      <table className={`w-full text-sm ${className}`}>{children}</table>
+      <table className={`${hasWidthClass ? "" : "w-full"} text-xs ${className}`}>{children}</table>
     </div>
   );
 }

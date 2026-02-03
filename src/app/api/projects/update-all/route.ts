@@ -1,5 +1,6 @@
+import { NextRequest } from "next/server";
 import { scanProjects, composePull, composeUp } from "@/lib/projects";
-import { clearCachedUpdates, getAllCachedUpdates } from "@/lib/updates";
+import { clearCachedUpdates } from "@/lib/updates";
 import { isProjectRunning } from "@/types";
 
 export type UpdateAllEvent =
@@ -9,7 +10,11 @@ export type UpdateAllEvent =
   | { type: "error"; project: string; message: string }
   | { type: "done"; summary: { updated: number; failed: number } };
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // Get project names from request body
+  const body = await request.json().catch(() => ({}));
+  const projectNames: string[] = body.projects || [];
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -19,25 +24,18 @@ export async function POST() {
       };
 
       try {
-        // Get all projects
-        const allProjects = await scanProjects();
-
-        // Get cached update info
-        const updateInfo = getAllCachedUpdates();
-        const imagesWithUpdates = new Set(
-          updateInfo.filter((u) => u.updateAvailable).map((u) => u.image)
-        );
-
-        // Filter to projects that have at least one image with updates
-        const projectsWithUpdates = allProjects.filter((project) =>
-          project.services.some((s) => s.image && imagesWithUpdates.has(s.image))
-        );
-
-        if (projectsWithUpdates.length === 0) {
+        if (projectNames.length === 0) {
           send({ type: "done", summary: { updated: 0, failed: 0 } });
           controller.close();
           return;
         }
+
+        // Get all projects and filter to requested ones
+        const allProjects = await scanProjects();
+        const projectNameSet = new Set(projectNames);
+        const projectsWithUpdates = allProjects.filter((project) =>
+          projectNameSet.has(project.name)
+        );
 
         let updated = 0;
         let failed = 0;

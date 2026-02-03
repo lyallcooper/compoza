@@ -24,7 +24,7 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
   const projectCount = projects.length;
 
   const handleUpdate = () => {
-    start(projectCount);
+    start(projects.map((p) => p.name));
     onClose();
   };
 

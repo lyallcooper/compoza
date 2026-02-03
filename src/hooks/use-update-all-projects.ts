@@ -12,8 +12,9 @@ export function useUpdateAllProjects() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const start = useCallback(
-    async (projectCount: number) => {
+    async (projectNames: string[]) => {
       const taskId = `update-all-${Date.now()}`;
+      const projectCount = projectNames.length;
 
       abortControllerRef.current = new AbortController();
 
@@ -44,6 +45,8 @@ export function useUpdateAllProjects() {
       try {
         const response = await fetch("/api/projects/update-all", {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projects: projectNames }),
           signal: abortControllerRef.current.signal,
         });
 

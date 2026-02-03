@@ -2,37 +2,77 @@
 
 import type { ContainerStats } from "@/types";
 import { formatBytes } from "@/lib/format";
+import { ResponsiveTable, ColumnDef } from "@/components/ui";
 
 interface StatsDisplayProps {
-  stats: ContainerStats;
+  stats?: ContainerStats;
+  loading?: boolean;
 }
 
-export function StatsDisplay({ stats }: StatsDisplayProps) {
+interface StatItem {
+  label: string;
+  value: string;
+  subValue?: string;
+  muted?: boolean;
+}
+
+export function StatsDisplay({ stats, loading }: StatsDisplayProps) {
+  const data: StatItem[] = loading || !stats
+    ? [
+        { label: "CPU", value: "—", muted: true },
+        { label: "Memory", value: "— / —", subValue: "\u00A0", muted: true },
+        { label: "Network I/O", value: "— / —", muted: true },
+        { label: "Disk I/O", value: "— / —", muted: true },
+      ]
+    : [
+        {
+          label: "CPU",
+          value: `${stats.cpuPercent.toFixed(1)}%`,
+        },
+        {
+          label: "Memory",
+          value: `${formatBytes(stats.memoryUsage)} / ${formatBytes(stats.memoryLimit)}`,
+          subValue: `${stats.memoryPercent.toFixed(1)}%`,
+        },
+        {
+          label: "Network I/O",
+          value: `${formatBytes(stats.networkRx)} / ${formatBytes(stats.networkTx)}`,
+        },
+        {
+          label: "Disk I/O",
+          value: `${formatBytes(stats.blockRead)} / ${formatBytes(stats.blockWrite)}`,
+        },
+      ];
+
+  const columns: ColumnDef<StatItem>[] = [
+    {
+      key: "label",
+      header: "Metric",
+      cardPosition: "body",
+      cardLabel: false,
+      className: "w-1/3",
+      render: (row) => <span className="text-muted">{row.label}</span>,
+    },
+    {
+      key: "value",
+      header: "Value",
+      cardPosition: "body",
+      cardLabel: false,
+      render: (row) => (
+        <div>
+          <div className={row.muted ? "text-muted" : ""}>{row.value}</div>
+          {row.subValue && <div className="text-xs text-muted">{row.subValue}</div>}
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-      <div>
-        <div className="text-muted">CPU</div>
-        <div className="font-bold">{stats.cpuPercent.toFixed(1)}%</div>
-      </div>
-      <div>
-        <div className="text-muted">Memory</div>
-        <div className="font-bold">
-          {formatBytes(stats.memoryUsage)} / {formatBytes(stats.memoryLimit)}
-        </div>
-        <div className="text-xs text-muted">{stats.memoryPercent.toFixed(1)}%</div>
-      </div>
-      <div>
-        <div className="text-muted">Network I/O</div>
-        <div className="font-bold">
-          {formatBytes(stats.networkRx)} / {formatBytes(stats.networkTx)}
-        </div>
-      </div>
-      <div>
-        <div className="text-muted">Disk I/O</div>
-        <div className="font-bold">
-          {formatBytes(stats.blockRead)} / {formatBytes(stats.blockWrite)}
-        </div>
-      </div>
-    </div>
+    <ResponsiveTable
+      data={data}
+      columns={columns}
+      keyExtractor={(row) => row.label}
+      showHeader={false}
+    />
   );
 }

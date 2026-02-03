@@ -55,7 +55,8 @@ async function runUpdateCheck() {
   try {
     // Trigger the API endpoint which handles the update check
     // This ensures we use the same module instance as the API routes
-    const res = await fetch(`http://${hostname}:${port}/api/images/check-updates`, {
+    // Use localhost for self-fetch (hostname is the bind address, e.g., 0.0.0.0)
+    const res = await fetch(`http://localhost:${port}/api/images/check-updates`, {
       signal: controller.signal,
     });
     if (!res.ok) {

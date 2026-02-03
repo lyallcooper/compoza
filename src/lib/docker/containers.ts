@@ -1,5 +1,5 @@
 import { getDocker } from "./client";
-import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions, ContainerHealth } from "@/types";
+import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions, ContainerHealth, ContainerMount, ContainerNetwork } from "@/types";
 
 /**
  * Determine the update strategy for a container based on its labels.
@@ -141,6 +141,9 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
       restartCount: detail?.restartCount,
       health: detail?.health,
       exitCode: detail?.exitCode,
+      env: {},
+      mounts: [],
+      networks: [],
     };
   });
 }
@@ -187,6 +190,34 @@ export async function getContainer(id: string): Promise<Container | null> {
     const state = info.State.Status as Container["state"];
     const updateStrategy = getUpdateStrategy(projectName, serviceName);
 
+    // Environment variables from Config.Env
+    const env: Record<string, string> = {};
+    for (const e of info.Config?.Env || []) {
+      const idx = e.indexOf("=");
+      if (idx > 0) {
+        env[e.slice(0, idx)] = e.slice(idx + 1);
+      }
+    }
+
+    // Mounts from Mounts array
+    const mounts: ContainerMount[] = (info.Mounts || []).map((m) => ({
+      type: m.Type as "bind" | "volume" | "tmpfs",
+      source: m.Source || "",
+      destination: m.Destination,
+      mode: m.Mode || "",
+      rw: m.RW,
+    }));
+
+    // Networks from NetworkSettings.Networks
+    const networks: ContainerNetwork[] = Object.entries(
+      info.NetworkSettings?.Networks || {}
+    ).map(([name, net]) => ({
+      name,
+      ipAddress: (net as { IPAddress?: string }).IPAddress || "",
+      gateway: (net as { Gateway?: string }).Gateway || "",
+      macAddress: (net as { MacAddress?: string }).MacAddress || "",
+    }));
+
     return {
       id: info.Id,
       name: info.Name.replace(/^\//, ""),
@@ -209,6 +240,9 @@ export async function getContainer(id: string): Promise<Container | null> {
           }
         : undefined,
       exitCode: info.State.ExitCode,
+      env,
+      mounts,
+      networks,
     };
   } catch (error) {
     console.error(`[Docker] Failed to get container ${id}:`, error);

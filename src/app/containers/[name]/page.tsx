@@ -9,6 +9,78 @@ import { useContainer, useContainerStats, useStartContainer, useStopContainer, u
 import { formatDateTime } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
+const SENSITIVE_PATTERNS = ["PASSWORD", "SECRET", "KEY", "TOKEN", "CREDENTIAL", "API_KEY", "APIKEY", "PRIVATE"];
+
+function isSensitiveEnvVar(key: string): boolean {
+  const upperKey = key.toUpperCase();
+  return SENSITIVE_PATTERNS.some((pattern) => upperKey.includes(pattern));
+}
+
+function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
+  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
+
+  const toggleReveal = (key: string) => {
+    setRevealedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const sortedEntries = useMemo(
+    () => Object.entries(env).sort(([a], [b]) => a.localeCompare(b)),
+    [env]
+  );
+
+  return (
+    <Box title="Environment Variables" padding={false}>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Key</TableHead>
+            <TableHead>Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedEntries.map(([key, value]) => {
+            const isSensitive = isSensitiveEnvVar(key);
+            const isRevealed = revealedKeys.has(key);
+            const displayValue = isSensitive && !isRevealed ? "••••••••" : value;
+
+            return (
+              <TableRow key={key}>
+                <TableCell className="font-mono text-xs font-medium whitespace-nowrap">
+                  <SelectableText>{key}</SelectableText>
+                </TableCell>
+                <TableCell className="font-mono text-xs whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <SelectableText>
+                      <TruncatedText text={displayValue} maxLength={50} />
+                    </SelectableText>
+                    {isSensitive && (
+                      <button
+                        onClick={() => toggleReveal(key)}
+                        className="text-muted hover:text-foreground text-xs shrink-0"
+                        title={isRevealed ? "Hide" : "Reveal"}
+                      >
+                        {isRevealed ? "hide" : "reveal"}
+                      </button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+}
+
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const { name } = use(params);
   const { data: container, isLoading, error } = useContainer(name);
@@ -304,6 +376,95 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           </Box>
         )}
       </div>
+
+      {/* Environment Variables */}
+      {Object.keys(container.env).length > 0 && (
+        <EnvironmentVariablesSection env={container.env} />
+      )}
+
+      {/* Mounts */}
+      {container.mounts.length > 0 && (
+        <Box title="Mounts" padding={false}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Destination</TableHead>
+                <TableHead>Mode</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {container.mounts.map((m, i) => (
+                <TableRow key={i}>
+                  <TableCell className="whitespace-nowrap">
+                    <span className="capitalize">{m.type}</span>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">
+                    <SelectableText>
+                      <TruncatedText text={m.source || "-"} maxLength={35} />
+                    </SelectableText>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">
+                    <SelectableText>
+                      <TruncatedText text={m.destination} maxLength={35} />
+                    </SelectableText>
+                  </TableCell>
+                  <TableCell className="text-muted whitespace-nowrap">
+                    {m.rw ? (m.mode || "rw") : <span className="text-warning">ro</span>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      )}
+
+      {/* Networks */}
+      {container.networks.length > 0 && (
+        <Box title="Networks" padding={false}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>IP Address</TableHead>
+                <TableHead>Gateway</TableHead>
+                <TableHead>MAC Address</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {container.networks.map((n, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium whitespace-nowrap">
+                    <SelectableText>{n.name}</SelectableText>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">
+                    {n.ipAddress ? (
+                      <SelectableText>{n.ipAddress}</SelectableText>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">
+                    {n.gateway ? (
+                      <SelectableText>{n.gateway}</SelectableText>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">
+                    {n.macAddress ? (
+                      <SelectableText>{n.macAddress}</SelectableText>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      )}
 
       {/* Labels */}
       {Object.keys(container.labels).length > 0 && (

@@ -54,6 +54,21 @@ export interface ContainerHealth {
   failingStreak?: number;
 }
 
+export interface ContainerMount {
+  type: "bind" | "volume" | "tmpfs";
+  source: string;
+  destination: string;
+  mode: string;
+  rw: boolean;
+}
+
+export interface ContainerNetwork {
+  name: string;
+  ipAddress: string;
+  gateway: string;
+  macAddress: string;
+}
+
 export interface Container {
   id: string;
   name: string;
@@ -78,6 +93,12 @@ export interface Container {
   health?: ContainerHealth;
   /** Exit code if container has exited */
   exitCode?: number;
+  /** Environment variables */
+  env: Record<string, string>;
+  /** Volume mounts */
+  mounts: ContainerMount[];
+  /** Network configuration */
+  networks: ContainerNetwork[];
 }
 
 export interface ContainerStats {

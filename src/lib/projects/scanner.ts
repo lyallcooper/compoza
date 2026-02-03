@@ -129,12 +129,15 @@ async function buildProject(
           image: container?.image || serviceConfig.image,
           containerId: container?.id,
           containerName: container?.name,
-          status: container?.state === "running" ? "running" : container ? "exited" : "unknown",
+          status: container?.state === "running" ? "running"
+            : container?.state === "restarting" ? "restarting"
+            : container ? "exited" : "unknown",
           ports: container?.ports,
           hasBuild: !!serviceConfig.build,
         };
 
-        if (container?.state === "running") runningCount++;
+        // Count running or restarting containers as "active" for project status
+        if (container?.state === "running" || container?.state === "restarting") runningCount++;
         services.push(service);
       }
 

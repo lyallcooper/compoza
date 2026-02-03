@@ -16,15 +16,16 @@ function getContainerActions(
   updateStrategy: ContainerUpdateStrategy
 ): ContainerActions {
   const isRunning = state === "running";
+  const isRestarting = state === "restarting";
   const isStopped = state === "exited" || state === "created";
   const canOperate = state !== "removing" && state !== "dead";
 
   return {
     canStart: isStopped,
-    canStop: isRunning,
+    canStop: isRunning || isRestarting,
     canRestart: isRunning,
     canUpdate: updateStrategy === "compose" && canOperate,
-    canViewLogs: true, // Can always view logs
+    canViewLogs: true,
     canExec: isRunning,
   };
 }

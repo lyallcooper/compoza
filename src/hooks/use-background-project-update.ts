@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiPost } from "@/lib/api";
+import { apiFetch, apiPost, ConnectionError } from "@/lib/api";
 import {
   invalidateProjectQueries,
   invalidateContainerQueries,

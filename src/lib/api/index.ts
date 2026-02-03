@@ -8,7 +8,7 @@ export {
 } from "./response";
 export type { ApiResponse } from "./response";
 
-export { apiFetch, apiPost, apiPut, apiDelete } from "./fetch";
+export { apiFetch, apiPost, apiPut, apiDelete, ConnectionError } from "./fetch";
 
 export { validateJsonContentType } from "./validation";
 

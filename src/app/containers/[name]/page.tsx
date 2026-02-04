@@ -325,6 +325,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                     label: "Digest",
                     value: imageInfo.currentDigest,
                     mono: true,
+                    maxLength: 36,
                   }]
                 : []),
               ...(imageInfo?.currentVersion
@@ -339,7 +340,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                     label: "Project",
                     value: container.projectName,
                     link: `/projects/${encodeURIComponent(container.projectName)}`,
-                    suffix: container.serviceName ? ` / ${container.serviceName}` : undefined,
                   }]
                 : []),
             ]}
@@ -362,12 +362,9 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 render: (row) => {
                   if (row.link) {
                     return (
-                      <>
-                        <Link href={row.link} className="text-accent hover:underline">
-                          {row.value}
-                        </Link>
-                        {row.suffix && <span className="text-muted">{row.suffix}</span>}
-                      </>
+                      <Link href={row.link} className="text-accent hover:underline">
+                        {row.value}
+                      </Link>
                     );
                   }
                   if (row.mono) {

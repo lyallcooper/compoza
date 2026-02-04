@@ -325,7 +325,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {
               key: "service",
               header: "Service",
-              shrink: true,
               cardPosition: "header",
               render: (s) => (
                 <div className="flex items-center gap-2">

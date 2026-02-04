@@ -8,7 +8,7 @@ import Docker from "dockerode";
 const dev = process.env.NODE_ENV === "development";
 config({ path: ".env.local", debug: dev, quiet: !dev });
 config({ path: ".env", debug: dev, quiet: !dev });
-const hostname = process.env.HOSTNAME || "0.0.0.0";
+const hostname = process.env.BIND_ADDRESS || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
 // Update check interval (default: 30 minutes)

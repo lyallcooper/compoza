@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { TruncatedText } from "./truncated-text";
+import { isSensitiveKey, SENSITIVE_MASK } from "@/lib/format";
 
 interface GroupedLabelsProps {
   labels: Record<string, string>;
@@ -79,6 +80,7 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
     }
     return initial;
   });
+  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
 
   const toggleGroup = (prefix: string) => {
     setCollapsed((prev) => {
@@ -92,16 +94,48 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
     });
   };
 
+  const toggleReveal = (key: string) => {
+    setRevealedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const renderValue = (fullKey: string, value: string) => {
+    const isSensitive = isSensitiveKey(fullKey);
+    const isRevealed = revealedKeys.has(fullKey);
+    const displayValue = isSensitive && !isRevealed ? SENSITIVE_MASK : value;
+
+    return (
+      <>
+        <TruncatedText text={displayValue} maxLength={50} />
+        {isSensitive && (
+          <button
+            onClick={() => toggleReveal(fullKey)}
+            className="text-muted hover:text-foreground text-xs ml-1"
+          >
+            {isRevealed ? "hide" : "reveal"}
+          </button>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="text-sm font-mono space-y-1">
       {groups.map((group) => {
         if (!group.prefix) {
           // Ungrouped labels - render directly
           return group.labels.map(({ fullKey, value }) => (
-            <div key={fullKey}>
+            <div key={fullKey} className="flex items-center gap-1 flex-wrap">
               <TruncatedText text={fullKey} showPopup={false} className="text-muted" />
-              <span className="text-muted">:</span>{" "}
-              <TruncatedText text={value} maxLength={60} />
+              <span className="text-muted">:</span>
+              {renderValue(fullKey, value)}
             </div>
           ));
         }
@@ -121,10 +155,10 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
             {!isCollapsed && (
               <div className="ml-5 border-l border-border pl-2 space-y-1">
                 {group.labels.map(({ suffix, fullKey, value }) => (
-                  <div key={fullKey}>
+                  <div key={fullKey} className="flex items-center gap-1 flex-wrap">
                     <TruncatedText text={`.${suffix}`} showPopup={false} className="text-muted" />
-                    <span className="text-muted">:</span>{" "}
-                    <TruncatedText text={value} maxLength={50} />
+                    <span className="text-muted">:</span>
+                    {renderValue(fullKey, value)}
                   </div>
                 ))}
               </div>

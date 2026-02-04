@@ -7,15 +7,8 @@ import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, isSensitiveKey, SENSITIVE_MASK } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
-
-const SENSITIVE_PATTERNS = ["PASSWORD", "SECRET", "KEY", "TOKEN", "CREDENTIAL", "API_KEY", "APIKEY", "PRIVATE"];
-
-function isSensitiveEnvVar(key: string): boolean {
-  const upperKey = key.toUpperCase();
-  return SENSITIVE_PATTERNS.some((pattern) => upperKey.includes(pattern));
-}
 
 function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
@@ -53,9 +46,9 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
       cardPosition: "body",
       cardLabel: false,
       render: ([key, value]) => {
-        const isSensitive = isSensitiveEnvVar(key);
+        const isSensitive = isSensitiveKey(key);
         const isRevealed = revealedKeys.has(key);
-        const displayValue = isSensitive && !isRevealed ? "••••••••" : value;
+        const displayValue = isSensitive && !isRevealed ? SENSITIVE_MASK : value;
 
         return (
           <div className="flex items-center gap-2 font-mono text-xs min-w-0">

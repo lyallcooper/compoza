@@ -46,3 +46,21 @@ export function formatShortId(id: string): string {
   const hash = id.replace(/^sha256:/, "");
   return hash.slice(0, 12);
 }
+
+/**
+ * Patterns that indicate a key contains sensitive data.
+ */
+const SENSITIVE_PATTERNS = ["PASSWORD", "SECRET", "KEY", "TOKEN", "CREDENTIAL", "API_KEY", "APIKEY", "PRIVATE"];
+
+/**
+ * Check if a key (env var name, label key, etc.) likely contains sensitive data.
+ */
+export function isSensitiveKey(key: string): boolean {
+  const upperKey = key.toUpperCase();
+  return SENSITIVE_PATTERNS.some((pattern) => upperKey.includes(pattern));
+}
+
+/**
+ * Mask for hidden sensitive values.
+ */
+export const SENSITIVE_MASK = "••••••••";

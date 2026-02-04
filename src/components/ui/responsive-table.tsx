@@ -96,7 +96,7 @@ export function ResponsiveTable<T>({
       </div>
 
       {/* Card view (narrow screens) */}
-      <div className={`${hide} space-y-3`}>
+      <div className={`${hide} space-y-2 p-2`}>
         {data.map((row, index) => {
           const isClickable = !!onRowClick;
           const cardContent = (
@@ -188,7 +188,7 @@ export function ResponsiveTable<T>({
               onKeyDown={isClickable ? handleKeyDown : undefined}
               tabIndex={isClickable ? 0 : undefined}
               className={`
-                p-4 rounded-lg border border-border bg-surface-subtle
+                p-3 rounded-lg border border-border bg-surface-subtle
                 ${isClickable ? "cursor-pointer hover:bg-surface focus:outline-none focus:bg-surface focus:ring-1 focus:ring-primary" : ""}
               `}
             >

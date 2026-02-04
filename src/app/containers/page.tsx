@@ -74,6 +74,7 @@ export default function ContainersPage() {
     {
       key: "status",
       header: "Status",
+      fixed: true,
       cardPosition: "body",
       render: (c) => <ContainerStateBadge state={c.state} />,
     },
@@ -92,6 +93,7 @@ export default function ContainersPage() {
     {
       key: "actions",
       header: "Actions",
+      fixed: true,
       cardPosition: "footer",
       render: (c) => <ContainerActions containerId={c.id} state={c.state} />,
     },

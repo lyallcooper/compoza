@@ -362,6 +362,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {
               key: "status",
               header: "Status",
+              fixed: true,
               cardPosition: "body",
               render: (s) => <ContainerStateBadge state={s.status} />,
             },
@@ -380,6 +381,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {
               key: "actions",
               header: "Actions",
+              fixed: true,
               cardPosition: "footer",
               render: (s) => s.containerId ? (
                 <ContainerActions containerId={s.containerId} state={s.status} />

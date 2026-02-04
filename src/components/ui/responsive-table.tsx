@@ -129,7 +129,7 @@ export function ResponsiveTable<T>({
                   <div
                     key={col.key}
                     role="columnheader"
-                    className={`px-1.5 py-1 text-left text-xs font-semibold bg-surface-subtle border-b border-border ${
+                    className={`px-2 py-1 flex items-center text-left text-xs font-semibold bg-surface-subtle border-b border-border ${
                       col.shrink ? "whitespace-nowrap" : "min-w-0"
                     } ${col.className || ""}`}
                   >
@@ -171,7 +171,7 @@ export function ResponsiveTable<T>({
                     <div
                       key={col.key}
                       role="cell"
-                      className={`px-1.5 py-1 border-b border-border group-last:border-b-0 group-hover:bg-surface ${
+                      className={`px-2 py-1 flex items-center border-b border-border group-last:border-b-0 group-hover:bg-surface ${
                         isClickable ? "group-focus:bg-surface" : ""
                       } ${col.shrink ? "whitespace-nowrap" : "min-w-0 overflow-hidden"} ${col.className || ""}`}
                       data-truncate-container={col.shrink ? undefined : "true"}

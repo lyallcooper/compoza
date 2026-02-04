@@ -1,5 +1,5 @@
 import { pullLatestImage } from "./pull";
-import { getDocker, getSelfProjectName } from "@/lib/docker";
+import { getDocker, getSelfProjectName, getOwnContainerId } from "@/lib/docker";
 import { getProject, getHostProjectsDir, toHostPath } from "@/lib/projects/scanner";
 import { log } from "@/lib/logger";
 
@@ -261,8 +261,9 @@ function demuxDockerLogs(buffer: Buffer): string {
  */
 async function getSelfNetworks(docker: ReturnType<typeof getDocker>): Promise<string[]> {
   try {
-    const containerId = process.env.HOSTNAME;
+    const containerId = await getOwnContainerId();
     if (!containerId) {
+      log.updates.warn("Could not determine own container ID for network lookup");
       return [];
     }
 

@@ -55,7 +55,7 @@ export async function getSelfProjectName(): Promise<string | null> {
  * Get our own container ID by reading from cgroup, mountinfo, or hostname.
  * Returns the container ID or name that can be used with Docker API.
  */
-async function getOwnContainerId(): Promise<string | null> {
+export async function getOwnContainerId(): Promise<string | null> {
   // Try to get container ID from /proc/self/cgroup (works in most Docker setups)
   try {
     const cgroup = await readFile("/proc/self/cgroup", "utf8");

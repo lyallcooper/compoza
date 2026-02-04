@@ -154,14 +154,14 @@ export default function ImagesPage() {
       key: "size",
       header: "Size",
       cardPosition: "body",
-      className: "hidden sm:table-cell",
+      className: "hidden sm:block",
       render: (image) => <span className="text-muted">{formatBytes(image.size)}</span>,
     },
     {
       key: "created",
       header: "Created",
       cardPosition: "body",
-      className: "hidden sm:table-cell",
+      className: "hidden sm:block",
       render: (image) => (
         <span className="text-muted">{formatDateTime(new Date(image.created * 1000))}</span>
       ),

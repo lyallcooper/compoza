@@ -115,3 +115,19 @@ code, pre {
   animation: toast-in 0.2s ease-out;
 }
 
+/* Popup animation */
+@keyframes popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-popup-in {
+  animation: popup-in 0.15s ease-out;
+}
+

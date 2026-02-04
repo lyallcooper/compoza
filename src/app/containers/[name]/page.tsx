@@ -2,7 +2,7 @@
 
 import { use, useMemo, useState } from "react";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, SelectableText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
@@ -40,11 +40,10 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
     {
       key: "key",
       header: "Key",
+      fixed: true,
       cardPosition: "header",
       render: ([key]) => (
-        <span className="font-mono text-xs font-medium">
-          <SelectableText>{key}</SelectableText>
-        </span>
+        <span className="font-mono text-xs font-medium">{key}</span>
       ),
     },
     {
@@ -58,10 +57,8 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
         const displayValue = isSensitive && !isRevealed ? "••••••••" : value;
 
         return (
-          <div className="flex items-center gap-2 font-mono text-xs">
-            <SelectableText>
-              <TruncatedText text={displayValue} maxLength={50} />
-            </SelectableText>
+          <div className="flex items-center gap-2 font-mono text-xs min-w-0">
+            <TruncatedText text={displayValue} maxLength={50} />
             {isSensitive && (
               <button
                 onClick={(e) => {
@@ -296,45 +293,27 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             data={[
               {
                 label: "Image",
-                value: (
-                  <span className="font-mono">
-                    <SelectableText>
-                      <TruncatedText text={container.image} maxLength={50} />
-                    </SelectableText>
-                  </span>
-                ),
+                value: container.image,
+                mono: true,
               },
               { label: "Status", value: container.status },
               {
                 label: "Container ID",
-                value: (
-                  <span className="font-mono">
-                    <SelectableText>
-                      <TruncatedText text={container.id} maxLength={24} />
-                    </SelectableText>
-                  </span>
-                ),
+                value: container.id,
+                mono: true,
+                maxLength: 36,
               },
               {
                 label: "Image ID",
-                value: (
-                  <span className="font-mono">
-                    <SelectableText>
-                      <TruncatedText text={container.imageId} maxLength={24} />
-                    </SelectableText>
-                  </span>
-                ),
+                value: container.imageId,
+                mono: true,
+                maxLength: 36,
               },
               ...(imageInfo?.currentDigest
                 ? [{
                     label: "Digest",
-                    value: (
-                      <span className="font-mono">
-                        <SelectableText>
-                          <TruncatedText text={imageInfo.currentDigest} maxLength={24} />
-                        </SelectableText>
-                      </span>
-                    ),
+                    value: imageInfo.currentDigest,
+                    mono: true,
                   }]
                 : []),
               ...(imageInfo?.currentVersion
@@ -347,19 +326,9 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               ...(container.projectName
                 ? [{
                     label: "Project",
-                    value: (
-                      <>
-                        <Link
-                          href={`/projects/${encodeURIComponent(container.projectName)}`}
-                          className="text-accent hover:underline"
-                        >
-                          {container.projectName}
-                        </Link>
-                        {container.serviceName && (
-                          <span className="text-muted"> / {container.serviceName}</span>
-                        )}
-                      </>
-                    ),
+                    value: container.projectName,
+                    link: `/projects/${encodeURIComponent(container.projectName)}`,
+                    suffix: container.serviceName ? ` / ${container.serviceName}` : undefined,
                   }]
                 : []),
             ]}
@@ -368,9 +337,9 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               {
                 key: "label",
                 header: "Property",
+                fixed: true,
                 cardPosition: "body",
                 cardLabel: false,
-                className: "w-1/3",
                 render: (row) => <span className="text-muted">{row.label}</span>,
                 renderCard: (row) => <span className="text-muted shrink-0">{row.label}</span>,
               },
@@ -379,7 +348,26 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 header: "Value",
                 cardPosition: "body",
                 cardLabel: false,
-                render: (row) => row.value,
+                render: (row) => {
+                  if (row.link) {
+                    return (
+                      <>
+                        <Link href={row.link} className="text-accent hover:underline">
+                          {row.value}
+                        </Link>
+                        {row.suffix && <span className="text-muted">{row.suffix}</span>}
+                      </>
+                    );
+                  }
+                  if (row.mono) {
+                    return (
+                      <span className="font-mono">
+                        <TruncatedText text={row.value} maxLength={row.maxLength} />
+                      </span>
+                    );
+                  }
+                  return row.value;
+                },
               },
             ]}
             showHeader={false}
@@ -396,6 +384,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "host",
                   header: "Host",
+                  fixed: true,
                   cardPosition: "header",
                   render: (p) => (
                     <span className="font-mono">
@@ -411,12 +400,14 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "container",
                   header: "Container",
+                  fixed: true,
                   cardPosition: "hidden",
                   render: (p) => <span className="font-mono">{p.container}</span>,
                 },
                 {
                   key: "protocol",
                   header: "Protocol",
+                  fixed: true,
                   cardPosition: "body",
                   render: (p) => <span className="text-muted">{p.protocol}</span>,
                 },
@@ -435,6 +426,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "type",
                   header: "Type",
+                  fixed: true,
                   cardPosition: "body",
                   render: (m) => <span className="capitalize text-muted">{m.type}</span>,
                 },
@@ -444,9 +436,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   cardPosition: "body",
                   render: (m) => (
                     <span className="font-mono">
-                      <SelectableText>
-                        <TruncatedText text={m.source || "-"} maxLength={35} />
-                      </SelectableText>
+                      <TruncatedText text={m.source || "-"} />
                     </span>
                   ),
                 },
@@ -456,23 +446,22 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   cardPosition: "header",
                   render: (m) => (
                     <span className="font-mono">
-                      <SelectableText>
-                        <TruncatedText text={m.destination} maxLength={35} />
-                      </SelectableText>
+                      <TruncatedText text={m.destination} />
                     </span>
                   ),
                 },
                 {
                   key: "mode",
                   header: "Mode",
+                  fixed: true,
                   cardPosition: "body",
                   render: (m) => (
                     <span className="text-muted">
                       {m.rw ? (m.mode || "rw") : <span className="text-warning">ro</span>}
-                  </span>
-                ),
-              },
-            ] satisfies ColumnDef<typeof container.mounts[number]>[]}
+                    </span>
+                  ),
+                },
+              ] satisfies ColumnDef<typeof container.mounts[number]>[]}
             />
           </Box>
         )}
@@ -487,52 +476,40 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "name",
                   header: "Name",
+                  fixed: true,
                   cardPosition: "header",
-                  render: (n) => (
-                    <span className="font-medium">
-                      <SelectableText>{n.name}</SelectableText>
-                    </span>
-                  ),
+                  render: (n) => <span className="font-medium">{n.name}</span>,
                 },
                 {
                   key: "ipAddress",
                   header: "IP Address",
+                  fixed: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
-                      {n.ipAddress ? (
-                        <SelectableText>{n.ipAddress}</SelectableText>
-                      ) : (
-                        <span className="text-muted">-</span>
-                      )}
+                      {n.ipAddress || <span className="text-muted">-</span>}
                     </span>
                   ),
                 },
                 {
                   key: "gateway",
                   header: "Gateway",
+                  fixed: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
-                      {n.gateway ? (
-                        <SelectableText>{n.gateway}</SelectableText>
-                      ) : (
-                        <span className="text-muted">-</span>
-                      )}
+                      {n.gateway || <span className="text-muted">-</span>}
                     </span>
                   ),
                 },
                 {
                   key: "macAddress",
                   header: "MAC Address",
+                  fixed: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
-                      {n.macAddress ? (
-                        <SelectableText>{n.macAddress}</SelectableText>
-                      ) : (
-                        <span className="text-muted">-</span>
-                      )}
+                      {n.macAddress || <span className="text-muted">-</span>}
                     </span>
                   ),
                 },

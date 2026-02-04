@@ -347,7 +347,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               key: "image",
               header: "Image",
               cardPosition: "body",
-              className: "hidden sm:table-cell",
+              className: "hidden sm:block",
               render: (s) => (
                 <span className="text-muted font-mono">
                   <TruncatedText text={s.image || "-"} maxLength={50} />
@@ -369,7 +369,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               key: "ports",
               header: "Ports",
               cardPosition: "body",
-              className: "hidden sm:table-cell",
+              className: "hidden sm:block",
               render: (s) => (
                 <span className="text-muted">
                   <PortsList ports={s.ports || []} />

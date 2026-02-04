@@ -2,6 +2,12 @@
 
 import { ReactNode } from "react";
 
+/**
+ * @deprecated Use ResponsiveTable instead. This component uses table-fixed layout
+ * which doesn't auto-size columns based on content. ResponsiveTable uses CSS Grid
+ * with proper fixed/variable column support and includes mobile card view.
+ */
+
 interface TableProps {
   children: ReactNode;
   className?: string;
@@ -39,8 +45,8 @@ export function Table({ children, className = "" }: TableProps) {
   // Only apply w-full if no width class is provided
   const hasWidthClass = /\bw-(full|auto|fit|screen|min|max|\d|\/|\[)/.test(className);
   return (
-    <div className="overflow-x-auto">
-      <table className={`${hasWidthClass ? "" : "w-full"} text-xs ${className}`}>{children}</table>
+    <div className="overflow-hidden">
+      <table className={`${hasWidthClass ? "" : "w-full"} table-fixed text-xs ${className}`}>{children}</table>
     </div>
   );
 }

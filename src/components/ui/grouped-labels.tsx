@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { SelectableText } from "./selectable-text";
 import { TruncatedText } from "./truncated-text";
 
 interface GroupedLabelsProps {
@@ -100,11 +99,9 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
           // Ungrouped labels - render directly
           return group.labels.map(({ fullKey, value }) => (
             <div key={fullKey}>
-              <SelectableText className="text-muted">{fullKey}</SelectableText>
+              <TruncatedText text={fullKey} showPopup={false} className="text-muted" />
               <span className="text-muted">:</span>{" "}
-              <SelectableText>
-                <TruncatedText text={value} maxLength={60} />
-              </SelectableText>
+              <TruncatedText text={value} maxLength={60} />
             </div>
           ));
         }
@@ -125,11 +122,9 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
               <div className="ml-5 border-l border-border pl-2 space-y-1">
                 {group.labels.map(({ suffix, fullKey, value }) => (
                   <div key={fullKey}>
-                    <SelectableText className="text-muted">.{suffix}</SelectableText>
+                    <TruncatedText text={`.${suffix}`} showPopup={false} className="text-muted" />
                     <span className="text-muted">:</span>{" "}
-                    <SelectableText>
-                      <TruncatedText text={value} maxLength={50} />
-                    </SelectableText>
+                    <TruncatedText text={value} maxLength={50} />
                   </div>
                 ))}
               </div>

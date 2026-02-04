@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Button, Badge, SelectableText, TruncatedText } from "@/components/ui";
+import { Box, Button, Badge, TruncatedText } from "@/components/ui";
 import { useImages } from "@/hooks";
 import { formatDate, formatBytes } from "@/lib/format";
 
@@ -42,14 +42,14 @@ export default function SettingsPage() {
         <div className="space-y-3 text-sm">
           <div>
             <div className="text-muted">Projects Directory</div>
-            <SelectableText className="font-mono">{projectsDir}</SelectableText>
+            <TruncatedText text={projectsDir} className="font-mono" showPopup={false} />
             <div className="text-xs text-muted mt-1">
               Set via PROJECTS_DIR environment variable
             </div>
           </div>
           <div>
             <div className="text-muted">Docker Host</div>
-            <SelectableText className="font-mono">{dockerHost}</SelectableText>
+            <TruncatedText text={dockerHost} className="font-mono" showPopup={false} />
             <div className="text-xs text-muted mt-1">
               Set via DOCKER_HOST environment variable
             </div>
@@ -97,9 +97,7 @@ export default function SettingsPage() {
                     image.tags.map((tag, i) => (
                       <span key={tag}>
                         {i > 0 && ", "}
-                        <SelectableText>
-                          <TruncatedText text={tag} maxLength={60} />
-                        </SelectableText>
+                        <TruncatedText text={tag} maxLength={60} />
                       </span>
                     ))
                   ) : (

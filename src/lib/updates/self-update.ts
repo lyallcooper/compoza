@@ -37,21 +37,28 @@ export async function selfUpdate(): Promise<SelfUpdateResult> {
       };
     }
 
-    // Step 3: Spawn updater container
+    // Step 3: Spawn updater container and wait for result
     try {
-      await spawnUpdaterContainer(canAutoRestart.projectName!, canAutoRestart.composeFile!);
+      const result = await spawnUpdaterContainer(canAutoRestart.projectName!, canAutoRestart.composeFile!);
+      if (!result.success) {
+        log.updates.error("Self-update failed", { output: result.output });
+        return {
+          success: false,
+          message: `Update failed: ${result.output.slice(0, 200)}`,
+        };
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.updates.error("Failed to spawn updater container", error);
       return {
-        success: true,
+        success: true, // Image was pulled
         message: `Image pulled. Restart manually: ${msg}`,
       };
     }
 
     return {
       success: true,
-      message: "Update initiated. Restarting...",
+      message: "Update complete. Restarting...",
     };
   } catch (error) {
     return {
@@ -101,12 +108,15 @@ async function checkAutoRestartPossible(): Promise<AutoRestartCheck> {
  * Spawn a temporary container that runs `docker compose up -d` for the given project.
  * This container runs independently from Compoza, so it survives when Compoza is recreated.
  *
+ * Waits for the container to finish and captures its output. If the compose command
+ * succeeds and recreates Compoza, this function may never return (we get killed).
+ *
  * Exported for use by compose.ts when updating Compoza via the update-all route.
  */
 export async function spawnUpdaterContainer(
   projectName: string,
   composeFile: string
-): Promise<void> {
+): Promise<{ success: boolean; output: string }> {
   const docker = getDocker();
 
   // Convert paths to host paths for the updater container
@@ -153,7 +163,7 @@ export async function spawnUpdaterContainer(
     }
   }
 
-  // Create the updater container
+  // Create the updater container (without AutoRemove so we can read logs)
   const container = await docker.createContainer({
     Image: DOCKER_CLI_IMAGE,
     Cmd: [
@@ -164,7 +174,7 @@ export async function spawnUpdaterContainer(
     ],
     Env: env.length > 0 ? env : undefined,
     HostConfig: {
-      AutoRemove: true,
+      AutoRemove: false,
       Binds: binds,
       NetworkMode: networkMode,
     },
@@ -172,8 +182,78 @@ export async function spawnUpdaterContainer(
     name: `compoza-updater-${Date.now()}`,
   });
 
+  log.updates.info("Starting updater container", {
+    containerId: container.id,
+    hostComposeFile,
+    hostProjectDir,
+    binds,
+  });
+
   await container.start();
-  log.updates.info("Updater container started", { containerId: container.id });
+
+  // Wait for container to finish (with timeout)
+  const TIMEOUT_MS = 30000; // 30 seconds
+  try {
+    const waitPromise = container.wait();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Updater timed out")), TIMEOUT_MS)
+    );
+
+    const result = await Promise.race([waitPromise, timeoutPromise]) as { StatusCode: number };
+
+    // Get container logs
+    const logs = await container.logs({ stdout: true, stderr: true });
+    const output = demuxDockerLogs(logs as Buffer);
+
+    // Remove container
+    try {
+      await container.remove();
+    } catch {
+      // Ignore removal errors
+    }
+
+    log.updates.info("Updater container finished", {
+      exitCode: result.StatusCode,
+      output: output.slice(0, 1000),
+    });
+
+    if (result.StatusCode !== 0) {
+      return {
+        success: false,
+        output: output || `Exit code: ${result.StatusCode}`,
+      };
+    }
+
+    return { success: true, output };
+  } catch (err) {
+    // Timeout or other error - try to get logs and clean up
+    try {
+      const logs = await container.logs({ stdout: true, stderr: true });
+      const output = demuxDockerLogs(logs as Buffer);
+      log.updates.error("Updater error", { error: err, output });
+      await container.remove({ force: true });
+      return { success: false, output: output || String(err) };
+    } catch {
+      return { success: false, output: String(err) };
+    }
+  }
+}
+
+/**
+ * Demultiplex Docker log stream (which has an 8-byte header per chunk).
+ * Docker's multiplexed stream format: [8-byte header][payload]
+ * Header: [stream type (1 byte)][0 0 0][size (4 bytes big-endian)]
+ */
+function demuxDockerLogs(buffer: Buffer): string {
+  const lines: string[] = [];
+  let offset = 0;
+  while (offset + 8 <= buffer.length) {
+    const size = buffer.readUInt32BE(offset + 4);
+    if (offset + 8 + size > buffer.length) break;
+    lines.push(buffer.subarray(offset + 8, offset + 8 + size).toString("utf8"));
+    offset += 8 + size;
+  }
+  return lines.join("").trim();
 }
 
 /**

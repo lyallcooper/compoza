@@ -29,8 +29,15 @@ async function handleSelfUpdate(
   }
 
   try {
-    await spawnUpdaterContainer(projectName, composeFile);
-    return { success: true, output: "Update initiated via updater container" };
+    const result = await spawnUpdaterContainer(projectName, composeFile);
+    if (!result.success) {
+      return {
+        success: false,
+        output: result.output,
+        error: result.output,
+      };
+    }
+    return { success: true, output: result.output || "Update complete. Restarting..." };
   } catch (error) {
     return {
       success: false,

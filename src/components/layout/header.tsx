@@ -9,7 +9,6 @@ const navItems = [
   { href: "/projects", label: "Projects" },
   { href: "/containers", label: "Containers" },
   { href: "/images", label: "Images" },
-  { href: "/settings", label: "Settings" },
 ];
 
 export function Header() {

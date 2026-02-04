@@ -2,6 +2,7 @@
 
 import { useRef, useState, useLayoutEffect, useEffect, useCallback, forwardRef } from "react";
 import { createPortal } from "react-dom";
+import { SENSITIVE_MASK } from "@/lib/format";
 
 interface TruncatedTextProps {
   text: string;
@@ -10,6 +11,12 @@ interface TruncatedTextProps {
   showPopup?: boolean;
   className?: string;
   popupDelay?: number;
+  /** Whether this value is sensitive (e.g., password, secret) */
+  sensitive?: boolean;
+  /** Controlled reveal state for sensitive values */
+  revealed?: boolean;
+  /** Callback when reveal state changes */
+  onRevealChange?: (revealed: boolean) => void;
 }
 
 interface PopupState {
@@ -25,7 +32,13 @@ export function TruncatedText({
   showPopup = true,
   className,
   popupDelay = 500,
+  sensitive = false,
+  revealed = true,
+  onRevealChange,
 }: TruncatedTextProps) {
+  // For sensitive values that aren't revealed, show mask
+  const isHidden = sensitive && !revealed;
+  const displaySourceText = isHidden ? SENSITIVE_MASK : text;
   const containerRef = useRef<HTMLSpanElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [displayText, setDisplayText] = useState(text);
@@ -83,7 +96,9 @@ export function TruncatedText({
     document.body.appendChild(measureSpan);
 
     const calculateTruncation = () => {
+      // Account for expand button and sensitive reveal/hide button
       const expandButtonWidth = showPopup ? 16 : 0;
+      const sensitiveButtonWidth = sensitive ? 32 : 0;
 
       // Get available width from constraining parent
       const parentStyles = window.getComputedStyle(constrainingParent);
@@ -91,36 +106,36 @@ export function TruncatedText({
       const availableWidth = constrainingParent.clientWidth - parentPadding;
 
       if (availableWidth <= 0) {
-        setDisplayText(text);
+        setDisplayText(displaySourceText);
         setIsTruncated(false);
         return;
       }
 
       // Check if full text fits and is under maxLength
-      measureSpan.textContent = text;
-      const textFitsInSpace = measureSpan.offsetWidth <= availableWidth;
-      const textUnderMaxLength = !maxLength || text.length <= maxLength;
+      measureSpan.textContent = displaySourceText;
+      const textFitsInSpace = measureSpan.offsetWidth <= availableWidth - sensitiveButtonWidth;
+      const textUnderMaxLength = !maxLength || displaySourceText.length <= maxLength;
 
       if (textFitsInSpace && textUnderMaxLength) {
-        setDisplayText(text);
+        setDisplayText(displaySourceText);
         setIsTruncated(false);
         return;
       }
 
       // Calculate max chars to keep on each side
       const maxChars = maxLength
-        ? Math.min(Math.floor(text.length / 2), Math.floor((maxLength - 3) / 2))
-        : Math.floor(text.length / 2);
+        ? Math.min(Math.floor(displaySourceText.length / 2), Math.floor((maxLength - 3) / 2))
+        : Math.floor(displaySourceText.length / 2);
 
       // Binary search for optimal truncation
-      const targetWidth = availableWidth - expandButtonWidth;
+      const targetWidth = availableWidth - expandButtonWidth - sensitiveButtonWidth;
       let low = 1;
       let high = maxChars;
       let bestKeep = 1;
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
-        const testStr = `${text.slice(0, mid)}...${text.slice(-mid)}`;
+        const testStr = `${displaySourceText.slice(0, mid)}...${displaySourceText.slice(-mid)}`;
         measureSpan.textContent = testStr;
 
         if (measureSpan.offsetWidth <= targetWidth) {
@@ -131,7 +146,7 @@ export function TruncatedText({
         }
       }
 
-      setDisplayText(`${text.slice(0, bestKeep)}...${text.slice(-bestKeep)}`);
+      setDisplayText(`${displaySourceText.slice(0, bestKeep)}...${displaySourceText.slice(-bestKeep)}`);
       setIsTruncated(true);
     };
 
@@ -147,7 +162,7 @@ export function TruncatedText({
         document.body.removeChild(measureSpan);
       }
     };
-  }, [text, maxLength, showPopup]);
+  }, [displaySourceText, maxLength, showPopup, sensitive]);
 
   const clearHoverTimeout = useCallback(() => {
     if (hoverTimeoutRef.current) {
@@ -243,6 +258,12 @@ export function TruncatedText({
     }
   }, [popup.visible, popup.pinned, clearHoverTimeout]);
 
+  const handleRevealToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onRevealChange?.(!revealed);
+  }, [revealed, onRevealChange]);
+
   const handlePopupClose = useCallback(() => {
     setPopup({ visible: false, pinned: false, rect: null });
   }, []);
@@ -297,7 +318,7 @@ export function TruncatedText({
       aria-expanded={popup.visible}
     >
       <span>{displayText}</span>
-      {isTruncated && showPopup && (
+      {isTruncated && showPopup && !isHidden && (
         <button
           type="button"
           onClick={handleExpandClick}
@@ -308,6 +329,16 @@ export function TruncatedText({
           +
         </button>
       )}
+      {sensitive && (
+        <button
+          type="button"
+          onClick={handleRevealToggle}
+          className="ml-1 text-muted hover:text-foreground text-xs leading-none shrink-0"
+          tabIndex={-1}
+        >
+          {revealed ? "hide" : "reveal"}
+        </button>
+      )}
       {popup.visible && popup.rect && (
         <Popup
           ref={popupRef}
@@ -315,6 +346,9 @@ export function TruncatedText({
           anchorRect={popup.rect}
           pinned={popup.pinned}
           onClose={handlePopupClose}
+          sensitive={sensitive}
+          revealed={revealed}
+          onRevealChange={onRevealChange}
         />
       )}
     </span>
@@ -326,12 +360,17 @@ interface PopupProps {
   anchorRect: DOMRect;
   pinned: boolean;
   onClose: () => void;
+  sensitive?: boolean;
+  revealed?: boolean;
+  onRevealChange?: (revealed: boolean) => void;
 }
 
 const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
-  { text, anchorRect, pinned, onClose },
+  { text, anchorRect, pinned, onClose, sensitive, revealed, onRevealChange },
   ref
 ) {
+  const isHidden = sensitive && !revealed;
+  const displayText = isHidden ? SENSITIVE_MASK : text;
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -378,27 +417,44 @@ const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="bg-background border border-border rounded-md shadow-lg overflow-hidden">
-        {pinned && (
-          <div className="flex justify-end border-b border-border px-2 py-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onClose();
-              }}
-              className="text-muted hover:text-foreground text-xs"
-              aria-label="Close"
-            >
-              close
-            </button>
+        {(pinned || sensitive) && (
+          <div className="flex justify-between items-center border-b border-border px-2 py-1">
+            <div>
+              {sensitive && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onRevealChange?.(!revealed);
+                  }}
+                  className="text-muted hover:text-foreground text-xs"
+                >
+                  {revealed ? "hide" : "reveal"}
+                </button>
+              )}
+            </div>
+            {pinned && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onClose();
+                }}
+                className="text-muted hover:text-foreground text-xs"
+                aria-label="Close"
+              >
+                close
+              </button>
+            )}
           </div>
         )}
         <div
           className="p-2 overflow-auto text-sm font-mono break-all"
           style={{ maxHeight: pinned ? popupMaxHeight - 32 : popupMaxHeight }}
         >
-          {text}
+          {displayText}
         </div>
       </div>
     </div>,

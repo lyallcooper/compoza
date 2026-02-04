@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { TruncatedText } from "./truncated-text";
-import { isSensitiveKey, SENSITIVE_MASK } from "@/lib/format";
+import { isSensitiveKey } from "@/lib/format";
 
 interface GroupedLabelsProps {
   labels: Record<string, string>;
@@ -94,37 +94,27 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
     });
   };
 
-  const toggleReveal = (key: string) => {
+  const handleRevealChange = (key: string, revealed: boolean) => {
     setRevealedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
+      if (revealed) {
         next.add(key);
+      } else {
+        next.delete(key);
       }
       return next;
     });
   };
 
-  const renderValue = (fullKey: string, value: string) => {
-    const isSensitive = isSensitiveKey(fullKey);
-    const isRevealed = revealedKeys.has(fullKey);
-    const displayValue = isSensitive && !isRevealed ? SENSITIVE_MASK : value;
-
-    return (
-      <>
-        <TruncatedText text={displayValue} maxLength={50} />
-        {isSensitive && (
-          <button
-            onClick={() => toggleReveal(fullKey)}
-            className="text-muted hover:text-foreground text-xs ml-1"
-          >
-            {isRevealed ? "hide" : "reveal"}
-          </button>
-        )}
-      </>
-    );
-  };
+  const renderValue = (fullKey: string, value: string) => (
+    <TruncatedText
+      text={value}
+      maxLength={50}
+      sensitive={isSensitiveKey(fullKey)}
+      revealed={revealedKeys.has(fullKey)}
+      onRevealChange={(revealed) => handleRevealChange(fullKey, revealed)}
+    />
+  );
 
   return (
     <div className="text-sm font-mono space-y-1">

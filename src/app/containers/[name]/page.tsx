@@ -7,23 +7,11 @@ import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
-import { formatDateTime, isSensitiveKey, SENSITIVE_MASK } from "@/lib/format";
+import { formatDateTime, isSensitiveKey } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
 function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
-
-  const toggleReveal = (key: string) => {
-    setRevealedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
 
   const sortedEntries = useMemo(
     () => Object.entries(env).sort(([a], [b]) => a.localeCompare(b)),
@@ -48,24 +36,27 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
       render: ([key, value]) => {
         const isSensitive = isSensitiveKey(key);
         const isRevealed = revealedKeys.has(key);
-        const displayValue = isSensitive && !isRevealed ? SENSITIVE_MASK : value;
 
         return (
-          <div className="flex items-center gap-2 font-mono text-xs min-w-0">
-            <TruncatedText text={displayValue} maxLength={50} />
-            {isSensitive && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleReveal(key);
-                }}
-                className="text-muted hover:text-foreground text-xs shrink-0"
-                title={isRevealed ? "Hide" : "Reveal"}
-              >
-                {isRevealed ? "hide" : "reveal"}
-              </button>
-            )}
-          </div>
+          <span className="font-mono text-xs">
+            <TruncatedText
+              text={value}
+              maxLength={50}
+              sensitive={isSensitive}
+              revealed={isRevealed}
+              onRevealChange={(revealed) => {
+                setRevealedKeys((prev) => {
+                  const next = new Set(prev);
+                  if (revealed) {
+                    next.add(key);
+                  } else {
+                    next.delete(key);
+                  }
+                  return next;
+                });
+              }}
+            />
+          </span>
         );
       },
     },

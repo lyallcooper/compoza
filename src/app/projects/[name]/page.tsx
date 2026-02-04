@@ -326,6 +326,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               key: "service",
               header: "Service",
               cardPosition: "header",
+              getValue: (s) => s.name,
               render: (s) => (
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{s.name}</span>
@@ -348,6 +349,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               header: "Image",
               cardPosition: "body",
               className: "hidden sm:block",
+              getValue: (s) => s.image || "",
               render: (s) => (
                 <span className="text-muted font-mono">
                   <TruncatedText text={s.image || "-"} maxLength={50} />

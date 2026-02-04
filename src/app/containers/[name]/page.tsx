@@ -461,6 +461,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   key: "source",
                   header: "Source",
                   cardPosition: "body",
+                  getValue: (m) => m.source || "",
                   render: (m) => (
                     <span className="font-mono">
                       <TruncatedText text={m.source || "-"} />
@@ -471,6 +472,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   key: "destination",
                   header: "Destination",
                   cardPosition: "header",
+                  getValue: (m) => m.destination,
                   render: (m) => (
                     <span className="font-mono">
                       <TruncatedText text={m.destination} />

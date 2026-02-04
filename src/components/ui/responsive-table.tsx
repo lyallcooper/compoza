@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 export interface ColumnDef<T> {
   key: string;
   header: string;
@@ -10,6 +10,12 @@ export interface ColumnDef<T> {
    * - false (default): Column expands to fill remaining space, may truncate
    */
   shrink?: boolean;
+  /**
+   * Returns raw string value for auto-weighting variable columns.
+   * Columns with getValue are weighted by their max content length.
+   * Only applies when shrink is false.
+   */
+  getValue?: (row: T) => string;
   /** Additional CSS classes for the column cells (e.g., responsive visibility) */
   className?: string;
   /** Custom render function */
@@ -51,15 +57,46 @@ export function ResponsiveTable<T>({
 }: ResponsiveTableProps<T>) {
   const { hide, show } = breakpointClasses[breakpoint];
 
+  // Calculate weights for variable columns based on content length
+  const columnWeights = useMemo(() => {
+    const weights: Record<string, number> = {};
+    const variableCols = columns.filter((col) => !col.shrink && col.getValue);
+
+    if (variableCols.length === 0 || data.length === 0) return weights;
+
+    // Calculate max length for each column
+    const maxLengths: Record<string, number> = {};
+    for (const col of variableCols) {
+      let maxLen = col.header.length;
+      for (const row of data) {
+        maxLen = Math.max(maxLen, col.getValue!(row).length);
+      }
+      maxLengths[col.key] = maxLen;
+    }
+
+    // Convert to relative weights (normalize so average is ~1)
+    const avgLen = Object.values(maxLengths).reduce((a, b) => a + b, 0) / variableCols.length || 1;
+    for (const [key, len] of Object.entries(maxLengths)) {
+      // Clamp weights to reasonable range (0.5 - 3) to avoid extreme ratios
+      weights[key] = Math.max(0.5, Math.min(3, len / avgLen));
+    }
+
+    return weights;
+  }, [columns, data]);
+
+  // Generate grid template: shrink columns get 'auto', variable columns get weighted 'minmax(0, Xfr)'
+  // Note: cardPosition only affects card view, all columns show in table view
+  const gridTemplateColumns = columns
+    .map((col) => {
+      if (col.shrink) return "auto";
+      const weight = columnWeights[col.key] ?? 1;
+      return `minmax(0, ${weight}fr)`;
+    })
+    .join(" ");
+
   if (data.length === 0 && emptyState) {
     return <>{emptyState}</>;
   }
-
-  // Generate grid template: fixed columns get 'auto', variable columns get 'minmax(0, 1fr)'
-  // Note: cardPosition only affects card view, all columns show in table view
-  const gridTemplateColumns = columns
-    .map((col) => (col.shrink ? "auto" : "minmax(0, 1fr)"))
-    .join(" ");
 
   // Card view column groups
   const headerColumns = columns.filter((col) => col.cardPosition === "header");

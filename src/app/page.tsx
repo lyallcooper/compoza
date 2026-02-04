@@ -178,12 +178,14 @@ export default function Dashboard() {
       key: "name",
       header: "Name",
       cardPosition: "header",
+      getValue: (container) => container.name,
       render: (container) => <span className="flex-shrink-0">{container.name}</span>,
     },
     {
       key: "image",
       header: "Image",
       cardLabel: "Image",
+      getValue: (container) => container.image.split("/").pop() ?? "",
       render: (container) => (
         <TruncatedText
           text={container.image.split("/").pop() ?? ""}
@@ -203,12 +205,14 @@ export default function Dashboard() {
       key: "name",
       header: "Name",
       cardPosition: "header",
+      getValue: ({ container }) => container.name,
       render: ({ container }) => <span className="font-medium">{container.name}</span>,
     },
     {
       key: "image",
       header: "Image",
       cardLabel: "Image",
+      getValue: ({ container }) => container.image.split("/").pop() ?? "",
       render: ({ container }) => (
         <TruncatedText
           text={container.image.split("/").pop() ?? ""}

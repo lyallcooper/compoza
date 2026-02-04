@@ -74,11 +74,18 @@ export function ResponsiveTable<T>({
       maxLengths[col.key] = maxLen;
     }
 
-    // Convert to relative weights (normalize so average is ~1)
-    const avgLen = Object.values(maxLengths).reduce((a, b) => a + b, 0) / variableCols.length || 1;
+    // Apply square root scaling to compress the range
+    // This prevents very long values from dominating (4x length -> 2x weight)
+    const scaledLengths: Record<string, number> = {};
     for (const [key, len] of Object.entries(maxLengths)) {
-      // Clamp weights to reasonable range (0.5 - 3) to avoid extreme ratios
-      weights[key] = Math.max(0.5, Math.min(3, len / avgLen));
+      scaledLengths[key] = Math.sqrt(len);
+    }
+
+    // Convert to relative weights (normalize so average is ~1)
+    const avgScaled = Object.values(scaledLengths).reduce((a, b) => a + b, 0) / variableCols.length || 1;
+    for (const [key, scaled] of Object.entries(scaledLengths)) {
+      // Clamp weights to reasonable range (0.5 - 2) to avoid extreme ratios
+      weights[key] = Math.max(0.5, Math.min(2, scaled / avgScaled));
     }
 
     return weights;

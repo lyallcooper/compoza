@@ -26,12 +26,13 @@ export function formatTime(date: Date): string {
 }
 
 /**
- * Format bytes into human-readable format: "1.5 GB"
+ * Format bytes into human-readable format using IEC binary prefixes: "1.5 GiB"
+ * Uses base 2 (1024) with correct binary prefixes (KiB, MiB, GiB, TiB).
  */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
 
-  const units = ["B", "KB", "MB", "GB", "TB"];
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
   const k = 1024;
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 

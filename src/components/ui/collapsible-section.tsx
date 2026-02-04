@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import { ReactNode } from "react";
 import { Box } from "./box";
 import { Badge } from "./badge";
 
@@ -23,29 +23,23 @@ export function CollapsibleSection({
   action,
   className,
 }: CollapsibleSectionProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-
   if (count === 0) return null;
 
   return (
     <Box
       title={
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 hover:text-accent transition-colors"
-        >
-          <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>
-            &#9654;
-          </span>
+        <>
           {title}
           <Badge variant={variant}>{count}</Badge>
-        </button>
+        </>
       }
       actions={action}
       padding={false}
+      collapsible="always"
+      defaultExpanded={defaultExpanded}
       className={className}
     >
-      {expanded && children}
+      {children}
     </Box>
   );
 }

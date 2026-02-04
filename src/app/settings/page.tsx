@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Box, Button, Badge, SelectableText, TruncatedText } from "@/components/ui";
 import { useImages } from "@/hooks";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatBytes } from "@/lib/format";
 
 export default function SettingsPage() {
   const { data: images } = useImages();
@@ -131,13 +131,5 @@ export default function SettingsPage() {
       </Box>
     </div>
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
 }
 

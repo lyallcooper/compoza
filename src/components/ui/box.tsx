@@ -2,13 +2,15 @@
 
 import { ReactNode, useState } from "react";
 
+type CollapseMode = "none" | "mobile" | "always";
+
 interface BoxProps {
   title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
   padding?: boolean;
-  collapsible?: boolean;
+  collapsible?: boolean | CollapseMode;
   defaultExpanded?: boolean;
 }
 
@@ -16,40 +18,57 @@ export function Box({ title, actions, children, className = "", padding = true, 
   const [expanded, setExpanded] = useState(defaultExpanded);
   const isFlexCol = className.includes("flex-col");
 
-  // Collapsible only on small screens (below md breakpoint)
-  const titleContent = collapsible ? (
+  // Normalize collapsible to CollapseMode
+  const collapseMode: CollapseMode = collapsible === true ? "mobile" : collapsible === false ? "none" : collapsible;
+  const isMobileOnly = collapseMode === "mobile";
+  const isAlways = collapseMode === "always";
+  const isCollapsible = collapseMode !== "none";
+
+  const titleContent = isCollapsible ? (
     <>
-      {/* Mobile: clickable with arrow */}
+      {/* Clickable toggle - mobile only or always based on mode */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="md:hidden flex items-center gap-2 hover:text-accent transition-colors"
+        className={`flex items-center gap-2 hover:text-accent transition-colors ${isMobileOnly ? "md:hidden" : ""}`}
       >
         <span className={`transition-transform text-xs ${expanded ? "rotate-90" : ""}`}>
           ▶
         </span>
         {title}
       </button>
-      {/* Desktop: static title */}
-      <span className="hidden md:block">{title}</span>
+      {/* Desktop: static title (only for mobile-only mode) */}
+      {isMobileOnly && <span className="hidden md:block">{title}</span>}
     </>
   ) : (
     <span>{title}</span>
   );
 
-  // On mobile: respect expanded state. On desktop: always show.
-  const showContent = !collapsible || expanded;
-  const collapsedOnMobile = collapsible && !expanded;
+  // Content visibility:
+  // - "none": always show
+  // - "mobile": hide on mobile when collapsed, always show on desktop
+  // - "always": hide when collapsed on all screen sizes
+  const contentClasses = [
+    padding ? "p-4" : "",
+    isFlexCol ? "flex-1 flex flex-col min-h-0" : "",
+    isMobileOnly && !expanded ? "hidden md:block" : "",
+    isAlways && !expanded ? "hidden" : "",
+  ].filter(Boolean).join(" ");
+
+  // Border visibility when collapsed
+  const showBorder = expanded || !isCollapsible;
+  const borderClasses = isMobileOnly && !expanded
+    ? "md:border-b md:border-border"
+    : showBorder ? "border-b border-border" : "";
 
   return (
     <div className={`border border-border bg-background rounded ${className}`}>
       {(title || actions) && (
-        <div className={`${collapsedOnMobile ? "md:border-b md:border-border" : "border-b border-border"} bg-surface px-4 text-sm font-semibold flex items-center justify-between gap-2 flex-shrink-0 ${actions !== undefined ? "h-10" : "py-2"}`}>
+        <div className={`${borderClasses} bg-surface px-4 text-sm font-semibold flex items-center justify-between gap-2 flex-shrink-0 ${actions !== undefined ? "h-10" : "py-2"}`}>
           {titleContent}
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
       )}
-      {/* Mobile: conditionally render. Desktop: always show. */}
-      <div className={`${padding ? "p-4" : ""} ${isFlexCol ? "flex-1 flex flex-col min-h-0" : ""} ${showContent ? "" : "hidden"} ${collapsible ? "md:block" : ""}`}>
+      <div className={contentClasses || undefined}>
         {children}
       </div>
     </div>

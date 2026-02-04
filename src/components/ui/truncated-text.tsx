@@ -124,7 +124,7 @@ export function TruncatedText({
 
       // Calculate max chars to keep on each side
       const maxChars = maxLength
-        ? Math.min(Math.floor(displaySourceText.length / 2), Math.floor((maxLength - 3) / 2))
+        ? Math.min(Math.floor(displaySourceText.length / 2), Math.floor((maxLength - 1) / 2))
         : Math.floor(displaySourceText.length / 2);
 
       // Binary search for optimal truncation
@@ -135,7 +135,7 @@ export function TruncatedText({
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
-        const testStr = `${displaySourceText.slice(0, mid)}...${displaySourceText.slice(-mid)}`;
+        const testStr = `${displaySourceText.slice(0, mid)}…${displaySourceText.slice(-mid)}`;
         measureSpan.textContent = testStr;
 
         if (measureSpan.offsetWidth <= targetWidth) {
@@ -146,7 +146,7 @@ export function TruncatedText({
         }
       }
 
-      setDisplayText(`${displaySourceText.slice(0, bestKeep)}...${displaySourceText.slice(-bestKeep)}`);
+      setDisplayText(`${displaySourceText.slice(0, bestKeep)}…${displaySourceText.slice(-bestKeep)}`);
       setIsTruncated(true);
     };
 

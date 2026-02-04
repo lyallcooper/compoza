@@ -1,11 +1,12 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
-import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
+import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
 import { formatDateTime } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
@@ -90,12 +91,14 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const { name } = use(params);
+  const router = useRouter();
   const { data: container, isLoading, error } = useContainer(name);
   const { data: stats } = useContainerStats(name, container?.state === "running");
   const { data: imageUpdates } = useImageUpdates();
   const startContainer = useStartContainer();
   const stopContainer = useStopContainer();
   const restartContainer = useRestartContainer();
+  const removeContainer = useRemoveContainer();
   const { updateContainer } = useBackgroundContainerUpdate();
 
   // Get current image info (digest and version) from update cache
@@ -144,10 +147,22 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
   // Update modal state
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
 
   const handleUpdate = () => {
     updateContainer({ containerId: name, containerName: container?.name || name });
     setShowUpdateModal(false);
+  };
+
+  const handleDelete = async () => {
+    try {
+      const isRunning = container?.state === "running";
+      await removeContainer.mutateAsync({ id: name, force: isRunning });
+      router.push("/containers");
+    } catch {
+      // Error is handled by the mutation
+    }
+    setShowRemoveModal(false);
   };
 
   if (isLoading) {
@@ -234,6 +249,12 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               <Button>Terminal</Button>
             </Link>
           )}
+          <Button
+            variant="danger"
+            onClick={() => setShowRemoveModal(true)}
+          >
+            Delete…
+          </Button>
         </div>
 
         {/* Mobile actions dropdown */}
@@ -275,6 +296,12 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               <DropdownItem>Terminal</DropdownItem>
             </Link>
           )}
+          <DropdownItem
+            variant="danger"
+            onClick={() => setShowRemoveModal(true)}
+          >
+            Delete…
+          </DropdownItem>
         </DropdownMenu>
       </div>
 
@@ -549,6 +576,37 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           isRunning={container.state === "running"}
         />
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal
+        open={showRemoveModal}
+        onClose={() => setShowRemoveModal(false)}
+        title="Delete Container"
+        footer={
+          <>
+            <Button onClick={() => setShowRemoveModal(false)}>Cancel</Button>
+            <Button
+              variant="danger"
+              onClick={handleDelete}
+              loading={removeContainer.isPending}
+            >
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Are you sure you want to delete <strong>{container.name}</strong>?
+        </p>
+        {container.state === "running" && (
+          <p className="text-warning text-sm mt-2">
+            This container is currently running and will be forcefully stopped.
+          </p>
+        )}
+        <p className="text-muted text-sm mt-2">
+          This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }

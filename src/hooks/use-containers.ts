@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiPost } from "@/lib/api";
+import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { queryKeys, invalidateContainerQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
 import type { Container, ContainerStats } from "@/types";
 
@@ -88,6 +88,20 @@ export function useContainerUpdate() {
       const images = data?.image ? [data.image] : undefined;
       await clearUpdateCacheAndInvalidate(queryClient, images);
       invalidateContainerQueries(queryClient, id);
+    },
+  });
+}
+
+export function useRemoveContainer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, force = false }: { id: string; force?: boolean }) =>
+      apiDelete<{ message: string }>(
+        `/api/containers/${encodeURIComponent(id)}${force ? "?force=true" : ""}`
+      ),
+    onSuccess: () => {
+      invalidateContainerQueries(queryClient);
     },
   });
 }

@@ -21,12 +21,14 @@ export default function ContainersPage() {
     {
       key: "name",
       header: "Name",
+      shrink: true,
       cardPosition: "header",
       render: (c) => c.name,
     },
     {
       key: "project",
       header: "Project",
+      shrink: true,
       cardPosition: "body",
       className: "hidden sm:block",
       render: (c) => (
@@ -74,13 +76,14 @@ export default function ContainersPage() {
     {
       key: "status",
       header: "Status",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       render: (c) => <ContainerStateBadge state={c.state} />,
     },
     {
       key: "ports",
       header: "Ports",
+      shrink: true,
       cardPosition: "body",
       className: "hidden sm:block",
       render: (c) => (
@@ -93,7 +96,7 @@ export default function ContainersPage() {
     {
       key: "actions",
       header: "Actions",
-      fixed: true,
+      shrink: true,
       cardPosition: "footer",
       render: (c) => <ContainerActions containerId={c.id} state={c.state} />,
     },

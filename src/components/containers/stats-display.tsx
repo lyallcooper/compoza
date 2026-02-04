@@ -48,7 +48,7 @@ export function StatsDisplay({ stats, loading }: StatsDisplayProps) {
     {
       key: "label",
       header: "Metric",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       cardLabel: false,
       render: (row) => <span className="text-muted">{row.label}</span>,

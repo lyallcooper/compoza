@@ -325,6 +325,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {
               key: "service",
               header: "Service",
+              shrink: true,
               cardPosition: "header",
               render: (s) => (
                 <div className="flex items-center gap-2">
@@ -362,13 +363,14 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {
               key: "status",
               header: "Status",
-              fixed: true,
+              shrink: true,
               cardPosition: "body",
               render: (s) => <ContainerStateBadge state={s.status} />,
             },
             {
               key: "ports",
               header: "Ports",
+              shrink: true,
               cardPosition: "body",
               className: "hidden sm:block",
               render: (s) => (
@@ -381,7 +383,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             {
               key: "actions",
               header: "Actions",
-              fixed: true,
+              shrink: true,
               cardPosition: "footer",
               render: (s) => s.containerId ? (
                 <ContainerActions containerId={s.containerId} state={s.status} />

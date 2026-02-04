@@ -40,7 +40,7 @@ function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
     {
       key: "key",
       header: "Key",
-      fixed: true,
+      shrink: true,
       cardPosition: "header",
       render: ([key]) => (
         <span className="font-mono text-xs font-medium">{key}</span>
@@ -337,7 +337,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               {
                 key: "label",
                 header: "Property",
-                fixed: true,
+                shrink: true,
                 cardPosition: "body",
                 cardLabel: false,
                 render: (row) => <span className="text-muted">{row.label}</span>,
@@ -384,7 +384,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "host",
                   header: "Host",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "header",
                   render: (p) => (
                     <span className="font-mono">
@@ -400,14 +400,14 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "container",
                   header: "Container",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "hidden",
                   render: (p) => <span className="font-mono">{p.container}</span>,
                 },
                 {
                   key: "protocol",
                   header: "Protocol",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "body",
                   render: (p) => <span className="text-muted">{p.protocol}</span>,
                 },
@@ -426,7 +426,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "type",
                   header: "Type",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "body",
                   render: (m) => <span className="capitalize text-muted">{m.type}</span>,
                 },
@@ -453,7 +453,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "mode",
                   header: "Mode",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "body",
                   render: (m) => (
                     <span className="text-muted">
@@ -476,14 +476,14 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "name",
                   header: "Name",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "header",
                   render: (n) => <span className="font-medium">{n.name}</span>,
                 },
                 {
                   key: "ipAddress",
                   header: "IP Address",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
@@ -494,7 +494,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "gateway",
                   header: "Gateway",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
@@ -505,7 +505,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 {
                   key: "macAddress",
                   header: "MAC Address",
-                  fixed: true,
+                  shrink: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">

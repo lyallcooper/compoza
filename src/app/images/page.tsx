@@ -153,7 +153,7 @@ export default function ImagesPage() {
     {
       key: "size",
       header: "Size",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       className: "hidden sm:block",
       render: (image) => <span className="text-muted">{formatBytes(image.size)}</span>,
@@ -161,7 +161,7 @@ export default function ImagesPage() {
     {
       key: "created",
       header: "Created",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       className: "hidden sm:block",
       render: (image) => (
@@ -171,7 +171,7 @@ export default function ImagesPage() {
     {
       key: "status",
       header: "Status",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       render: (image) => (
         <div className="flex flex-wrap gap-1">
@@ -190,7 +190,7 @@ export default function ImagesPage() {
     {
       key: "actions",
       header: "Actions",
-      fixed: true,
+      shrink: true,
       cardPosition: "footer",
       render: (image) => (
         <Button

@@ -6,10 +6,10 @@ export interface ColumnDef<T> {
   header: string;
   /**
    * Column sizing behavior:
-   * - true: Column sizes to fit content, never truncates (for labels, short values)
-   * - false (default): Column shares remaining space, content may truncate
+   * - true: Column shrinks to fit content (for labels, badges, buttons)
+   * - false (default): Column expands to fill remaining space, may truncate
    */
-  fixed?: boolean;
+  shrink?: boolean;
   /** Additional CSS classes for the column cells (e.g., responsive visibility) */
   className?: string;
   /** Custom render function */
@@ -58,7 +58,7 @@ export function ResponsiveTable<T>({
   // Generate grid template: fixed columns get 'auto', variable columns get 'minmax(0, 1fr)'
   // Note: cardPosition only affects card view, all columns show in table view
   const gridTemplateColumns = columns
-    .map((col) => (col.fixed ? "auto" : "minmax(0, 1fr)"))
+    .map((col) => (col.shrink ? "auto" : "minmax(0, 1fr)"))
     .join(" ");
 
   // Card view column groups
@@ -86,7 +86,7 @@ export function ResponsiveTable<T>({
                     key={col.key}
                     role="columnheader"
                     className={`px-3 py-1.5 text-left text-xs font-semibold bg-surface-subtle border-b border-border ${
-                      col.fixed ? "whitespace-nowrap" : "min-w-0"
+                      col.shrink ? "whitespace-nowrap" : "min-w-0"
                     } ${col.className || ""}`}
                   >
                     {col.header}
@@ -129,8 +129,8 @@ export function ResponsiveTable<T>({
                       role="cell"
                       className={`px-3 py-1.5 border-b border-border group-last:border-b-0 group-hover:bg-surface ${
                         isClickable ? "group-focus:bg-surface" : ""
-                      } ${col.fixed ? "whitespace-nowrap" : "min-w-0 overflow-hidden"} ${col.className || ""}`}
-                      data-truncate-container={col.fixed ? undefined : "true"}
+                      } ${col.shrink ? "whitespace-nowrap" : "min-w-0 overflow-hidden"} ${col.className || ""}`}
+                      data-truncate-container={col.shrink ? undefined : "true"}
                     >
                       {col.render(row, rowIndex)}
                     </div>

@@ -149,7 +149,7 @@ export default function Dashboard() {
     {
       key: "services",
       header: "Services",
-      fixed: true,
+      shrink: true,
       cardLabel: "Services",
       render: (project) => (
         <span className="text-muted">
@@ -167,7 +167,7 @@ export default function Dashboard() {
     {
       key: "status",
       header: "Status",
-      fixed: true,
+      shrink: true,
       cardLabel: "Status",
       render: (project) => <ProjectStatusBadge status={project.status} />,
     },
@@ -224,7 +224,7 @@ export default function Dashboard() {
     {
       key: "issues",
       header: "Issues",
-      fixed: true,
+      shrink: true,
       cardLabel: "Issues",
       render: ({ issues }) => (
         <div className="flex gap-1">

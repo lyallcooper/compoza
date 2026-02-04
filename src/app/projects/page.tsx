@@ -67,7 +67,7 @@ export default function ProjectsPage() {
     {
       key: "services",
       header: "Services",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       className: "hidden sm:block",
       render: (p) => {
@@ -82,14 +82,14 @@ export default function ProjectsPage() {
     {
       key: "status",
       header: "Status",
-      fixed: true,
+      shrink: true,
       cardPosition: "body",
       render: (p) => <ProjectStatusBadge status={p.status} />,
     },
     {
       key: "actions",
       header: "Actions",
-      fixed: true,
+      shrink: true,
       cardPosition: "footer",
       render: (p) => (
         <ProjectActions

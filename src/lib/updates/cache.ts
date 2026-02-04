@@ -14,10 +14,22 @@ export interface CachedUpdate {
 }
 
 // In-memory cache with TTL
-const cache = new Map<string, CachedUpdate>();
+// Use globalThis to persist across Next.js hot reloads in development
+const globalCache = globalThis as typeof globalThis & {
+  __updateCache?: Map<string, CachedUpdate>;
+  __pendingChecks?: Set<string>;
+};
+
+if (!globalCache.__updateCache) {
+  globalCache.__updateCache = new Map<string, CachedUpdate>();
+  globalCache.__pendingChecks = new Set<string>();
+}
+
+const cache = globalCache.__updateCache;
+const pendingChecks = globalCache.__pendingChecks!;
+
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes between checks for same image
-const pendingChecks = new Set<string>();
 
 export function getCachedUpdate(image: string): CachedUpdate | null {
   const cached = cache.get(image);

@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Box, Spinner, ProjectStatusBadge, TruncatedText, Badge, Button, CollapsibleSection } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { Box, Spinner, ProjectStatusBadge, TruncatedText, Badge, Button, ResponsiveTable } from "@/components/ui";
+import type { ColumnDef } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
 import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useBackgroundProjectUpdate } from "@/hooks";
 import type { ProjectWithUpdates } from "@/hooks/use-image-updates";
-import type { Container } from "@/types";
+import type { Container, Project } from "@/types";
 
 function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const [showModal, setShowModal] = useState(false);
@@ -42,7 +44,7 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
           className="ml-2 flex-shrink-0"
           onClick={() => setShowModal(true)}
         >
-          Update{project.images.length > 1 ? ` (${project.images.length})` : ""}…
+          Update…
         </Button>
       </div>
 
@@ -90,6 +92,7 @@ function getContainersNeedingAttention(containers: Container[] | undefined): Con
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: containers, isLoading: containersLoading } = useContainers({ includeHealth: true });
   const { data: imageUpdates, isLoading: updatesLoading } = useImageUpdates();
@@ -136,17 +139,116 @@ export default function Dashboard() {
     ? "Containers"
     : `Containers (${runningContainers}/${totalContainers} running)`;
 
+  const projectColumns: ColumnDef<Project>[] = useMemo(() => [
+    {
+      key: "name",
+      header: "Name",
+      cardPosition: "header",
+      render: (project) => <span className="truncate">{project.name}</span>,
+    },
+    {
+      key: "services",
+      header: "Services",
+      cardLabel: "Services",
+      render: (project) => (
+        <span className="text-muted">
+          {project.services.length}
+          {project.services.length === 1 ? " service" : " services"}
+        </span>
+      ),
+      renderCard: (project) => (
+        <span>
+          {project.services.length}
+          {project.services.length === 1 ? " service" : " services"}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cardLabel: "Status",
+      render: (project) => <ProjectStatusBadge status={project.status} />,
+    },
+  ], []);
+
+  const containerColumns: ColumnDef<Container>[] = useMemo(() => [
+    {
+      key: "name",
+      header: "Name",
+      cardPosition: "header",
+      render: (container) => <span className="flex-shrink-0">{container.name}</span>,
+    },
+    {
+      key: "image",
+      header: "Image",
+      cardLabel: "Image",
+      render: (container) => (
+        <TruncatedText
+          text={container.image.split("/").pop() ?? ""}
+          className="text-muted"
+        />
+      ),
+      renderCard: (container) => (
+        <span className="font-mono text-xs truncate">
+          {container.image.split("/").pop() ?? ""}
+        </span>
+      ),
+    },
+  ], []);
+
+  const attentionColumns: ColumnDef<ContainerIssue>[] = useMemo(() => [
+    {
+      key: "name",
+      header: "Name",
+      cardPosition: "header",
+      render: ({ container }) => <span className="font-medium">{container.name}</span>,
+    },
+    {
+      key: "image",
+      header: "Image",
+      cardLabel: "Image",
+      render: ({ container }) => (
+        <TruncatedText
+          text={container.image.split("/").pop() ?? ""}
+          className="text-muted"
+        />
+      ),
+      renderCard: ({ container }) => (
+        <span className="font-mono text-xs truncate">
+          {container.image.split("/").pop() ?? ""}
+        </span>
+      ),
+    },
+    {
+      key: "issues",
+      header: "Issues",
+      cardLabel: "Issues",
+      render: ({ issues }) => (
+        <div className="flex gap-1">
+          {issues.map((issue) => (
+            <Badge
+              key={issue}
+              variant={issue === "Unhealthy" ? "error" : "warning"}
+            >
+              {issue}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+  ], []);
+
   return (
     <div className="columns-1 md:columns-2 gap-6 space-y-6">
       {/* Updates Available */}
       {!updatesLoading && !projectsLoading && projectsWithUpdates.length > 0 && (
-        <CollapsibleSection
-          title="Updates"
-          count={projectsWithUpdates.length}
-          variant="accent"
+        <Box
+          title={<>Updates <Badge variant="accent">{projectsWithUpdates.length}</Badge></>}
+          padding={false}
+          collapsible
           defaultExpanded={projectsWithUpdates.length <= 5}
           className="break-inside-avoid"
-          action={
+          actions={
             <Button
               size="sm"
               variant="accent"
@@ -161,7 +263,7 @@ export default function Dashboard() {
               <ProjectUpdateRow key={project.name} project={project} />
             ))}
           </div>
-        </CollapsibleSection>
+        </Box>
       )}
 
       {showUpdateAllModal && (
@@ -173,41 +275,21 @@ export default function Dashboard() {
 
       {/* Needs Attention */}
       {!containersLoading && containersNeedingAttention.length > 0 && (
-        <CollapsibleSection
-          title="Needs Attention"
-          count={containersNeedingAttention.length}
-          variant="warning"
+        <Box
+          title={<>Needs Attention <Badge variant="warning">{containersNeedingAttention.length}</Badge></>}
+          padding={false}
+          collapsible
           defaultExpanded={containersNeedingAttention.length <= 5}
           className="break-inside-avoid"
         >
-          <div className="divide-y divide-border">
-            {containersNeedingAttention.map(({ container, issues }) => (
-              <Link
-                key={container.id}
-                href={`/containers/${encodeURIComponent(container.name)}`}
-                className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium">{container.name}</span>
-                  <TruncatedText
-                    text={container.image.split("/").pop() ?? ""}
-                    className="text-xs text-muted"
-                  />
-                </div>
-                <div className="flex gap-1">
-                  {issues.map((issue) => (
-                    <Badge
-                      key={issue}
-                      variant={issue === "Unhealthy" ? "error" : "warning"}
-                    >
-                      {issue}
-                    </Badge>
-                  ))}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </CollapsibleSection>
+          <ResponsiveTable
+            data={containersNeedingAttention}
+            columns={attentionColumns}
+            keyExtractor={({ container }) => container.id}
+            onRowClick={({ container }) => router.push(`/containers/${encodeURIComponent(container.name)}`)}
+            showHeader={false}
+          />
+        </Box>
       )}
 
       {/* Projects */}
@@ -219,6 +301,7 @@ export default function Dashboard() {
         }
         padding={false}
         className="break-inside-avoid"
+        collapsible
       >
         {projectsLoading ? (
           <div className="p-4">
@@ -232,26 +315,21 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {topProjects.map((project) => (
-              <Link
-                key={project.name}
-                href={`/projects/${encodeURIComponent(project.name)}`}
-                className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-              >
-                <span className="truncate">{project.name}</span>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                  <span className="text-xs text-muted">
-                    {project.services.length}
-                    <span className="hidden sm:inline">
-                      {project.services.length === 1 ? " service\u00A0" : " services"}
-                    </span>
-                  </span>
-                  <ProjectStatusBadge status={project.status} />
-                </div>
-              </Link>
-            ))}
-          </div>
+          <ResponsiveTable
+            data={topProjects}
+            columns={projectColumns}
+            keyExtractor={(project) => project.name}
+            onRowClick={(project) => router.push(`/projects/${encodeURIComponent(project.name)}`)}
+            showHeader={false}
+            emptyState={
+              <div className="p-4 text-muted">
+                No projects found.{" "}
+                <Link href="/projects" className="text-accent hover:underline">
+                  Create one
+                </Link>
+              </div>
+            }
+          />
         )}
         {hasMoreProjects && (
           <div className="border-t border-border px-3 py-2">
@@ -271,6 +349,7 @@ export default function Dashboard() {
         }
         padding={false}
         className="break-inside-avoid"
+        collapsible
       >
         {containersLoading ? (
           <div className="p-4">
@@ -279,21 +358,14 @@ export default function Dashboard() {
         ) : topRunningContainers.length === 0 ? (
           <div className="p-4 text-muted">No running containers</div>
         ) : (
-          <div className="divide-y divide-border">
-            {topRunningContainers.map((container) => (
-              <Link
-                key={container.id}
-                href={`/containers/${encodeURIComponent(container.name)}`}
-                className="flex items-center justify-between px-3 py-2 hover:bg-surface"
-              >
-                <span className="flex-shrink-0">{container.name}</span>
-                <TruncatedText
-                  text={container.image.split("/").pop() ?? ""}
-                  className="text-xs text-muted ml-2"
-                />
-              </Link>
-            ))}
-          </div>
+          <ResponsiveTable
+            data={topRunningContainers}
+            columns={containerColumns}
+            keyExtractor={(container) => container.id}
+            onRowClick={(container) => router.push(`/containers/${encodeURIComponent(container.name)}`)}
+            showHeader={false}
+            emptyState={<div className="p-4 text-muted">No running containers</div>}
+          />
         )}
         {hasMoreRunning && (
           <div className="border-t border-border px-3 py-2">

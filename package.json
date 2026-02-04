@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "NODE_ENV=development tsx server/index.ts",
     "dev:next": "next dev",
     "build": "next build && tsc -p server/tsconfig.json",
     "start": "node server/dist/index.js",

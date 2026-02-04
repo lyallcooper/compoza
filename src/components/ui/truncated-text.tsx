@@ -45,6 +45,7 @@ export function TruncatedText({
   const [isTruncated, setIsTruncated] = useState(false);
   const [popup, setPopup] = useState<PopupState>({ visible: false, pinned: false, rect: null });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Responsive truncation based on available width from constraining parent
   useLayoutEffect(() => {
@@ -171,6 +172,13 @@ export function TruncatedText({
     }
   }, []);
 
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
   const selectText = useCallback(() => {
     if (!selectable || !containerRef.current) return;
     const selection = window.getSelection();
@@ -195,6 +203,8 @@ export function TruncatedText({
 
   const handleMouseEnter = useCallback(() => {
     if (!showPopup || !isTruncated) return;
+    // Cancel any pending close
+    clearCloseTimeout();
     // Don't start hover timer if already pinned
     if (popup.pinned) return;
     clearHoverTimeout();
@@ -207,16 +217,19 @@ export function TruncatedText({
         return { visible: true, pinned: false, rect };
       });
     }, popupDelay);
-  }, [showPopup, isTruncated, popup.pinned, popupDelay, clearHoverTimeout]);
+  }, [showPopup, isTruncated, popup.pinned, popupDelay, clearHoverTimeout, clearCloseTimeout]);
 
   const handleMouseLeave = useCallback(() => {
     clearHoverTimeout();
-    // Only close if not pinned
-    setPopup((prev) => {
-      if (prev.pinned) return prev;
-      return { visible: false, pinned: false, rect: null };
-    });
-  }, [clearHoverTimeout]);
+    // Delay close to allow mouse to move to popup
+    clearCloseTimeout();
+    closeTimeoutRef.current = setTimeout(() => {
+      setPopup((prev) => {
+        if (prev.pinned) return prev;
+        return { visible: false, pinned: false, rect: null };
+      });
+    }, 150);
+  }, [clearHoverTimeout, clearCloseTimeout]);
 
   const handleFocus = useCallback(() => {
     if (showPopup && isTruncated && !popup.pinned) {
@@ -268,10 +281,28 @@ export function TruncatedText({
     setPopup({ visible: false, pinned: false, rect: null });
   }, []);
 
-  // Cleanup timeout on unmount
+  const handlePopupMouseEnter = useCallback(() => {
+    clearCloseTimeout();
+  }, [clearCloseTimeout]);
+
+  const handlePopupMouseLeave = useCallback(() => {
+    // Close after leaving popup (unless pinned)
+    clearCloseTimeout();
+    closeTimeoutRef.current = setTimeout(() => {
+      setPopup((prev) => {
+        if (prev.pinned) return prev;
+        return { visible: false, pinned: false, rect: null };
+      });
+    }, 150);
+  }, [clearCloseTimeout]);
+
+  // Cleanup timeouts on unmount
   useEffect(() => {
-    return () => clearHoverTimeout();
-  }, [clearHoverTimeout]);
+    return () => {
+      clearHoverTimeout();
+      clearCloseTimeout();
+    };
+  }, [clearHoverTimeout, clearCloseTimeout]);
 
   // Handle click outside to close pinned popup
   useEffect(() => {
@@ -346,6 +377,8 @@ export function TruncatedText({
           anchorRect={popup.rect}
           pinned={popup.pinned}
           onClose={handlePopupClose}
+          onMouseEnter={handlePopupMouseEnter}
+          onMouseLeave={handlePopupMouseLeave}
           sensitive={sensitive}
           revealed={revealed}
           onRevealChange={onRevealChange}
@@ -360,13 +393,15 @@ interface PopupProps {
   anchorRect: DOMRect;
   pinned: boolean;
   onClose: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   sensitive?: boolean;
   revealed?: boolean;
   onRevealChange?: (revealed: boolean) => void;
 }
 
 const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
-  { text, anchorRect, pinned, onClose, sensitive, revealed, onRevealChange },
+  { text, anchorRect, pinned, onClose, onMouseEnter, onMouseLeave, sensitive, revealed, onRevealChange },
   ref
 ) {
   const isHidden = sensitive && !revealed;
@@ -415,6 +450,8 @@ const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
       style={style}
       className="animate-popup-in"
       onMouseDown={(e) => e.stopPropagation()}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <div className="bg-background border border-border rounded-md shadow-lg overflow-hidden">
         {(pinned || sensitive) && (

@@ -30,7 +30,6 @@ export default function ContainersPage() {
       header: "Project",
       shrink: true,
       cardPosition: "body",
-      className: "hidden sm:block",
       render: (c) => (
         <span className="text-muted">
           {c.projectName ? (
@@ -61,7 +60,6 @@ export default function ContainersPage() {
       key: "image",
       header: "Image",
       cardPosition: "body",
-      className: "hidden sm:block",
       render: (c) => (
         <span className="text-muted font-mono">
           <TruncatedText text={c.image} maxLength={60} />
@@ -85,7 +83,6 @@ export default function ContainersPage() {
       header: "Ports",
       shrink: true,
       cardPosition: "body",
-      className: "hidden sm:block",
       render: (c) => (
         <span className="text-muted">
           <PortsList ports={c.ports} />

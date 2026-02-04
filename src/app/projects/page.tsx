@@ -69,7 +69,6 @@ export default function ProjectsPage() {
       header: "Services",
       shrink: true,
       cardPosition: "body",
-      className: "hidden sm:block",
       render: (p) => {
         const runningCount = p.services.filter((s) => s.status === "running").length;
         return <span className="text-muted">{runningCount}/{p.services.length}</span>;

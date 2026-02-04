@@ -348,7 +348,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               key: "image",
               header: "Image",
               cardPosition: "body",
-              className: "hidden sm:block",
               getValue: (s) => s.image || "",
               render: (s) => (
                 <span className="text-muted font-mono">
@@ -373,7 +372,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               header: "Ports",
               shrink: true,
               cardPosition: "body",
-              className: "hidden sm:block",
               render: (s) => (
                 <span className="text-muted">
                   <PortsList ports={s.ports || []} />

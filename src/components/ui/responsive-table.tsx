@@ -16,8 +16,6 @@ export interface ColumnDef<T> {
    * Only applies when shrink is false.
    */
   getValue?: (row: T) => string;
-  /** Additional CSS classes for the column cells (e.g., responsive visibility) */
-  className?: string;
   /** Custom render function */
   render: (row: T, index: number) => ReactNode;
   /** Custom render for card view */
@@ -131,7 +129,7 @@ export function ResponsiveTable<T>({
                     role="columnheader"
                     className={`px-2 py-1 flex items-center text-left text-xs font-semibold bg-surface-subtle border-b border-border ${
                       col.shrink ? "whitespace-nowrap" : "min-w-0"
-                    } ${col.className || ""}`}
+                    }`}
                   >
                     {col.header}
                   </div>
@@ -173,7 +171,7 @@ export function ResponsiveTable<T>({
                       role="cell"
                       className={`px-2 py-1 flex items-center border-b border-border group-last:border-b-0 group-hover:bg-surface ${
                         isClickable ? "group-focus:bg-surface" : ""
-                      } ${col.shrink ? "whitespace-nowrap" : "min-w-0 overflow-hidden"} ${col.className || ""}`}
+                      } ${col.shrink ? "whitespace-nowrap" : "min-w-0 overflow-hidden"}`}
                       data-truncate-container={col.shrink ? undefined : "true"}
                     >
                       {col.render(row, rowIndex)}

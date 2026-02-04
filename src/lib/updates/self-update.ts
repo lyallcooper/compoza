@@ -163,7 +163,7 @@ export async function spawnUpdaterContainer(
     }
   }
 
-  // Create the updater container (without AutoRemove so we can read logs)
+  // Create the updater container with AutoRemove so Docker cleans it up
   const container = await docker.createContainer({
     Image: DOCKER_CLI_IMAGE,
     Cmd: [
@@ -174,7 +174,7 @@ export async function spawnUpdaterContainer(
     ],
     Env: env.length > 0 ? env : undefined,
     HostConfig: {
-      AutoRemove: false,
+      AutoRemove: true,
       Binds: binds,
       NetworkMode: networkMode,
     },
@@ -189,6 +189,11 @@ export async function spawnUpdaterContainer(
     binds,
   });
 
+  // Attach before starting to capture output (container auto-removes on exit)
+  const stream = await container.attach({ stream: true, stdout: true, stderr: true });
+  const chunks: Buffer[] = [];
+  stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+
   await container.start();
 
   // Wait for container to finish (with timeout)
@@ -200,17 +205,7 @@ export async function spawnUpdaterContainer(
     );
 
     const result = await Promise.race([waitPromise, timeoutPromise]) as { StatusCode: number };
-
-    // Get container logs
-    const logs = await container.logs({ stdout: true, stderr: true });
-    const output = demuxDockerLogs(logs as Buffer);
-
-    // Remove container
-    try {
-      await container.remove();
-    } catch {
-      // Ignore removal errors
-    }
+    const output = demuxDockerLogs(Buffer.concat(chunks));
 
     log.updates.info("Updater container finished", {
       exitCode: result.StatusCode,
@@ -226,16 +221,10 @@ export async function spawnUpdaterContainer(
 
     return { success: true, output };
   } catch (err) {
-    // Timeout or other error - try to get logs and clean up
-    try {
-      const logs = await container.logs({ stdout: true, stderr: true });
-      const output = demuxDockerLogs(logs as Buffer);
-      log.updates.error("Updater error", { error: err, output });
-      await container.remove({ force: true });
-      return { success: false, output: output || String(err) };
-    } catch {
-      return { success: false, output: String(err) };
-    }
+    // Timeout or other error
+    const output = demuxDockerLogs(Buffer.concat(chunks));
+    log.updates.error("Updater error", { error: err, output });
+    return { success: false, output: output || String(err) };
   }
 }
 

@@ -6,8 +6,10 @@ import {
   queryKeys,
   invalidateProjectQueries,
   invalidateContainerQueries,
+  invalidateAllQueries,
   clearUpdateCacheAndInvalidate,
 } from "@/lib/query";
+import { withReconnection } from "@/lib/reconnect";
 import { isProjectRunning, type Project } from "@/types";
 
 export function useProjects() {
@@ -33,9 +35,12 @@ export function useProjectUp(name: string) {
 
   return useMutation({
     mutationFn: () =>
-      apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/up`),
+      withReconnection(
+        () => apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/up`),
+        { fallbackValue: { output: "Restarted (reconnected)" } }
+      ),
     onSuccess: () => {
-      invalidateProjectQueries(queryClient, name);
+      invalidateAllQueries(queryClient);
     },
   });
 }

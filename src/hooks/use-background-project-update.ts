@@ -8,7 +8,7 @@ import {
   invalidateContainerQueries,
   clearUpdateCacheAndInvalidate,
 } from "@/lib/query";
-import { handleDisconnection } from "@/lib/reconnect";
+import { handleDisconnection, isNetworkError } from "@/lib/reconnect";
 import { useBackgroundTasks } from "@/contexts";
 import { isProjectRunning, type Project } from "@/types";
 
@@ -96,7 +96,15 @@ export function useBackgroundProjectUpdate(projectName: string) {
         invalidateContainerQueries(queryClient);
       } catch (err) {
         if ((err as Error).name === "AbortError" || cancelled) return;
-        await handleDisconnection(taskId, updateTask, queryClient);
+        if (isNetworkError(err)) {
+          await handleDisconnection(taskId, updateTask, queryClient);
+        } else {
+          updateTask(taskId, {
+            status: "error",
+            error: err instanceof Error ? err.message : "Update failed",
+            cancel: undefined,
+          });
+        }
       }
     },
     [projectName, queryClient, addTask, updateTask]
@@ -154,7 +162,15 @@ export function useBackgroundContainerUpdate() {
         invalidateContainerQueries(queryClient, containerId);
       } catch (err) {
         if ((err as Error).name === "AbortError" || cancelled) return;
-        await handleDisconnection(taskId, updateTask, queryClient);
+        if (isNetworkError(err)) {
+          await handleDisconnection(taskId, updateTask, queryClient);
+        } else {
+          updateTask(taskId, {
+            status: "error",
+            error: err instanceof Error ? err.message : "Update failed",
+            cancel: undefined,
+          });
+        }
       }
     },
     [queryClient, addTask, updateTask]

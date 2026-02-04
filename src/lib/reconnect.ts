@@ -1,6 +1,27 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { invalidateAllQueries } from "@/lib/query";
 
+/**
+ * Check if an error is a network/connection error (fetch failed, server down, etc.)
+ */
+export function isNetworkError(error: unknown): boolean {
+  if (error instanceof TypeError) {
+    // TypeError is thrown by fetch when network fails
+    return true;
+  }
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return (
+      msg.includes("failed to fetch") ||
+      msg.includes("network") ||
+      msg.includes("connection") ||
+      msg.includes("econnrefused") ||
+      msg.includes("econnreset")
+    );
+  }
+  return false;
+}
+
 export async function waitForReconnection(
   onProgress?: (attempt: number) => void,
   maxAttempts = 30,
@@ -54,4 +75,34 @@ export async function handleDisconnection(
   }
 
   return reconnected;
+}
+
+/**
+ * Wrap an async function with reconnection handling.
+ * If the function fails due to a network error, waits for the server to come back.
+ * Useful for mutations that might trigger a self-restart (e.g., compose up on self).
+ */
+export async function withReconnection<T>(
+  fn: () => Promise<T>,
+  options?: {
+    onReconnecting?: () => void;
+    fallbackValue?: T;
+  }
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (isNetworkError(error)) {
+      options?.onReconnecting?.();
+      const reconnected = await waitForReconnection();
+      if (reconnected && options?.fallbackValue !== undefined) {
+        return options.fallbackValue;
+      }
+      if (reconnected) {
+        // Return a generic success - the operation likely succeeded before we disconnected
+        return { success: true, reconnected: true } as T;
+      }
+    }
+    throw error;
+  }
 }

@@ -176,7 +176,7 @@ export interface RouteParams<T extends Record<string, string>> {
 
 export type ContainerRouteProps = RouteParams<{ name: string }>;
 export type ProjectRouteProps = RouteParams<{ name: string }>;
-export type NetworkRouteProps = RouteParams<{ id: string }>;
+export type NetworkRouteProps = RouteParams<{ name: string }>;
 
 export interface NetworkContainer {
   id: string;

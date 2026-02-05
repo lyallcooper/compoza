@@ -13,14 +13,14 @@ export function useNetworks() {
   });
 }
 
-export function useNetwork(id: string) {
+export function useNetwork(name: string) {
   return useQuery({
-    queryKey: queryKeys.networks.detail(id),
+    queryKey: queryKeys.networks.detail(name),
     queryFn: () =>
-      apiFetch<DockerNetwork | null>(`/api/networks/${encodeURIComponent(id)}`, {
+      apiFetch<DockerNetwork | null>(`/api/networks/${encodeURIComponent(name)}`, {
         nullOn404: true,
       }),
-    enabled: !!id,
+    enabled: !!name,
   });
 }
 
@@ -40,8 +40,8 @@ export function useRemoveNetwork() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) =>
-      apiDelete<{ message: string }>(`/api/networks/${encodeURIComponent(id)}`),
+    mutationFn: (name: string) =>
+      apiDelete<{ message: string }>(`/api/networks/${encodeURIComponent(name)}`),
     onSuccess: () => {
       invalidateNetworkQueries(queryClient);
     },

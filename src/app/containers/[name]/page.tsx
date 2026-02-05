@@ -490,7 +490,15 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   header: "Name",
                   shrink: true,
                   cardPosition: "header",
-                  render: (n) => <span className="font-medium">{n.name}</span>,
+                  render: (n) => (
+                    <Link
+                      href={`/networks/${encodeURIComponent(n.name)}`}
+                      className="text-accent hover:underline font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {n.name}
+                    </Link>
+                  ),
                 },
                 {
                   key: "ipAddress",

@@ -1,13 +1,13 @@
 import { getNetwork, removeNetwork } from "@/lib/docker";
 import { success, error, notFound, getErrorMessage } from "@/lib/api";
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ name: string }> };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const { id } = await context.params;
+  const { name } = await context.params;
 
   try {
-    const network = await getNetwork(id);
+    const network = await getNetwork(name);
     if (!network) {
       return notFound("Network not found");
     }
@@ -18,10 +18,10 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const { id } = await context.params;
+  const { name } = await context.params;
 
   try {
-    await removeNetwork(id);
+    await removeNetwork(name);
     return success({ message: "Network removed" });
   } catch (err) {
     return error(getErrorMessage(err, "Failed to remove network"));

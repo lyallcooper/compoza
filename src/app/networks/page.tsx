@@ -151,7 +151,7 @@ export default function NetworksPage() {
             columns={columns}
             keyExtractor={(net) => net.id}
             onRowClick={(net) =>
-              router.push(`/networks/${encodeURIComponent(net.id)}`)
+              router.push(`/networks/${encodeURIComponent(net.name)}`)
             }
           />
         </Box>

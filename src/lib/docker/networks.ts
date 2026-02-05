@@ -55,11 +55,12 @@ export async function listNetworks(): Promise<DockerNetwork[]> {
   });
 }
 
-export async function getNetwork(id: string): Promise<DockerNetwork | null> {
+export async function getNetwork(name: string): Promise<DockerNetwork | null> {
   const docker = getDocker();
 
   try {
-    const network = docker.getNetwork(id);
+    // Docker API accepts both name and ID for network lookup
+    const network = docker.getNetwork(name);
     const info = await network.inspect();
 
     const ipamConfig = info.IPAM?.Config?.[0];
@@ -139,9 +140,9 @@ export async function createNetwork(options: CreateNetworkOptions): Promise<void
   await docker.createNetwork(networkConfig);
 }
 
-export async function removeNetwork(id: string): Promise<void> {
+export async function removeNetwork(name: string): Promise<void> {
   const docker = getDocker();
-  const network = docker.getNetwork(id);
+  const network = docker.getNetwork(name);
   await network.remove();
 }
 

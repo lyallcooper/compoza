@@ -17,9 +17,9 @@ import { useNetwork, useRemoveNetwork } from "@/hooks";
 import type { NetworkRouteProps, NetworkContainer } from "@/types";
 
 export default function NetworkDetailPage({ params }: NetworkRouteProps) {
-  const { id } = use(params);
+  const { name } = use(params);
   const router = useRouter();
-  const { data: network, isLoading, error } = useNetwork(id);
+  const { data: network, isLoading, error } = useNetwork(name);
   const removeNetwork = useRemoveNetwork();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -35,7 +35,7 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
 
   const handleDelete = async () => {
     try {
-      await removeNetwork.mutateAsync(id);
+      await removeNetwork.mutateAsync(name);
       setShowDeleteModal(false);
       router.push("/networks");
     } catch {

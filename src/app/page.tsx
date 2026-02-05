@@ -108,14 +108,32 @@ export default function Dashboard() {
   const { runningProjects, totalProjects, topProjects, hasMoreProjects } = useMemo(() => {
     const running = projects?.filter((p) => p.status === "running").length ?? 0;
     const total = projects?.length ?? 0;
-    const top = projects?.slice(0, 8) ?? [];
+
+    // Build a map of project name -> most recent container creation time
+    const projectStartTimes = new Map<string, number>();
+    containers?.forEach((c) => {
+      if (c.projectName) {
+        const current = projectStartTimes.get(c.projectName) ?? 0;
+        if (c.created > current) {
+          projectStartTimes.set(c.projectName, c.created);
+        }
+      }
+    });
+
+    // Sort projects by most recently started (running first, then by container creation time)
+    const sorted = [...(projects ?? [])].sort((a, b) => {
+      const aTime = projectStartTimes.get(a.name) ?? 0;
+      const bTime = projectStartTimes.get(b.name) ?? 0;
+      return bTime - aTime;
+    });
+
     return {
       runningProjects: running,
       totalProjects: total,
-      topProjects: top,
+      topProjects: sorted.slice(0, 8),
       hasMoreProjects: total > 8,
     };
-  }, [projects]);
+  }, [projects, containers]);
 
   const { runningContainers, totalContainers, topRunningContainers, hasMoreRunning } = useMemo(() => {
     const running = containers?.filter((c) => c.state === "running") ?? [];
@@ -138,13 +156,27 @@ export default function Dashboard() {
     [containers]
   );
 
-  const projectsTitle = projectsLoading
-    ? "Projects"
-    : `Projects (${runningProjects}/${totalProjects} running)`;
+  const projectsTitle = (
+    <>
+      Projects
+      {!projectsLoading && (
+        <span className="text-muted font-normal ml-1">
+          ({runningProjects}/{totalProjects} running)
+        </span>
+      )}
+    </>
+  );
 
-  const containersTitle = containersLoading
-    ? "Containers"
-    : `Containers (${runningContainers}/${totalContainers} running)`;
+  const containersTitle = (
+    <>
+      Containers
+      {!containersLoading && (
+        <span className="text-muted font-normal ml-1">
+          ({runningContainers}/{totalContainers} running)
+        </span>
+      )}
+    </>
+  );
 
   const projectColumns: ColumnDef<Project>[] = useMemo(() => [
     {
@@ -186,7 +218,7 @@ export default function Dashboard() {
       header: "Name",
       cardPosition: "header",
       getValue: (container) => container.name,
-      render: (container) => <span className="flex-shrink-0">{container.name}</span>,
+      render: (container) => <TruncatedText text={container.name} />,
     },
     {
       key: "image",

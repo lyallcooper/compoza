@@ -108,6 +108,7 @@ export default function VolumesPage() {
       render: (vol) => (
         <div className="flex items-center gap-2 min-w-0">
           <TruncatedText text={vol.name} className="font-medium" />
+          {isAnonymousVolume(vol.labels) && <Badge variant="default">Anonymous</Badge>}
           {vol.containerCount === 0 && <Badge variant="warning">Unused</Badge>}
         </div>
       ),

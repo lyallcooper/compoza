@@ -73,7 +73,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
   const detailsData = [
     { label: "Driver", value: volume.driver },
     { label: "Scope", value: volume.scope },
-    { label: "Mount Point", value: volume.mountpoint, mono: true },
+    { label: "Mount Point", value: volume.mountpoint, mono: true, truncate: true },
     ...(volume.size !== null
       ? [{ label: "Size", value: formatBytes(volume.size) }]
       : []),
@@ -145,7 +145,13 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
                 cardLabel: false,
                 render: (row) =>
                   row.mono ? (
-                    <span className="font-mono text-xs break-all">{row.value}</span>
+                    <span className="font-mono text-xs">
+                      {row.truncate ? (
+                        <TruncatedText text={row.value} />
+                      ) : (
+                        row.value
+                      )}
+                    </span>
                   ) : (
                     row.value
                   ),

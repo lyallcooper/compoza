@@ -53,6 +53,14 @@ export function invalidateNetworkQueries(
 }
 
 /**
+ * Invalidate system-related queries after a system action.
+ */
+export function invalidateSystemQueries(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.system.info });
+  queryClient.invalidateQueries({ queryKey: queryKeys.system.diskUsage });
+}
+
+/**
  * Invalidate all queries after a major update (e.g., update all projects).
  * Optimistically clears the updates cache to remove stale badges immediately.
  */
@@ -64,6 +72,8 @@ export function invalidateAllQueries(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.images.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.images.updates });
+  queryClient.invalidateQueries({ queryKey: queryKeys.networks.all });
+  invalidateSystemQueries(queryClient);
 }
 
 interface ImageUpdateStatus {

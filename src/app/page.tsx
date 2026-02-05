@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { Box, Spinner, ProjectStatusBadge, TruncatedText, Badge, Button, ResponsiveTable } from "@/components/ui";
 import type { ColumnDef } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
-import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useBackgroundProjectUpdate } from "@/hooks";
+import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useBackgroundProjectUpdate, useDiskUsage } from "@/hooks";
 import type { ProjectWithUpdates } from "@/hooks/use-image-updates";
 import type { Container, Project } from "@/types";
+import { formatBytes } from "@/lib/format";
 
 function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const [showModal, setShowModal] = useState(false);
@@ -67,6 +68,11 @@ interface ContainerIssue {
   issues: string[];
 }
 
+interface StorageItem {
+  category: string;
+  size: number | null;
+}
+
 function getContainersNeedingAttention(containers: Container[] | undefined): ContainerIssue[] {
   if (!containers) return [];
 
@@ -96,6 +102,7 @@ export default function Dashboard() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: containers, isLoading: containersLoading } = useContainers({ includeHealth: true });
   const { data: imageUpdates, isLoading: updatesLoading } = useImageUpdates();
+  const { data: diskUsage, isLoading: diskLoading } = useDiskUsage();
   const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
 
   const { runningProjects, totalProjects, topProjects, hasMoreProjects } = useMemo(() => {
@@ -245,6 +252,37 @@ export default function Dashboard() {
     },
   ], []);
 
+  const storageItems: StorageItem[] = useMemo(() => {
+    if (!diskUsage) return [];
+    return [
+      { category: "Images", size: diskUsage.images.size },
+      { category: "Containers", size: diskUsage.containers.size },
+      { category: "Volumes", size: diskUsage.volumes.size },
+      { category: "Build Cache", size: diskUsage.buildCache.size },
+    ];
+  }, [diskUsage]);
+
+  const storageColumns: ColumnDef<StorageItem>[] = useMemo(() => [
+    {
+      key: "category",
+      header: "Category",
+      cardPosition: "body",
+      cardLabel: false,
+      render: (item) => <span className="text-muted">{item.category}</span>,
+    },
+    {
+      key: "size",
+      header: "Size",
+      cardPosition: "body",
+      cardLabel: false,
+      render: (item) => (
+        <span className="font-mono">
+          {item.size !== null ? formatBytes(item.size) : "--"}
+        </span>
+      ),
+    },
+  ], []);
+
   return (
     <div className="columns-1 md:columns-2 gap-6 space-y-6">
       {/* Updates Available */}
@@ -380,6 +418,33 @@ export default function Dashboard() {
               View all {runningContainers} running
             </Link>
           </div>
+        )}
+      </Box>
+
+      {/* Storage */}
+      <Box
+        title={
+          <Link href="/system" className="hover:text-accent transition-colors">
+            Storage
+          </Link>
+        }
+        padding={false}
+        className="break-inside-avoid"
+        collapsible
+      >
+        {diskLoading ? (
+          <div className="p-4">
+            <Spinner />
+          </div>
+        ) : diskUsage ? (
+          <ResponsiveTable
+            data={storageItems}
+            columns={storageColumns}
+            keyExtractor={(item) => item.category}
+            showHeader={false}
+          />
+        ) : (
+          <div className="p-4 text-muted">Unable to load storage info</div>
         )}
       </Box>
     </div>

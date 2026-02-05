@@ -4,6 +4,7 @@ export {
   invalidateProjectQueries,
   invalidateImageQueries,
   invalidateNetworkQueries,
+  invalidateSystemQueries,
   invalidateAllQueries,
   clearUpdateCacheAndInvalidate,
 } from "./invalidate";

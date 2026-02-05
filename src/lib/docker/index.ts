@@ -21,3 +21,8 @@ export {
   pruneNetworks,
 } from "./networks";
 export type { CreateNetworkOptions, NetworkPruneResult } from "./networks";
+export {
+  getSystemInfo,
+  getDiskUsage,
+  systemPrune,
+} from "./system";

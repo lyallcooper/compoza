@@ -206,3 +206,58 @@ export interface DockerNetwork {
     canDelete: boolean;
   };
 }
+
+export interface DockerSystemInfo {
+  version: string;
+  os: string;
+  arch: string;
+  kernelVersion: string;
+  storageDriver: string;
+  rootDir: string;
+  containers: { total: number; running: number; paused: number; stopped: number };
+  images: number;
+  memoryLimit: number;
+  cpus: number;
+  warnings: string[];
+  compoza: {
+    version: string;
+    projectsDir: string;
+    hostProjectsDir: string;
+    dockerHost: string;
+    registries: {
+      dockerHub: boolean;
+      ghcr: boolean;
+    };
+  };
+}
+
+export interface DiskUsageCategory {
+  total: number;
+  size: number | null;
+  reclaimable: number | null;
+}
+
+export interface DiskUsage {
+  images: DiskUsageCategory;
+  containers: DiskUsageCategory;
+  volumes: DiskUsageCategory;
+  buildCache: DiskUsageCategory;
+  totalSize: number;
+  totalReclaimable: number | null;
+}
+
+export interface SystemPruneOptions {
+  containers?: boolean;
+  networks?: boolean;
+  images?: boolean;
+  volumes?: boolean;
+  allImages?: boolean;
+}
+
+export interface SystemPruneResult {
+  containersDeleted: number;
+  networksDeleted: number;
+  imagesDeleted: number;
+  volumesDeleted: number;
+  spaceReclaimed: number;
+}

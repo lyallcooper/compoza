@@ -105,25 +105,34 @@ export default function VolumesPage() {
       key: "name",
       header: "Name",
       cardPosition: "header",
+      render: (vol) => <TruncatedText text={vol.name} maxLength={30} className="font-medium" />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cardPosition: "body",
       render: (vol) => (
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="min-w-0">
-            <TruncatedText text={vol.name} className="font-medium" />
-          </span>
+        <div className="flex items-center gap-1">
           {isAnonymousVolume(vol.labels) && <Badge variant="default">Anonymous</Badge>}
-          {vol.containerCount === 0 && <Badge variant="warning">Unused</Badge>}
+          {vol.containerCount === 0 ? (
+            <Badge variant="warning">Unused</Badge>
+          ) : (
+            <Badge variant="success">In Use</Badge>
+          )}
         </div>
       ),
     },
     {
       key: "driver",
       header: "Driver",
+      shrink: true,
       cardPosition: "body",
       render: (vol) => <span className="text-muted">{vol.driver}</span>,
     },
     {
       key: "size",
       header: "Size",
+      shrink: true,
       cardPosition: "body",
       render: (vol) => (
         <span className="text-muted">
@@ -134,6 +143,7 @@ export default function VolumesPage() {
     {
       key: "containers",
       header: "Containers",
+      shrink: true,
       cardPosition: "body",
       render: (vol) => <span className="text-muted">{vol.containerCount}</span>,
     },

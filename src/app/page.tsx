@@ -22,7 +22,7 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
 
   return (
     <>
-      <div className="flex items-center justify-between px-3 py-2 hover:bg-surface">
+      <div className="flex items-center justify-between px-2 py-2 hover:bg-surface">
         <Link
           href={`/projects/${encodeURIComponent(project.name)}`}
           className="flex flex-col gap-0.5 min-w-0 flex-1"

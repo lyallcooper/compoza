@@ -395,11 +395,12 @@ export default function Dashboard() {
           />
         )}
         {hasMoreProjects && (
-          <div className="border-t border-border px-3 py-2">
-            <Link href="/projects" className="text-accent hover:underline text-sm">
-              View all {totalProjects} projects
-            </Link>
-          </div>
+          <Link
+            href="/projects"
+            className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
+          >
+            View all {totalProjects} projects →
+          </Link>
         )}
       </Box>
 
@@ -438,11 +439,12 @@ export default function Dashboard() {
           />
         )}
         {hasMoreRunning && (
-          <div className="border-t border-border px-3 py-2">
-            <Link href="/containers" className="text-accent hover:underline text-sm">
-              View all {runningContainers} running
-            </Link>
-          </div>
+          <Link
+            href="/containers"
+            className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
+          >
+            View all {runningContainers} containers →
+          </Link>
         )}
       </Box>
 
@@ -462,12 +464,20 @@ export default function Dashboard() {
             <Spinner />
           </div>
         ) : diskUsage ? (
-          <ResponsiveTable
-            data={storageItems}
-            columns={storageColumns}
-            keyExtractor={(item) => item.category}
-            showHeader={false}
-          />
+          <>
+            <ResponsiveTable
+              data={storageItems}
+              columns={storageColumns}
+              keyExtractor={(item) => item.category}
+              showHeader={false}
+            />
+            <Link
+              href="/system"
+              className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
+            >
+              View more system info →
+            </Link>
+          </>
         ) : (
           <div className="p-4 text-muted">Unable to load storage info</div>
         )}

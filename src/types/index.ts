@@ -125,6 +125,20 @@ export interface DockerImage {
   updateAvailable?: boolean;
 }
 
+export interface DockerImageDetail extends DockerImage {
+  architecture?: string;
+  os?: string;
+  author?: string;
+  config?: {
+    workingDir?: string;
+    entrypoint?: string[];
+    cmd?: string[];
+    exposedPorts?: string[];
+    labels?: Record<string, string>;
+  };
+  containers: { id: string; name: string }[];
+}
+
 export interface ComposeConfig {
   version?: string;
   services: Record<string, ComposeService>;
@@ -180,6 +194,7 @@ export type ContainerRouteProps = RouteParams<{ name: string }>;
 export type ProjectRouteProps = RouteParams<{ name: string }>;
 export type NetworkRouteProps = RouteParams<{ name: string }>;
 export type VolumeRouteProps = RouteParams<{ name: string }>;
+export type ImageRouteProps = RouteParams<{ id: string }>;
 
 export interface NetworkContainer {
   id: string;

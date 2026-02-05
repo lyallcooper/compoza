@@ -1,6 +1,6 @@
 import Dockerode from "dockerode";
 import { getDocker, getImageDistribution } from "./client";
-import type { DockerImage } from "@/types";
+import type { DockerImage, DockerImageDetail } from "@/types";
 
 export async function listImages(): Promise<DockerImage[]> {
   const docker = getDocker();
@@ -65,6 +65,55 @@ export async function inspectImage(id: string): Promise<Dockerode.ImageInspectIn
     }
     return null;
   }
+}
+
+export async function getImage(id: string): Promise<DockerImageDetail | null> {
+  const docker = getDocker();
+
+  const info = await inspectImage(id);
+  if (!info) return null;
+
+  // Get containers using this image
+  const containers = await docker.listContainers({ all: true });
+  const imageContainers = containers
+    .filter((c) => c.ImageID === info.Id)
+    .map((c) => ({
+      id: c.Id,
+      name: c.Names[0]?.replace(/^\//, "") || c.Id.slice(0, 12),
+    }));
+
+  // Extract exposed ports from config
+  const exposedPorts = info.Config?.ExposedPorts
+    ? Object.keys(info.Config.ExposedPorts)
+    : undefined;
+
+  const repoDigest = info.RepoDigests?.[0];
+
+  // Normalize entrypoint and cmd to arrays (Docker can return string or string[])
+  const normalizeToArray = (value: string | string[] | undefined): string[] | undefined => {
+    if (!value) return undefined;
+    return Array.isArray(value) ? value : [value];
+  };
+
+  return {
+    id: info.Id,
+    tags: info.RepoTags || [],
+    size: info.Size,
+    created: Math.floor(new Date(info.Created).getTime() / 1000),
+    digest: repoDigest?.split("@")[1],
+    repository: repoDigest?.split("@")[0],
+    architecture: info.Architecture,
+    os: info.Os,
+    author: info.Author || undefined,
+    config: {
+      workingDir: info.Config?.WorkingDir || undefined,
+      entrypoint: normalizeToArray(info.Config?.Entrypoint),
+      cmd: normalizeToArray(info.Config?.Cmd),
+      exposedPorts,
+      labels: info.Config?.Labels || undefined,
+    },
+    containers: imageContainers,
+  };
 }
 
 export interface PruneResult {

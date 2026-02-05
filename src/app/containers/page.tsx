@@ -62,13 +62,23 @@ export default function ContainersPage() {
       cardPosition: "body",
       render: (c) => (
         <span className="text-muted font-mono">
-          <TruncatedText text={c.image} maxLength={60} />
+          <Link
+            href={`/images/${encodeURIComponent(c.imageId)}`}
+            className="group/link hover:text-foreground [&_span]:group-hover/link:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TruncatedText text={c.image} maxLength={60} />
+          </Link>
         </span>
       ),
       renderCard: (c) => (
-        <span className="font-mono">
+        <Link
+          href={`/images/${encodeURIComponent(c.imageId)}`}
+          className="group/link font-mono text-accent [&_span]:group-hover/link:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
           <TruncatedText text={c.image} maxLength={40} />
-        </span>
+        </Link>
       ),
     },
     {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Spinner,
@@ -17,6 +18,7 @@ import type { DockerImage } from "@/types";
 import { formatBytes, formatDateTime, formatShortId } from "@/lib/format";
 
 export default function ImagesPage() {
+  const router = useRouter();
   const { data: images, isLoading, error } = useImages();
   const { data: containers } = useContainers();
   const { data: imageUpdates } = useImageUpdates();
@@ -234,6 +236,7 @@ export default function ImagesPage() {
             data={sortedImages}
             columns={columns}
             keyExtractor={(image) => image.id}
+            onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.id)}`)}
           />
         </Box>
       )}

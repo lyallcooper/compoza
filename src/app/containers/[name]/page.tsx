@@ -311,6 +311,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 label: "Image",
                 value: container.image,
                 mono: true,
+                link: `/images/${encodeURIComponent(container.imageId)}`,
               },
               { label: "Status", value: container.status },
               {
@@ -366,9 +367,16 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 cardLabel: false,
                 render: (row) => {
                   if (row.link) {
+                    const content = row.mono ? (
+                      <span className="font-mono">
+                        <TruncatedText text={row.value} maxLength={row.maxLength} />
+                      </span>
+                    ) : (
+                      row.value
+                    );
                     return (
                       <Link href={row.link} className="text-accent hover:underline">
-                        {row.value}
+                        {content}
                       </Link>
                     );
                   }

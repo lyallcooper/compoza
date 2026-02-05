@@ -3,12 +3,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { queryKeys, invalidateImageQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
-import type { DockerImage } from "@/types";
+import type { DockerImage, DockerImageDetail } from "@/types";
 
 export function useImages() {
   return useQuery({
     queryKey: queryKeys.images.all,
     queryFn: () => apiFetch<DockerImage[]>("/api/images"),
+  });
+}
+
+export function useImage(id: string) {
+  return useQuery({
+    queryKey: queryKeys.images.detail(id),
+    queryFn: () => apiFetch<DockerImageDetail>(`/api/images/${encodeURIComponent(id)}`),
+    enabled: !!id,
   });
 }
 

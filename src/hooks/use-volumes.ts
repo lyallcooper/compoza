@@ -52,7 +52,8 @@ export function usePruneVolumes() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => apiPost<VolumePruneResult>("/api/volumes/prune"),
+    mutationFn: (all: boolean = false) =>
+      apiPost<VolumePruneResult>("/api/volumes/prune", { all }),
     onSuccess: () => {
       invalidateVolumeQueries(queryClient);
     },

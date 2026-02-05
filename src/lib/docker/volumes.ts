@@ -145,9 +145,15 @@ export async function removeVolume(name: string): Promise<void> {
   await volume.remove();
 }
 
-export async function pruneVolumes(): Promise<VolumePruneResult> {
+export interface PruneVolumesOptions {
+  /** Remove all unused volumes, not just anonymous ones */
+  all?: boolean;
+}
+
+export async function pruneVolumes(options: PruneVolumesOptions = {}): Promise<VolumePruneResult> {
   const docker = getDocker();
-  const result = await docker.pruneVolumes();
+  const filters = options.all ? { all: ["true"] } : undefined;
+  const result = await docker.pruneVolumes({ filters });
 
   return {
     volumesDeleted: result.VolumesDeleted || [],

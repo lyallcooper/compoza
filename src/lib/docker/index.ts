@@ -28,7 +28,7 @@ export {
   removeVolume,
   pruneVolumes,
 } from "./volumes";
-export type { CreateVolumeOptions, VolumePruneResult } from "./volumes";
+export type { CreateVolumeOptions, VolumePruneResult, PruneVolumesOptions } from "./volumes";
 export {
   getSystemInfo,
   getDiskUsage,

@@ -76,7 +76,7 @@ export function Terminal({ containerId, className = "" }: TerminalProps) {
     termRef.current?.writeln("\r\n\x1b[33mSession ended.\x1b[0m");
   }, []);
 
-  const [{ status, error }, { sendInput, resize, reconnect }] = useTerminalSocket({
+  const [{ status, error, shell }, { sendInput, resize, reconnect }] = useTerminalSocket({
     containerId,
     onData: handleData,
     onStarted: handleStarted,
@@ -157,6 +157,12 @@ export function Terminal({ containerId, className = "" }: TerminalProps) {
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${getStatusColor(status)}`} />
           <span className="text-muted">{getStatusDisplay(status, error)}</span>
+          {status === "connected" && shell && (
+            <>
+              <span className="text-muted">·</span>
+              <span className="text-muted font-mono">{shell.split("/").pop()}</span>
+            </>
+          )}
         </div>
         {(status === "disconnected" || status === "error") && (
           <button

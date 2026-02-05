@@ -46,6 +46,7 @@ const activeSessions = new Map<string, { exec: Docker.Exec; stream: NodeJS.ReadW
 // Session inactivity timeout (30 minutes)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
+
 // Background update checker
 let updateCheckInterval: NodeJS.Timeout | null = null;
 
@@ -170,6 +171,72 @@ app.prepare().then(() => {
       }
     };
 
+    // Run a probe command and return its exit code (or -1 on error/timeout)
+    const probeExec = async (container: Docker.Container, cmd: string[]): Promise<number> => {
+      try {
+        const exec = await container.exec({
+          Cmd: cmd,
+          AttachStdout: false,
+          AttachStderr: false,
+        });
+
+        await exec.start({});
+
+        // Poll for completion with timeout
+        const timeout = Date.now() + 5000;
+        while (Date.now() < timeout) {
+          const info = await exec.inspect();
+          if (!info.Running) {
+            return info.ExitCode ?? -1;
+          }
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return -1; // timeout
+      } catch {
+        return -1; // error
+      }
+    };
+
+    // Detect which shell is available in the container
+    const detectShell = async (container: Docker.Container): Promise<string | null> => {
+      // Use sh to check if bash exists
+      const exitCode = await probeExec(container, ["/bin/sh", "-c", "test -x /bin/bash"]);
+
+      if (exitCode === 0) {
+        return "/bin/bash";
+      } else if (exitCode === 1) {
+        // sh works but bash doesn't exist
+        return "/bin/sh";
+      } else {
+        // sh failed, try bash directly as last resort
+        const bashCode = await probeExec(container, ["/bin/bash", "-c", "exit 0"]);
+        return bashCode === 0 ? "/bin/bash" : null;
+      }
+    };
+
+    // Start an interactive exec session
+    const startExec = async (
+      container: Docker.Container,
+      cmd: string[]
+    ): Promise<{ exec: Docker.Exec; stream: NodeJS.ReadWriteStream }> => {
+      const exec = await container.exec({
+        Cmd: cmd,
+        AttachStdin: true,
+        AttachStdout: true,
+        AttachStderr: true,
+        Tty: true,
+        Env: ["TERM=xterm-256color"],
+      });
+
+      const stream = await exec.start({
+        hijack: true,
+        stdin: true,
+        Tty: true,
+      });
+
+      return { exec, stream };
+    };
+
     // Handle terminal exec request
     socket.on("exec:start", async (data: { containerId: string; cmd?: string[] }) => {
       // Prevent overlapping exec:start calls
@@ -184,7 +251,7 @@ app.prepare().then(() => {
       }
 
       isStarting = true;
-      const { containerId, cmd = ["/bin/sh"] } = data;
+      const { containerId, cmd } = data;
 
       try {
         const container = docker.getContainer(containerId);
@@ -196,23 +263,35 @@ app.prepare().then(() => {
           return;
         }
 
-        // Create exec instance
-        const exec = await container.exec({
-          Cmd: cmd,
-          AttachStdin: true,
-          AttachStdout: true,
-          AttachStderr: true,
-          Tty: true,
-          Env: ["TERM=xterm-256color"],
-        });
+        let shellUsed: string | null;
 
-        // Start exec and get stream
-        const stream = await exec.start({
-          hijack: true,
-          stdin: true,
-          Tty: true,
-        });
+        if (cmd) {
+          // User specified a command, use it directly
+          shellUsed = cmd[0];
+        } else {
+          // Detect available shell
+          shellUsed = await detectShell(container);
 
+          if (!shellUsed) {
+            socket.emit("exec:error", {
+              message: "No shell available in container",
+            });
+            return;
+          }
+        }
+
+        // Start the interactive session
+        let result: { exec: Docker.Exec; stream: NodeJS.ReadWriteStream };
+        try {
+          result = await startExec(container, cmd || [shellUsed]);
+        } catch (error) {
+          socket.emit("exec:error", {
+            message: `Failed to start: ${String(error)}`,
+          });
+          return;
+        }
+
+        const { exec, stream } = result;
         currentExec = exec;
         currentStream = stream;
 
@@ -222,7 +301,7 @@ app.prepare().then(() => {
         // Start session timeout
         resetSessionTimeout();
 
-        socket.emit("exec:started");
+        socket.emit("exec:started", { shell: shellUsed });
 
         // Stream output to client
         stream.on("data", (chunk: Buffer) => {

@@ -8,6 +8,7 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "er
 export interface TerminalSocketState {
   status: ConnectionStatus;
   error: string | null;
+  shell: string | null;
 }
 
 export interface UseTerminalSocketOptions {
@@ -36,6 +37,7 @@ export function useTerminalSocket({
 }: UseTerminalSocketOptions): [TerminalSocketState, TerminalSocketActions] {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [shell, setShell] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // Use refs for callbacks to avoid recreating socket on callback changes
@@ -62,11 +64,13 @@ export function useTerminalSocket({
     socket.on("connect", () => {
       setStatus("connecting");
       setError(null);
+      setShell(null);
       socket.emit("exec:start", { containerId });
     });
 
-    socket.on("exec:started", () => {
+    socket.on("exec:started", (data?: { shell?: string }) => {
       setStatus("connected");
+      setShell(data?.shell ?? null);
       onStartedRef.current?.();
     });
 
@@ -141,7 +145,7 @@ export function useTerminalSocket({
   }, []);
 
   return [
-    { status, error },
+    { status, error, shell },
     { sendInput, resize, reconnect, stop },
   ];
 }

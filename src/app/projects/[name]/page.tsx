@@ -251,46 +251,85 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
 
         {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-2">
-          <Button onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
+          <Button
+            onClick={handleUp}
+            loading={projectUp.isPending}
+            disabled={!canUp}
+            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+          >
             Up
           </Button>
-          <Button onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
+          <Button
+            onClick={handleDown}
+            loading={projectDown.isPending}
+            disabled={!canDown}
+            disabledReason={
+              hasChanges ? "Save or discard changes first" :
+              project?.status === "stopped" ? "Project is already stopped" : undefined
+            }
+          >
             Down
           </Button>
           <Button
             variant={hasUpdates ? "accent" : "default"}
             onClick={() => setShowUpdateModal(true)}
             disabled={!canUpdate}
+            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
           >
             Update…
           </Button>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">
             <Button>Logs</Button>
           </Link>
-          <Button variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete} className="ml-2">
+          <Button
+            variant="danger"
+            onClick={() => setShowDeleteModal(true)}
+            disabled={!canDelete}
+            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+            className="ml-2"
+          >
             Delete…
           </Button>
         </div>
 
         {/* Mobile actions dropdown */}
         <DropdownMenu className="md:hidden flex-shrink-0">
-          <DropdownItem onClick={handleUp} loading={projectUp.isPending} disabled={!canUp}>
+          <DropdownItem
+            onClick={handleUp}
+            loading={projectUp.isPending}
+            disabled={!canUp}
+            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+          >
             Up
           </DropdownItem>
-          <DropdownItem onClick={handleDown} loading={projectDown.isPending} disabled={!canDown}>
+          <DropdownItem
+            onClick={handleDown}
+            loading={projectDown.isPending}
+            disabled={!canDown}
+            disabledReason={
+              hasChanges ? "Save or discard changes first" :
+              project?.status === "stopped" ? "Project is already stopped" : undefined
+            }
+          >
             Down
           </DropdownItem>
           <DropdownItem
             variant={hasUpdates ? "accent" : "default"}
             onClick={() => setShowUpdateModal(true)}
             disabled={!canUpdate}
+            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
           >
             Update…
           </DropdownItem>
           <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
             <DropdownItem>Logs</DropdownItem>
           </Link>
-          <DropdownItem variant="danger" onClick={() => setShowDeleteModal(true)} disabled={!canDelete}>
+          <DropdownItem
+            variant="danger"
+            onClick={() => setShowDeleteModal(true)}
+            disabled={!canDelete}
+            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+          >
             Delete…
           </DropdownItem>
         </DropdownMenu>

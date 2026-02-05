@@ -132,11 +132,14 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
           </div>
         </div>
 
-        {network.actions.canDelete && (
-          <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
-            Delete…
-          </Button>
-        )}
+        <Button
+          variant="danger"
+          onClick={() => setShowDeleteModal(true)}
+          disabled={!network.actions.canDelete}
+          disabledReason={!network.actions.canDelete ? "Built-in networks cannot be deleted" : undefined}
+        >
+          Delete…
+        </Button>
       </div>
 
       {/* Content sections */}

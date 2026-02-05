@@ -104,8 +104,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   // Build update info for the modal (only when update available)
   const updateInfo = hasUpdate ? imageInfo : null;
 
-  // Use domain model's computed actions
-  const canUpdate = container?.actions.canUpdate && hasUpdate;
+  // Use domain model's computed actions - show Update for all compose containers
+  const canUpdate = container?.actions.canUpdate;
 
   // Sorted data for deterministic table ordering
   const sortedPorts = useMemo(
@@ -221,7 +221,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           )}
           {canUpdate && (
             <Button
-              variant="accent"
+              variant={hasUpdate ? "accent" : "default"}
               onClick={() => setShowUpdateModal(true)}
             >
               Update…
@@ -270,7 +270,10 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             </DropdownItem>
           )}
           {canUpdate && (
-            <DropdownItem onClick={() => setShowUpdateModal(true)}>
+            <DropdownItem
+              variant={hasUpdate ? "accent" : "default"}
+              onClick={() => setShowUpdateModal(true)}
+            >
               Update…
             </DropdownItem>
           )}
@@ -561,8 +564,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         )}
       </div>
 
-      {/* Update confirmation modal */}
-      {showUpdateModal && container.projectName && container.serviceName && (
+      {/* Update confirmation modal - with detected updates */}
+      {showUpdateModal && hasUpdate && container.projectName && container.serviceName && (
         <UpdateConfirmModal
           open
           onClose={() => setShowUpdateModal(false)}
@@ -578,6 +581,27 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           }]}
           isRunning={container.state === "running"}
         />
+      )}
+
+      {/* Update modal - no updates detected */}
+      {showUpdateModal && !hasUpdate && container.projectName && container.serviceName && (
+        <Modal
+          open
+          onClose={() => setShowUpdateModal(false)}
+          title={`Update ${container.name}`}
+          footer={
+            <>
+              <Button onClick={() => setShowUpdateModal(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleUpdate}>
+                Pull Image
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-muted">
+            No updates detected. Do you want to pull the image anyway?
+          </p>
+        </Modal>
       )}
 
       {/* Delete confirmation modal */}

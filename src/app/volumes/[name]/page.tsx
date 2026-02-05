@@ -116,6 +116,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
           variant="danger"
           onClick={() => setShowDeleteModal(true)}
           disabled={!volume.actions.canDelete}
+          disabledReason={!volume.actions.canDelete ? "Volume is in use by containers" : undefined}
         >
           Delete…
         </Button>

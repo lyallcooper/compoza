@@ -56,6 +56,8 @@ export interface ContainerHealth {
 
 export interface ContainerMount {
   type: "bind" | "volume" | "tmpfs";
+  /** Volume name (only for volume mounts) */
+  name?: string;
   source: string;
   destination: string;
   mode: string;

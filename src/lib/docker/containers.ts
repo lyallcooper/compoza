@@ -202,6 +202,7 @@ export async function getContainer(id: string): Promise<Container | null> {
     // Mounts from Mounts array
     const mounts: ContainerMount[] = (info.Mounts || []).map((m) => ({
       type: m.Type as "bind" | "volume" | "tmpfs",
+      name: m.Name,
       source: m.Source || "",
       destination: m.Destination,
       mode: m.Mode || "",

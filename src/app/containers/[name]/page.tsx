@@ -447,7 +447,17 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   getValue: (m) => m.source || "",
                   render: (m) => (
                     <span className="font-mono">
-                      <TruncatedText text={m.source || "-"} />
+                      {m.type === "volume" && m.name ? (
+                        <Link
+                          href={`/volumes/${encodeURIComponent(m.name)}`}
+                          className="text-accent hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <TruncatedText text={m.name} />
+                        </Link>
+                      ) : (
+                        <TruncatedText text={m.source || "-"} />
+                      )}
                     </span>
                   ),
                 },

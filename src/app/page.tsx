@@ -156,27 +156,6 @@ export default function Dashboard() {
     [containers]
   );
 
-  const projectsTitle = (
-    <>
-      Projects
-      {!projectsLoading && (
-        <span className="text-muted font-normal ml-1">
-          ({runningProjects}/{totalProjects} running)
-        </span>
-      )}
-    </>
-  );
-
-  const containersTitle = (
-    <>
-      Containers
-      {!containersLoading && (
-        <span className="text-muted font-normal ml-1">
-          ({runningContainers}/{totalContainers} running)
-        </span>
-      )}
-    </>
-  );
 
   const projectColumns: ColumnDef<Project>[] = useMemo(() => [
     {
@@ -373,8 +352,15 @@ export default function Dashboard() {
       <Box
         title={
           <Link href="/projects" className="hover:text-accent transition-colors">
-            {projectsTitle}
+            Projects
           </Link>
+        }
+        actions={
+          !projectsLoading && (
+            <span className="text-muted font-normal text-xs">
+              {runningProjects}/{totalProjects} running
+            </span>
+          )
         }
         padding={false}
         className="break-inside-avoid"
@@ -421,8 +407,15 @@ export default function Dashboard() {
       <Box
         title={
           <Link href="/containers" className="hover:text-accent transition-colors">
-            {containersTitle}
+            Containers
           </Link>
+        }
+        actions={
+          !containersLoading && (
+            <span className="text-muted font-normal text-xs">
+              {runningContainers}/{totalContainers} running
+            </span>
+          )
         }
         padding={false}
         className="break-inside-avoid"

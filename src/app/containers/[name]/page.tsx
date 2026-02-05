@@ -175,15 +175,20 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/containers" className="text-muted hover:text-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/containers" className="text-muted hover:text-foreground flex-shrink-0">
             &larr;
           </Link>
-          <h1 className="text-xl font-semibold">{container.name}</h1>
-          <ContainerStateBadge state={container.state} />
+          <div className="min-w-0 relative">
+            <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">Container</p>
+            <h1 className="text-xl font-semibold truncate">{container.name}</h1>
+          </div>
+          <span className="flex-shrink-0">
+            <ContainerStateBadge state={container.state} compact="responsive" />
+          </span>
           {hasUpdate && (
-            <Badge variant="accent">
+            <Badge variant="accent" className="flex-shrink-0">
               {updateInfo?.currentVersion && updateInfo?.latestVersion && updateInfo.currentVersion !== updateInfo.latestVersion
                 ? `${updateInfo.currentVersion} → ${updateInfo.latestVersion}`
                 : "update available"}

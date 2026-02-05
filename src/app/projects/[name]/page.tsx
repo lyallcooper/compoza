@@ -243,7 +243,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <Link href="/projects" className="text-muted hover:text-foreground flex-shrink-0">
             &larr;
           </Link>
-          <h1 className="text-xl font-semibold truncate">{project.name}</h1>
+          <div className="min-w-0 relative">
+            <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">Project</p>
+            <h1 className="text-xl font-semibold truncate">{project.name}</h1>
+          </div>
           <span className="flex-shrink-0">
             <ProjectStatusBadge status={project.status} compact="responsive" />
           </span>

@@ -26,19 +26,18 @@ const DOT_COLORS: Record<BadgeVariant, string> = {
   default: "bg-muted",
 };
 
-interface ProjectStatusBadgeProps {
-  status: string;
+interface StatusBadgeProps {
+  label: string;
+  variant: BadgeVariant;
   compact?: boolean | "responsive";
 }
 
-export function ProjectStatusBadge({ status, compact }: ProjectStatusBadgeProps) {
-  const variant = PROJECT_STATUS_VARIANTS[status] || "default";
-
+function StatusBadge({ label, variant, compact }: StatusBadgeProps) {
   if (compact === true) {
     return (
       <span
         className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
-        title={status}
+        title={label}
       />
     );
   }
@@ -49,29 +48,35 @@ export function ProjectStatusBadge({ status, compact }: ProjectStatusBadgeProps)
         <span className="sm:hidden">
           <span
             className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
-            title={status}
+            title={label}
           />
         </span>
         <span className="hidden sm:inline">
-          <Badge variant={variant}>
-            {status}
-          </Badge>
+          <Badge variant={variant}>{label}</Badge>
         </span>
       </>
     );
   }
 
-  return (
-    <Badge variant={variant}>
-      {status}
-    </Badge>
-  );
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
-export function ContainerStateBadge({ state }: { state: string }) {
-  return (
-    <Badge variant={CONTAINER_STATE_VARIANTS[state] || "default"}>
-      {state}
-    </Badge>
-  );
+interface ProjectStatusBadgeProps {
+  status: string;
+  compact?: boolean | "responsive";
+}
+
+export function ProjectStatusBadge({ status, compact }: ProjectStatusBadgeProps) {
+  const variant = PROJECT_STATUS_VARIANTS[status] || "default";
+  return <StatusBadge label={status} variant={variant} compact={compact} />;
+}
+
+interface ContainerStateBadgeProps {
+  state: string;
+  compact?: boolean | "responsive";
+}
+
+export function ContainerStateBadge({ state, compact }: ContainerStateBadgeProps) {
+  const variant = CONTAINER_STATE_VARIANTS[state] || "default";
+  return <StatusBadge label={state} variant={variant} compact={compact} />;
 }

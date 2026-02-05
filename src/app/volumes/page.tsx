@@ -107,7 +107,9 @@ export default function VolumesPage() {
       cardPosition: "header",
       render: (vol) => (
         <div className="flex items-center gap-2 min-w-0">
-          <TruncatedText text={vol.name} className="font-medium" />
+          <span className="min-w-0">
+            <TruncatedText text={vol.name} className="font-medium" />
+          </span>
           {isAnonymousVolume(vol.labels) && <Badge variant="default">Anonymous</Badge>}
           {vol.containerCount === 0 && <Badge variant="warning">Unused</Badge>}
         </div>

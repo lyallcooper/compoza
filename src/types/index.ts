@@ -177,12 +177,37 @@ export interface RouteParams<T extends Record<string, string>> {
 export type ContainerRouteProps = RouteParams<{ name: string }>;
 export type ProjectRouteProps = RouteParams<{ name: string }>;
 export type NetworkRouteProps = RouteParams<{ name: string }>;
+export type VolumeRouteProps = RouteParams<{ name: string }>;
 
 export interface NetworkContainer {
   id: string;
   name: string;
   ipv4Address: string;
   macAddress: string;
+}
+
+export interface VolumeContainer {
+  id: string;
+  name: string;
+}
+
+export interface DockerVolume {
+  name: string;
+  driver: string;
+  mountpoint: string;
+  scope: "local" | "global";
+  labels: Record<string, string>;
+  options: Record<string, string> | null;
+  created: string;
+  /** Size in bytes - only available from df endpoint */
+  size: number | null;
+  /** Number of containers using this volume */
+  containerCount: number;
+  /** Containers using this volume - only on detail view */
+  containers: VolumeContainer[];
+  actions: {
+    canDelete: boolean;
+  };
 }
 
 export interface DockerNetwork {

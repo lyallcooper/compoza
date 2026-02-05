@@ -32,6 +32,12 @@ export const queryKeys = {
     detail: (id: string) => ["networks", id] as const,
   },
 
+  // Volumes
+  volumes: {
+    all: ["volumes"] as const,
+    detail: (name: string) => ["volumes", name] as const,
+  },
+
   // System
   system: {
     info: ["system", "info"] as const,

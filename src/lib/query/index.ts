@@ -4,6 +4,7 @@ export {
   invalidateProjectQueries,
   invalidateImageQueries,
   invalidateNetworkQueries,
+  invalidateVolumeQueries,
   invalidateSystemQueries,
   invalidateAllQueries,
   clearUpdateCacheAndInvalidate,

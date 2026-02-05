@@ -53,6 +53,19 @@ export function invalidateNetworkQueries(
 }
 
 /**
+ * Invalidate volume-related queries after a volume action.
+ */
+export function invalidateVolumeQueries(
+  queryClient: QueryClient,
+  volumeName?: string
+) {
+  if (volumeName) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.volumes.detail(volumeName) });
+  }
+  queryClient.invalidateQueries({ queryKey: queryKeys.volumes.all, exact: true });
+}
+
+/**
  * Invalidate system-related queries after a system action.
  */
 export function invalidateSystemQueries(queryClient: QueryClient) {
@@ -73,6 +86,7 @@ export function invalidateAllQueries(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.images.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.images.updates });
   queryClient.invalidateQueries({ queryKey: queryKeys.networks.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.volumes.all });
   invalidateSystemQueries(queryClient);
 }
 

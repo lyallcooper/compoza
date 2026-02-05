@@ -22,6 +22,14 @@ export {
 } from "./networks";
 export type { CreateNetworkOptions, NetworkPruneResult } from "./networks";
 export {
+  listVolumes,
+  getVolume,
+  createVolume,
+  removeVolume,
+  pruneVolumes,
+} from "./volumes";
+export type { CreateVolumeOptions, VolumePruneResult } from "./volumes";
+export {
   getSystemInfo,
   getDiskUsage,
   systemPrune,

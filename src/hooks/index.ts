@@ -29,6 +29,13 @@ export {
   useRemoveNetwork,
   usePruneNetworks,
 } from "./use-networks";
+export {
+  useVolumes,
+  useVolume,
+  useCreateVolume,
+  useRemoveVolume,
+  usePruneVolumes,
+} from "./use-volumes";
 export { useSystemInfo, useDiskUsage, useSystemPrune } from "./use-system";
 export { useImageUpdates, getProjectsWithUpdates } from "./use-image-updates";
 export type { ProjectWithUpdates } from "./use-image-updates";

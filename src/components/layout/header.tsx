@@ -10,6 +10,7 @@ const navItems = [
   { href: "/containers", label: "Containers" },
   { href: "/images", label: "Images" },
   { href: "/networks", label: "Networks" },
+  { href: "/volumes", label: "Volumes" },
   { href: "/system", label: "System" },
 ];
 

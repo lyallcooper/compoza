@@ -1,6 +1,7 @@
 "use client";
 
 import { ButtonHTMLAttributes, forwardRef } from "react";
+import { Tooltip } from "./tooltip";
 
 type ButtonVariant = "default" | "primary" | "danger" | "ghost" | "accent";
 type ButtonSize = "sm" | "md" | "lg";
@@ -9,6 +10,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
+  /** Tooltip shown when button is disabled - explains why it's disabled */
+  disabledReason?: string;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
@@ -26,11 +29,13 @@ const sizeStyles: Record<ButtonSize, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "default", size = "md", loading, disabled, className = "", children, ...props }, ref) => {
-    return (
+  ({ variant = "default", size = "md", loading, disabled, disabledReason, className = "", children, ...props }, ref) => {
+    const isDisabled = disabled || loading;
+
+    const button = (
       <button
         ref={ref}
-        disabled={disabled || loading}
+        disabled={isDisabled}
         className={`
           relative inline-flex items-center justify-center gap-2 border font-medium rounded
           transition-all disabled:cursor-not-allowed disabled:opacity-50
@@ -48,6 +53,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
       </button>
     );
+
+    // Wrap in Tooltip to show reason on disabled buttons (disabled elements don't fire pointer events)
+    if (isDisabled && disabledReason) {
+      return (
+        <Tooltip content={disabledReason}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
 );
 

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { Button } from "./button";
+import { Tooltip } from "./tooltip";
 
 interface DropdownMenuProps {
   label?: string;
@@ -13,6 +14,8 @@ interface DropdownItemProps {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  /** Tooltip shown when item is disabled - explains why it's disabled */
+  disabledReason?: string;
   variant?: "default" | "danger" | "accent";
   loading?: boolean;
 }
@@ -69,21 +72,33 @@ export function DropdownMenu({ label = "Actions", children, className = "" }: Dr
   );
 }
 
-export function DropdownItem({ children, onClick, disabled, variant = "default", loading }: DropdownItemProps) {
+export function DropdownItem({ children, onClick, disabled, disabledReason, variant = "default", loading }: DropdownItemProps) {
+  const isDisabled = disabled || loading;
   const variantClasses = {
     default: "hover:bg-surface",
     danger: "text-error hover:bg-error-muted",
     accent: "text-accent hover:bg-accent-muted",
   }[variant];
 
-  return (
+  const button = (
     <button
       role="menuitem"
       onClick={onClick}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       className={`w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:bg-surface`}
     >
       {loading ? "..." : children}
     </button>
   );
+
+  // Wrap in Tooltip to show reason on disabled items (disabled elements don't fire pointer events)
+  if (isDisabled && disabledReason) {
+    return (
+      <Tooltip content={disabledReason} className="block">
+        {button}
+      </Tooltip>
+    );
+  }
+
+  return button;
 }

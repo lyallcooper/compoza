@@ -12,6 +12,7 @@ export type { Port } from "./ports-list";
 export { GroupedLabels } from "./grouped-labels";
 export { DropdownMenu, DropdownItem } from "./dropdown-menu";
 export { Toast } from "./toast";
+export { Tooltip } from "./tooltip";
 export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
 export { BackgroundTaskToast } from "./background-task-toast";
 export { ResponsiveTable } from "./responsive-table";

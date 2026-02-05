@@ -29,6 +29,30 @@ const cache = globalCache.__updateCache;
 const pendingChecks = globalCache.__pendingChecks!;
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const PENDING_CHECK_TIMEOUT = 5 * 60 * 1000; // 5 minutes max for pending checks
+
+// Track when pending checks started for cleanup
+const pendingCheckTimestamps = new Map<string, number>();
+
+// Periodic cleanup of expired cache entries and stale pending checks
+setInterval(() => {
+  const now = Date.now();
+
+  // Clean expired cache entries
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt < now) {
+      cache.delete(key);
+    }
+  }
+
+  // Clean stale pending checks (stuck for more than 5 minutes)
+  for (const [key, startTime] of pendingCheckTimestamps) {
+    if (now - startTime > PENDING_CHECK_TIMEOUT) {
+      pendingChecks.delete(key);
+      pendingCheckTimestamps.delete(key);
+    }
+  }
+}, 60000); // Clean every minute
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes between checks for same image
 
 export function getCachedUpdate(image: string): CachedUpdate | null {
@@ -96,10 +120,12 @@ export function shouldCheckImage(image: string): boolean {
 
 export function markCheckPending(image: string): void {
   pendingChecks.add(image);
+  pendingCheckTimestamps.set(image, Date.now());
 }
 
 export function markCheckComplete(image: string): void {
   pendingChecks.delete(image);
+  pendingCheckTimestamps.delete(image);
 }
 
 export function getAllCachedUpdates(): CachedUpdate[] {

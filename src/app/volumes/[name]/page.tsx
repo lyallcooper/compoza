@@ -112,11 +112,13 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
           </div>
         </div>
 
-        {volume.actions.canDelete && (
-          <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
-            Delete…
-          </Button>
-        )}
+        <Button
+          variant="danger"
+          onClick={() => setShowDeleteModal(true)}
+          disabled={!volume.actions.canDelete}
+        >
+          Delete…
+        </Button>
       </div>
 
       {/* Content sections */}

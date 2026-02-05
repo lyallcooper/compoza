@@ -55,17 +55,14 @@ export default function ContainerExecPage({ params }: ContainerRouteProps) {
     <div className="h-[calc(100vh-120px)] flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 flex-shrink-0">
-        <Link
-          href={`/containers/${encodeURIComponent(name)}`}
-          className="text-muted hover:text-foreground"
-        >
-          &larr;
-        </Link>
-        <h1 className="text-xl font-semibold">{container.name} - Terminal</h1>
+        <div className="min-w-0 relative">
+          <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">Terminal</p>
+          <h1 className="text-xl font-semibold truncate">{container.name}</h1>
+        </div>
       </div>
 
       {/* Terminal */}
-      <Box title="Terminal" padding={false} className="flex-1 flex flex-col min-h-0">
+      <Box padding={false} className="flex-1 flex flex-col min-h-0">
         <Terminal containerId={container.id} className="flex-1 min-h-0" />
       </Box>
     </div>

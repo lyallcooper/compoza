@@ -43,6 +43,9 @@ const docker = createDockerClient();
 // Track active exec sessions for cleanup
 const activeSessions = new Map<string, { exec: Docker.Exec; stream: NodeJS.ReadWriteStream }>();
 
+// Session inactivity timeout (30 minutes)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+
 // Background update checker
 let updateCheckInterval: NodeJS.Timeout | null = null;
 
@@ -133,9 +136,54 @@ app.prepare().then(() => {
 
     let currentExec: Docker.Exec | null = null;
     let currentStream: NodeJS.ReadWriteStream | null = null;
+    let isStarting = false;
+    let sessionTimeoutId: NodeJS.Timeout | null = null;
+
+    // Reset session inactivity timeout
+    const resetSessionTimeout = () => {
+      if (sessionTimeoutId) clearTimeout(sessionTimeoutId);
+      sessionTimeoutId = setTimeout(() => {
+        console.log(`[Socket.io] Session timeout for ${socket.id}`);
+        socket.emit("exec:error", { message: "Session timeout due to inactivity" });
+        cleanup("inactivity timeout");
+      }, SESSION_TIMEOUT);
+    };
+
+    // Cleanup function
+    const cleanup = (reason: string = "unknown") => {
+      if (sessionTimeoutId) {
+        clearTimeout(sessionTimeoutId);
+        sessionTimeoutId = null;
+      }
+      if (currentStream) {
+        try {
+          currentStream.end();
+        } catch {
+          // Stream may already be closed
+        }
+        currentStream = null;
+      }
+      currentExec = null;
+      activeSessions.delete(socket.id);
+      if (reason !== "unknown") {
+        console.log(`[Socket.io] Session cleaned up for ${socket.id}: ${reason}`);
+      }
+    };
 
     // Handle terminal exec request
     socket.on("exec:start", async (data: { containerId: string; cmd?: string[] }) => {
+      // Prevent overlapping exec:start calls
+      if (isStarting) {
+        socket.emit("exec:error", { message: "Session already starting" });
+        return;
+      }
+
+      // Clean up any existing session first
+      if (currentExec || currentStream) {
+        cleanup("new session requested");
+      }
+
+      isStarting = true;
       const { containerId, cmd = ["/bin/sh"] } = data;
 
       try {
@@ -171,6 +219,9 @@ app.prepare().then(() => {
         // Store session for cleanup
         activeSessions.set(socket.id, { exec, stream });
 
+        // Start session timeout
+        resetSessionTimeout();
+
         socket.emit("exec:started");
 
         // Stream output to client
@@ -180,28 +231,32 @@ app.prepare().then(() => {
 
         stream.on("end", () => {
           socket.emit("exec:end");
-          cleanup();
+          cleanup("stream ended");
         });
 
         stream.on("error", (err: Error) => {
           socket.emit("exec:error", { message: err.message });
-          cleanup();
+          cleanup("stream error");
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to start exec";
         socket.emit("exec:error", { message });
+      } finally {
+        isStarting = false;
       }
     });
 
     // Handle input from client
     socket.on("exec:input", (data: string) => {
       if (currentStream) {
+        // Reset timeout on activity
+        resetSessionTimeout();
         try {
           currentStream.write(data);
         } catch (error) {
           console.error(`[Socket.io] Error writing to stream:`, error);
           socket.emit("exec:error", { message: "Failed to write to terminal" });
-          cleanup();
+          cleanup("write error");
         }
       }
     });
@@ -209,6 +264,8 @@ app.prepare().then(() => {
     // Handle terminal resize
     socket.on("exec:resize", async (data: { cols: number; rows: number }) => {
       if (currentExec) {
+        // Reset timeout on activity
+        resetSessionTimeout();
         try {
           await currentExec.resize({ h: data.rows, w: data.cols });
         } catch {
@@ -217,29 +274,22 @@ app.prepare().then(() => {
       }
     });
 
-    // Cleanup function
-    const cleanup = () => {
-      if (currentStream) {
-        try {
-          currentStream.end();
-        } catch {
-          // Stream may already be closed
-        }
-        currentStream = null;
+    // Handle keepalive ping from client
+    socket.on("exec:ping", () => {
+      if (currentExec) {
+        resetSessionTimeout();
       }
-      currentExec = null;
-      activeSessions.delete(socket.id);
-    };
+    });
 
     // Handle disconnect
     socket.on("disconnect", () => {
       console.log(`[Socket.io] Client disconnected: ${socket.id}`);
-      cleanup();
+      cleanup("client disconnected");
     });
 
     // Handle explicit stop
     socket.on("exec:stop", () => {
-      cleanup();
+      cleanup("explicit stop");
       socket.emit("exec:end");
     });
   });

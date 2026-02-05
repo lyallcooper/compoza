@@ -99,7 +99,15 @@ export function useTerminalSocket({
   useEffect(() => {
     const socket = connect();
 
+    // Send keepalive ping every 5 minutes to prevent session timeout
+    const keepaliveInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit("exec:ping");
+      }
+    }, 5 * 60 * 1000);
+
     return () => {
+      clearInterval(keepaliveInterval);
       socket.emit("exec:stop");
       socket.disconnect();
       socketRef.current = null;

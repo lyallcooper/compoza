@@ -4,6 +4,8 @@ import { getRegistryCredentials } from "@/lib/registries/credentials";
 
 let dockerClient: Docker | null = null;
 
+const DOCKER_TIMEOUT = 30000; // 30 second timeout
+
 export function getDocker(): Docker {
   if (!dockerClient) {
     const socketPath = process.env.DOCKER_HOST || "/var/run/docker.sock";
@@ -14,9 +16,13 @@ export function getDocker(): Docker {
         host: url.hostname,
         port: parseInt(url.port, 10) || 2375,
         protocol: url.protocol === "https:" ? "https" : "http",
+        timeout: DOCKER_TIMEOUT,
       });
     } else {
-      dockerClient = new Docker({ socketPath });
+      dockerClient = new Docker({
+        socketPath,
+        timeout: DOCKER_TIMEOUT,
+      });
     }
   }
   return dockerClient;

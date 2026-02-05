@@ -4,6 +4,16 @@ import { useRef, useState, useLayoutEffect, useEffect, useCallback, forwardRef }
 import { createPortal } from "react-dom";
 import { SENSITIVE_MASK } from "@/lib/format";
 
+// Popup positioning constants
+const POPUP_MARGIN = 16;
+const POPUP_GAP = 8;
+
+/** Check if user has active text selection (to avoid closing popup during selection) */
+function hasActiveSelection(): boolean {
+  const selection = window.getSelection();
+  return !!selection && selection.toString().length > 0;
+}
+
 interface TruncatedTextProps {
   text: string;
   maxLength?: number;        // Optional upper bound on characters shown
@@ -189,13 +199,6 @@ export function TruncatedText({
     selection.addRange(range);
   }, [selectable]);
 
-  const openPopup = useCallback((pinned: boolean) => {
-    if (!showPopup || !isTruncated || !containerRef.current) return;
-    clearHoverTimeout();
-    const rect = containerRef.current.getBoundingClientRect();
-    setPopup({ visible: true, pinned, rect });
-  }, [showPopup, isTruncated, clearHoverTimeout]);
-
   const closePopup = useCallback(() => {
     clearHoverTimeout();
     setPopup({ visible: false, pinned: false, rect: null });
@@ -232,10 +235,11 @@ export function TruncatedText({
   }, [clearHoverTimeout, clearCloseTimeout]);
 
   const handleFocus = useCallback(() => {
-    if (showPopup && isTruncated && !popup.pinned) {
-      openPopup(false);
-    }
-  }, [showPopup, isTruncated, popup.pinned, openPopup]);
+    if (!showPopup || !isTruncated || popup.pinned || !containerRef.current) return;
+    clearHoverTimeout();
+    const rect = containerRef.current.getBoundingClientRect();
+    setPopup({ visible: true, pinned: false, rect });
+  }, [showPopup, isTruncated, popup.pinned, clearHoverTimeout]);
 
   const handleBlur = useCallback(() => {
     if (!popup.pinned) {
@@ -286,9 +290,11 @@ export function TruncatedText({
   }, [clearCloseTimeout]);
 
   const handlePopupMouseLeave = useCallback(() => {
-    // Close after leaving popup (unless pinned)
+    // Close after leaving popup (unless pinned or user is selecting text)
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
+      if (hasActiveSelection()) return;
+
       setPopup((prev) => {
         if (prev.pinned) return prev;
         return { visible: false, pinned: false, rect: null };
@@ -309,6 +315,8 @@ export function TruncatedText({
     if (!popup.visible || !popup.pinned) return;
 
     const handleClickOutside = (e: MouseEvent) => {
+      if (hasActiveSelection()) return;
+
       const target = e.target as Node;
       const container = containerRef.current;
       const popupEl = popupRef.current;
@@ -328,6 +336,18 @@ export function TruncatedText({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [popup.visible, popup.pinned]);
+
+  // Close popup on scroll
+  useEffect(() => {
+    if (!popup.visible) return;
+
+    const handleScroll = () => {
+      setPopup({ visible: false, pinned: false, rect: null });
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [popup.visible]);
 
   const baseClasses = selectable ? "cursor-pointer hover:bg-surface rounded-sm" : "";
   const classes = className ? `${baseClasses} ${className}` : baseClasses;
@@ -402,10 +422,49 @@ interface PopupProps {
 
 const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
   { text, anchorRect, pinned, onClose, onMouseEnter, onMouseLeave, sensitive, revealed, onRevealChange },
-  ref
+  forwardedRef
 ) {
   const isHidden = sensitive && !revealed;
   const displayText = isHidden ? SENSITIVE_MASK : text;
+  const localRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ left: number } | null>(null);
+
+  // Combine forwarded ref with local ref
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    (localRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (typeof forwardedRef === "function") {
+      forwardedRef(node);
+    } else if (forwardedRef) {
+      forwardedRef.current = node;
+    }
+  }, [forwardedRef]);
+
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1000;
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+
+  // Calculate available space for vertical positioning
+  const spaceAbove = anchorRect.top - POPUP_MARGIN;
+  const spaceBelow = viewportHeight - anchorRect.bottom - POPUP_MARGIN;
+  const showAbove = spaceAbove >= 100 || spaceAbove > spaceBelow;
+  const maxAvailableHeight = showAbove ? spaceAbove - POPUP_GAP : spaceBelow - POPUP_GAP;
+  const popupMaxHeight = Math.min(300, maxAvailableHeight);
+  const anchorCenter = anchorRect.left + anchorRect.width / 2;
+  const maxWidth = viewportWidth - POPUP_MARGIN * 2;
+
+  // Measure popup and calculate position to center on anchor, clamped to viewport
+  useLayoutEffect(() => {
+    const popup = localRef.current;
+    if (!popup) return;
+
+    const popupWidth = popup.offsetWidth;
+    // Ideal: center popup on anchor
+    let left = anchorCenter - popupWidth / 2;
+    // Clamp to viewport bounds
+    left = Math.max(POPUP_MARGIN, Math.min(left, viewportWidth - POPUP_MARGIN - popupWidth));
+
+    setPosition({ left });
+  }, [anchorCenter, viewportWidth, text]);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -416,40 +475,33 @@ const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
     return () => document.removeEventListener("keydown", handleEscape);
   }, [onClose]);
 
-  // SSR safety - createPortal requires document.body
+  // SSR safety
   if (typeof window === "undefined") return null;
-
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
-  const spaceAbove = anchorRect.top;
-  const spaceBelow = viewportHeight - anchorRect.bottom;
-  const popupMaxHeight = 200;
-  const popupMaxWidth = Math.min(400, viewportWidth - 32);
-  const gap = 8;
-
-  const showAbove = spaceAbove >= popupMaxHeight + gap || spaceAbove > spaceBelow;
 
   const style: React.CSSProperties = {
     position: "fixed",
-    left: Math.max(16, Math.min(anchorRect.left, viewportWidth - popupMaxWidth - 16)),
-    maxWidth: popupMaxWidth,
+    left: position?.left ?? anchorCenter,
+    width: "max-content",
+    maxWidth,
+    maxHeight: popupMaxHeight,
     zIndex: 9999,
+    visibility: position ? "visible" : "hidden",
   };
 
   if (showAbove) {
-    style.bottom = viewportHeight - anchorRect.top + gap;
+    style.bottom = viewportHeight - anchorRect.top + POPUP_GAP;
   } else {
-    style.top = anchorRect.bottom + gap;
+    style.top = anchorRect.bottom + POPUP_GAP;
   }
 
   return createPortal(
     <div
-      ref={ref}
+      ref={setRefs}
       role="tooltip"
       aria-live="polite"
       style={style}
-      className="animate-popup-in"
       onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -488,8 +540,8 @@ const Popup = forwardRef<HTMLDivElement, PopupProps>(function Popup(
           </div>
         )}
         <div
-          className="p-2 overflow-auto text-sm font-mono break-all"
-          style={{ maxHeight: pinned ? popupMaxHeight - 32 : popupMaxHeight }}
+          className="p-2 overflow-auto text-sm font-mono break-words select-text"
+          style={{ overflowWrap: "anywhere" }}
         >
           {displayText}
         </div>

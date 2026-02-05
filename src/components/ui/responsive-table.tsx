@@ -185,7 +185,7 @@ export function ResponsiveTable<T>({
       </div>
 
       {/* Card view (narrow screens) */}
-      <div className={`${hide} space-y-2 p-2`}>
+      <div className={`${hide} space-y-1.5 p-1.5`}>
         {data.map((row, index) => {
           const isClickable = !!onRowClick;
 
@@ -210,7 +210,7 @@ export function ResponsiveTable<T>({
               tabIndex={isClickable ? 0 : undefined}
               data-truncate-container="true"
               className={`
-                p-3 rounded-lg border border-border bg-surface-subtle overflow-hidden
+                p-2 rounded-lg border border-border bg-surface-subtle overflow-hidden
                 ${isClickable ? "cursor-pointer hover:bg-surface focus:outline-none focus:bg-surface focus:ring-1 focus:ring-primary" : ""}
               `}
             >
@@ -227,15 +227,18 @@ export function ResponsiveTable<T>({
 
               {/* Body section */}
               {bodyColumns.length > 0 && (
-                <div className={`space-y-1.5 text-sm ${headerColumns.length > 0 ? "mt-2" : ""}`}>
+                <div className={`space-y-1 text-sm ${headerColumns.length > 0 ? "mt-1.5" : ""}`}>
                   {bodyColumns.map((col) => {
                     const label = col.cardLabel === false ? null : col.cardLabel || col.header;
                     const content = col.renderCard ? col.renderCard(row, index) : col.render(row, index);
 
                     return (
-                      <div key={col.key} className="flex justify-between items-center gap-4">
+                      <div key={col.key} className="flex items-center gap-3">
                         {label && <span className="text-muted shrink-0">{label}</span>}
-                        <span className={`text-foreground min-w-0 ${label ? "text-right" : ""}`}>
+                        <span
+                          className={`text-foreground min-w-0 overflow-hidden flex-1 ${label ? "text-right" : ""}`}
+                          data-truncate-container="true"
+                        >
                           {content}
                         </span>
                       </div>
@@ -249,7 +252,7 @@ export function ResponsiveTable<T>({
                 <div
                   className={`flex items-center justify-end gap-2 ${
                     headerColumns.length > 0 || bodyColumns.length > 0
-                      ? "mt-3 pt-3 border-t border-border"
+                      ? "mt-2 pt-2 border-t border-border"
                       : ""
                   }`}
                   onClick={(e) => e.stopPropagation()}

@@ -13,3 +13,11 @@ export {
 export type { ListContainersOptions } from "./containers";
 export { listImages, pullImage, removeImage, inspectImage, checkImageUpdate, pruneImages } from "./images";
 export type { PruneResult } from "./images";
+export {
+  listNetworks,
+  getNetwork,
+  createNetwork,
+  removeNetwork,
+  pruneNetworks,
+} from "./networks";
+export type { CreateNetworkOptions, NetworkPruneResult } from "./networks";

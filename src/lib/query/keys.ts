@@ -25,4 +25,10 @@ export const queryKeys = {
     all: ["images"] as const,
     updates: ["image-updates"] as const,
   },
+
+  // Networks
+  networks: {
+    all: ["networks"] as const,
+    detail: (id: string) => ["networks", id] as const,
+  },
 } as const;

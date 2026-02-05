@@ -40,6 +40,19 @@ export function invalidateImageQueries(queryClient: QueryClient) {
 }
 
 /**
+ * Invalidate network-related queries after a network action.
+ */
+export function invalidateNetworkQueries(
+  queryClient: QueryClient,
+  networkId?: string
+) {
+  if (networkId) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.networks.detail(networkId) });
+  }
+  queryClient.invalidateQueries({ queryKey: queryKeys.networks.all, exact: true });
+}
+
+/**
  * Invalidate all queries after a major update (e.g., update all projects).
  * Optimistically clears the updates cache to remove stale badges immediately.
  */

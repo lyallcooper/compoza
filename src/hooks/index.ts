@@ -22,6 +22,13 @@ export {
 } from "./use-containers";
 export { useImages, usePullImage, useDeleteImage, usePruneImages } from "./use-images";
 export type { PruneResult } from "./use-images";
+export {
+  useNetworks,
+  useNetwork,
+  useCreateNetwork,
+  useRemoveNetwork,
+  usePruneNetworks,
+} from "./use-networks";
 export { useImageUpdates, getProjectsWithUpdates } from "./use-image-updates";
 export type { ProjectWithUpdates } from "./use-image-updates";
 export { useKeyboardShortcuts } from "./use-keyboard-shortcuts";

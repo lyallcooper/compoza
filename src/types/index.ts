@@ -176,3 +176,33 @@ export interface RouteParams<T extends Record<string, string>> {
 
 export type ContainerRouteProps = RouteParams<{ name: string }>;
 export type ProjectRouteProps = RouteParams<{ name: string }>;
+export type NetworkRouteProps = RouteParams<{ id: string }>;
+
+export interface NetworkContainer {
+  id: string;
+  name: string;
+  ipv4Address: string;
+  macAddress: string;
+}
+
+export interface DockerNetwork {
+  id: string;
+  name: string;
+  driver: string;
+  scope: "local" | "global" | "swarm";
+  internal: boolean;
+  attachable: boolean;
+  ipam: {
+    subnet?: string;
+    gateway?: string;
+  } | null;
+  containerCount: number;
+  /** Only populated on detail view */
+  containers: NetworkContainer[];
+  options: Record<string, string>;
+  labels: Record<string, string>;
+  created: string;
+  actions: {
+    canDelete: boolean;
+  };
+}

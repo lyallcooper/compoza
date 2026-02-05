@@ -93,6 +93,9 @@ interface ComposeResult {
   error?: string;
 }
 
+const COMPOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const MAX_OUTPUT_SIZE = 10 * 1024 * 1024; // 10MB
+
 interface RunComposeOptions {
   onOutput?: (data: string) => void;
   composeFile?: string;
@@ -159,17 +162,43 @@ async function runComposeCommand(
     });
 
     let output = "";
+    let resolved = false;
+
+    const resolveOnce = (result: ComposeResult) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      resolve(result);
+    };
+
+    // Timeout to prevent hanging forever
+    const timeoutId = setTimeout(() => {
+      log.compose.warn("Command timed out, killing process", {
+        command: `docker ${composeArgs.join(" ")}`,
+      });
+      proc.kill("SIGTERM");
+      // Force kill after 5 seconds if still running
+      setTimeout(() => {
+        if (!proc.killed) {
+          proc.kill("SIGKILL");
+        }
+      }, 5000);
+    }, COMPOSE_TIMEOUT);
 
     proc.stdout.on("data", (data) => {
       const str = data.toString();
-      output += str;
+      if (output.length < MAX_OUTPUT_SIZE) {
+        output += str;
+      }
       onOutput?.(str);
     });
 
     proc.stderr.on("data", (data) => {
       const str = data.toString();
       // docker compose often writes progress to stderr
-      output += str;
+      if (output.length < MAX_OUTPUT_SIZE) {
+        output += str;
+      }
       onOutput?.(str);
     });
 
@@ -182,7 +211,7 @@ async function runComposeCommand(
       if (cleanup) {
         await cleanup();
       }
-      resolve({
+      resolveOnce({
         success: code === 0,
         output,
         error: code !== 0 ? output : undefined,
@@ -194,7 +223,7 @@ async function runComposeCommand(
       if (cleanup) {
         await cleanup();
       }
-      resolve({
+      resolveOnce({
         success: false,
         output,
         error: err.message,

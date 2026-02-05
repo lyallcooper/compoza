@@ -8,87 +8,126 @@ interface GroupedLabelsProps {
   labels: Record<string, string>;
 }
 
-interface LabelGroup {
-  prefix: string;
-  labels: Array<{ suffix: string; fullKey: string; value: string }>;
+interface LabelNode {
+  key: string;           // Full key (e.g., "com.docker.compose")
+  suffix: string;        // Display suffix (e.g., "compose")
+  value?: string;        // Value if this key exists as a label
+  children: LabelNode[]; // Nested children
 }
 
-function groupLabels(labels: Record<string, string>): LabelGroup[] {
+function buildLabelTree(labels: Record<string, string>): LabelNode[] {
   const entries = Object.entries(labels).sort(([a], [b]) => a.localeCompare(b));
-  const prefixCounts: Map<string, number> = new Map();
 
-  // First pass: count labels per prefix
-  for (const [key] of entries) {
-    const parts = key.split(".");
-    if (parts.length >= 3) {
-      const prefix = parts.slice(0, -1).join(".");
-      prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1);
-    }
-  }
-
-  // Second pass: group labels, only grouping if prefix has more than 1 item
-  const groups: Map<string, LabelGroup> = new Map();
+  // Build a map of all nodes by their full key
+  const nodeMap = new Map<string, LabelNode>();
+  const roots: LabelNode[] = [];
 
   for (const [key, value] of entries) {
     const parts = key.split(".");
-    let prefix: string;
-    let suffix: string;
 
-    if (parts.length >= 3) {
-      const candidatePrefix = parts.slice(0, -1).join(".");
-      // Only group if there are multiple labels with this prefix
-      if ((prefixCounts.get(candidatePrefix) || 0) > 1) {
-        prefix = candidatePrefix;
-        suffix = parts[parts.length - 1];
-      } else {
-        prefix = "";
-        suffix = key;
+    // Ensure all ancestor nodes exist
+    for (let i = 0; i < parts.length; i++) {
+      const partialKey = parts.slice(0, i + 1).join(".");
+
+      if (!nodeMap.has(partialKey)) {
+        const node: LabelNode = {
+          key: partialKey,
+          suffix: parts[i],
+          children: [],
+        };
+        nodeMap.set(partialKey, node);
+
+        if (i === 0) {
+          // Root level node
+          roots.push(node);
+        } else {
+          // Add to parent's children
+          const parentKey = parts.slice(0, i).join(".");
+          const parent = nodeMap.get(parentKey);
+          if (parent) {
+            parent.children.push(node);
+          }
+        }
       }
-    } else {
-      prefix = "";
-      suffix = key;
     }
 
-    if (!groups.has(prefix)) {
-      groups.set(prefix, { prefix, labels: [] });
+    // Set the value on the actual key's node
+    const node = nodeMap.get(key);
+    if (node) {
+      node.value = value;
     }
-    groups.get(prefix)!.labels.push({ suffix, fullKey: key, value });
   }
 
-  // Convert to array and sort: grouped labels first, then ungrouped
-  const result = Array.from(groups.values());
-  result.sort((a, b) => {
-    // Empty prefix (ungrouped) goes last
-    if (a.prefix === "" && b.prefix !== "") return 1;
-    if (a.prefix !== "" && b.prefix === "") return -1;
-    // Sort by prefix
-    return a.prefix.localeCompare(b.prefix);
-  });
+  return roots;
+}
 
-  return result;
+// Infrastructure labels that should be collapsed by default and sorted to end
+function isInfrastructureLabel(key: string): boolean {
+  return key.startsWith("com.docker") || key.startsWith("org.opencontainers");
+}
+
+// Flatten nodes that only have one child and no value (compress paths)
+function compressTree(nodes: LabelNode[]): LabelNode[] {
+  return nodes.map((node) => {
+    // First compress children recursively
+    const compressedChildren = compressTree(node.children);
+
+    // If this node has no value and exactly one child, merge with child
+    if (node.value === undefined && compressedChildren.length === 1) {
+      const child = compressedChildren[0];
+      return {
+        ...child,
+        key: child.key,
+        suffix: `${node.suffix}.${child.suffix}`,
+        children: child.children,
+      };
+    }
+
+    return {
+      ...node,
+      children: compressedChildren,
+    };
+  });
 }
 
 export function GroupedLabels({ labels }: GroupedLabelsProps) {
-  const groups = useMemo(() => groupLabels(labels), [labels]);
+  const tree = useMemo(() => {
+    const rawTree = buildLabelTree(labels);
+    const compressed = compressTree(rawTree);
+    // Sort infrastructure labels to the end
+    return compressed.sort((a, b) => {
+      const aInfra = isInfrastructureLabel(a.key);
+      const bInfra = isInfrastructureLabel(b.key);
+      if (aInfra && !bInfra) return 1;
+      if (!aInfra && bInfra) return -1;
+      return a.key.localeCompare(b.key);
+    });
+  }, [labels]);
+
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     // Collapse common infrastructure label groups by default
     const initial = new Set<string>();
-    for (const group of groups) {
-      if (group.prefix && (group.prefix.startsWith("com.docker") || group.prefix.startsWith("org.opencontainers"))) {
-        initial.add(group.prefix);
+    const addCollapsed = (nodes: LabelNode[]) => {
+      for (const node of nodes) {
+        if (isInfrastructureLabel(node.key)) {
+          initial.add(node.key);
+        }
+        addCollapsed(node.children);
       }
-    }
+    };
+    addCollapsed(tree);
     return initial;
   });
+
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
 
-  const toggleGroup = (prefix: string) => {
+  const toggleCollapse = (key: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
-      if (next.has(prefix)) {
-        next.delete(prefix);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(prefix);
+        next.add(key);
       }
       return next;
     });
@@ -106,56 +145,62 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
     });
   };
 
-  const renderValue = (fullKey: string, value: string) => (
-    <TruncatedText
-      text={value}
-      maxLength={50}
-      sensitive={isSensitiveKey(fullKey)}
-      revealed={revealedKeys.has(fullKey)}
-      onRevealChange={(revealed) => handleRevealChange(fullKey, revealed)}
-    />
-  );
+  const renderNode = (node: LabelNode, depth: number, isFirst: boolean) => {
+    const hasChildren = node.children.length > 0;
+    const isCollapsed = collapsed.has(node.key);
+    const showBorder = depth > 0 || !isFirst;
+
+    return (
+      <div key={node.key} className="break-inside-avoid">
+        {/* Node row */}
+        <div
+          className={`
+            flex items-center px-2 py-1.5 text-xs overflow-hidden
+            ${showBorder ? "border-t border-border" : ""}
+            ${hasChildren ? "cursor-pointer hover:bg-surface" : ""}
+          `}
+          onClick={hasChildren ? () => toggleCollapse(node.key) : undefined}
+        >
+          {/* Expand/collapse toggle - 2ch wide, arrow left-aligned with trailing space */}
+          <span className="inline-block shrink-0 text-muted" style={{ width: '2ch' }}>
+            {hasChildren ? (isCollapsed ? "▸" : "▾") : ""}
+          </span>
+
+          {/* Key */}
+          <span className="font-mono text-muted shrink-0">
+            {depth > 0 ? `.${node.suffix}` : node.suffix}
+          </span>
+
+          {/* Value */}
+          {node.value !== undefined && (
+            <span
+              className="font-mono flex-1 min-w-0 ml-4"
+              data-truncate-container="true"
+            >
+              <TruncatedText
+                text={node.value}
+                maxLength={50}
+                sensitive={isSensitiveKey(node.key)}
+                revealed={revealedKeys.has(node.key)}
+                onRevealChange={(revealed) => handleRevealChange(node.key, revealed)}
+              />
+            </span>
+          )}
+        </div>
+
+        {/* Children */}
+        {hasChildren && !isCollapsed && (
+          <div className="border-l border-border" style={{ marginLeft: 12 }}>
+            {node.children.map((child, index) => renderNode(child, depth + 1, index === 0))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="text-sm font-mono space-y-1">
-      {groups.map((group) => {
-        if (!group.prefix) {
-          // Ungrouped labels - render directly
-          return group.labels.map(({ fullKey, value }) => (
-            <div key={fullKey} className="flex items-center gap-1 flex-wrap">
-              <TruncatedText text={fullKey} showPopup={false} className="text-muted" />
-              <span className="text-muted">:</span>
-              {renderValue(fullKey, value)}
-            </div>
-          ));
-        }
-
-        const isCollapsed = collapsed.has(group.prefix);
-
-        return (
-          <div key={group.prefix}>
-            <button
-              onClick={() => toggleGroup(group.prefix)}
-              className="flex items-center gap-1 text-muted hover:text-foreground w-full text-left"
-            >
-              <span className="w-4 text-center">{isCollapsed ? "▸" : "▾"}</span>
-              <span>{group.prefix}</span>
-              <span className="text-xs">({group.labels.length})</span>
-            </button>
-            {!isCollapsed && (
-              <div className="ml-5 border-l border-border pl-2 space-y-1">
-                {group.labels.map(({ suffix, fullKey, value }) => (
-                  <div key={fullKey} className="flex items-center gap-1 flex-wrap">
-                    <TruncatedText text={`.${suffix}`} showPopup={false} className="text-muted" />
-                    <span className="text-muted">:</span>
-                    {renderValue(fullKey, value)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div>
+      {tree.map((node, index) => renderNode(node, 0, index === 0))}
     </div>
   );
 }

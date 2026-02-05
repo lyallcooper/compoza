@@ -528,16 +528,16 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           </Box>
         )}
 
-        {/* Labels */}
-        {Object.keys(container.labels).length > 0 && (
-          <Box title="Labels" className="break-inside-avoid" collapsible>
-            <GroupedLabels labels={container.labels} />
-          </Box>
-        )}
-
         {/* Environment Variables */}
         {Object.keys(container.env).length > 0 && (
           <EnvironmentVariablesSection env={container.env} />
+        )}
+
+        {/* Labels - last to avoid column reflow when expanding */}
+        {Object.keys(container.labels).length > 0 && (
+          <Box title="Labels" padding={false} className="break-inside-avoid" collapsible>
+            <GroupedLabels labels={container.labels} />
+          </Box>
         )}
       </div>
 

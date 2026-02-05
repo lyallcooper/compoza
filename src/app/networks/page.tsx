@@ -280,7 +280,7 @@ export default function NetworksPage() {
                   </span>
                 </div>
                 {pruneResult.networksDeleted.length > 0 && (
-                  <div className="mt-2 space-y-0.5 text-muted font-mono text-xs">
+                  <div className="mt-2 max-h-48 overflow-y-auto space-y-0.5 text-muted font-mono text-xs">
                     {pruneResult.networksDeleted.map((name) => (
                       <div key={name}>{name}</div>
                     ))}

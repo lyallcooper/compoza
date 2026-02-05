@@ -255,7 +255,7 @@ export default function VolumesPage() {
                   </span>
                 </div>
                 {pruneResult.volumesDeleted.length > 0 && (
-                  <div className="mt-2 space-y-0.5 text-muted font-mono text-xs">
+                  <div className="mt-2 max-h-48 overflow-y-auto space-y-0.5 text-muted font-mono text-xs">
                     {pruneResult.volumesDeleted.map((name) => (
                       <div key={name}>{name}</div>
                     ))}

@@ -1,4 +1,4 @@
-import { getDocker } from "./client";
+import { getDocker, getDockerLongRunning } from "./client";
 import { getProjectsDir, getHostProjectsDir } from "@/lib/projects/scanner";
 import type { DockerSystemInfo, DiskUsage, SystemPruneOptions, SystemPruneResult } from "@/types";
 
@@ -161,8 +161,13 @@ async function getDiskUsageFromLists(): Promise<DiskUsage> {
   };
 }
 
-export async function systemPrune(options: SystemPruneOptions): Promise<SystemPruneResult> {
-  const docker = getDocker();
+export type SystemPruneStep = "containers" | "networks" | "images" | "volumes" | "buildCache";
+
+export async function systemPrune(
+  options: SystemPruneOptions,
+  onStep?: (step: SystemPruneStep) => void,
+): Promise<SystemPruneResult> {
+  const docker = getDockerLongRunning();
 
   let containersDeleted = 0;
   let networksDeleted = 0;
@@ -172,6 +177,7 @@ export async function systemPrune(options: SystemPruneOptions): Promise<SystemPr
 
   // Prune containers
   if (options.containers) {
+    onStep?.("containers");
     const containerResult = await docker.pruneContainers();
     containersDeleted = containerResult.ContainersDeleted?.length || 0;
     spaceReclaimed += containerResult.SpaceReclaimed || 0;
@@ -179,12 +185,14 @@ export async function systemPrune(options: SystemPruneOptions): Promise<SystemPr
 
   // Prune networks
   if (options.networks) {
+    onStep?.("networks");
     const networkResult = await docker.pruneNetworks();
     networksDeleted = networkResult.NetworksDeleted?.length || 0;
   }
 
   // Prune images
   if (options.images) {
+    onStep?.("images");
     // Count images before to get accurate deletion count
     const imagesBefore = await docker.listImages();
     const countBefore = imagesBefore.length;
@@ -201,9 +209,19 @@ export async function systemPrune(options: SystemPruneOptions): Promise<SystemPr
 
   // Prune volumes (dangerous - only if explicitly requested)
   if (options.volumes) {
+    onStep?.("volumes");
     const volumeResult = await docker.pruneVolumes();
     volumesDeleted = volumeResult.VolumesDeleted?.length || 0;
     spaceReclaimed += volumeResult.SpaceReclaimed || 0;
+  }
+
+  // Prune build cache
+  let buildCacheSpaceReclaimed = 0;
+  if (options.buildCache) {
+    onStep?.("buildCache");
+    const buildResult = await docker.pruneBuilder();
+    buildCacheSpaceReclaimed = buildResult.SpaceReclaimed || 0;
+    spaceReclaimed += buildCacheSpaceReclaimed;
   }
 
   return {
@@ -211,6 +229,7 @@ export async function systemPrune(options: SystemPruneOptions): Promise<SystemPr
     networksDeleted,
     imagesDeleted,
     volumesDeleted,
+    buildCacheSpaceReclaimed,
     spaceReclaimed,
   };
 }

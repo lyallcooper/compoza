@@ -8,24 +8,33 @@ const DOCKER_TIMEOUT = 30000; // 30 second timeout
 
 export function getDocker(): Docker {
   if (!dockerClient) {
-    const socketPath = process.env.DOCKER_HOST || "/var/run/docker.sock";
-
-    if (socketPath.startsWith("tcp://") || socketPath.startsWith("http://")) {
-      const url = new URL(socketPath);
-      dockerClient = new Docker({
-        host: url.hostname,
-        port: parseInt(url.port, 10) || 2375,
-        protocol: url.protocol === "https:" ? "https" : "http",
-        timeout: DOCKER_TIMEOUT,
-      });
-    } else {
-      dockerClient = new Docker({
-        socketPath,
-        timeout: DOCKER_TIMEOUT,
-      });
-    }
+    dockerClient = createDockerClient(DOCKER_TIMEOUT);
   }
   return dockerClient;
+}
+
+/**
+ * Create a Docker client with a longer timeout for slow operations
+ * like system prune or build cache cleanup.
+ */
+export function getDockerLongRunning(): Docker {
+  return createDockerClient(300000); // 5 minutes
+}
+
+function createDockerClient(timeout: number): Docker {
+  const socketPath = process.env.DOCKER_HOST || "/var/run/docker.sock";
+
+  if (socketPath.startsWith("tcp://") || socketPath.startsWith("http://")) {
+    const url = new URL(socketPath);
+    return new Docker({
+      host: url.hostname,
+      port: parseInt(url.port, 10) || 2375,
+      protocol: url.protocol === "https:" ? "https" : "http",
+      timeout,
+    });
+  }
+
+  return new Docker({ socketPath, timeout });
 }
 
 export function resetDockerClient(): void {

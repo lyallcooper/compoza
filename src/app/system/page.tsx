@@ -5,7 +5,16 @@ import { Box, Spinner, Button, Modal, ResponsiveTable } from "@/components/ui";
 import type { ColumnDef } from "@/components/ui";
 import { useSystemInfo, useDiskUsage, useSystemPrune } from "@/hooks";
 import { formatBytes } from "@/lib/format";
-import type { SystemPruneOptions, SystemPruneResult } from "@/types";
+import type { SystemPruneOptions } from "@/types";
+import type { SystemPruneStep } from "@/lib/docker";
+
+const stepLabels: Record<SystemPruneStep, string> = {
+  containers: "Removing stopped containers…",
+  networks: "Removing unused networks…",
+  images: "Removing unused images…",
+  volumes: "Removing unused volumes…",
+  buildCache: "Clearing build cache…",
+};
 
 const GITHUB_REPO = "https://github.com/lyallcooper/compoza";
 
@@ -32,29 +41,23 @@ export default function SystemPage() {
     networks: true,
     images: true,
     volumes: false,
+    buildCache: true,
     allImages: false,
   });
-  const [pruneResult, setPruneResult] = useState<SystemPruneResult | null>(null);
 
-  const handlePrune = async () => {
-    try {
-      const result = await systemPrune.mutateAsync(pruneOptions);
-      setPruneResult(result);
-    } catch {
-      // Error handled by mutation
-    }
+  const handlePrune = () => {
+    systemPrune.mutateAsync(pruneOptions);
   };
 
   const handleClosePruneModal = () => {
     if (!systemPrune.isPending) {
       setPruneModalOpen(false);
-      setPruneResult(null);
       systemPrune.reset();
     }
   };
 
   const handleOpenPruneModal = () => {
-    setPruneResult(null);
+    systemPrune.reset();
     setPruneModalOpen(true);
   };
 
@@ -280,7 +283,7 @@ export default function SystemPage() {
         onClose={handleClosePruneModal}
         title="System Prune"
         footer={
-          pruneResult ? (
+          systemPrune.result ? (
             <Button variant="default" onClick={handleClosePruneModal}>
               Close
             </Button>
@@ -305,39 +308,52 @@ export default function SystemPage() {
         }
       >
         <div className="space-y-4">
-          {pruneResult ? (
+          {systemPrune.result ? (
             <div className="space-y-3">
               <p className="text-success">Cleanup complete</p>
               <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
                 <div>
                   Space reclaimed:{" "}
-                  <span className="font-semibold">{formatBytes(pruneResult.spaceReclaimed)}</span>
+                  <span className="font-semibold">{formatBytes(systemPrune.result.spaceReclaimed)}</span>
                 </div>
-                {pruneResult.containersDeleted > 0 && (
+                {systemPrune.result.containersDeleted > 0 && (
                   <div>
                     Containers removed:{" "}
-                    <span className="font-semibold">{pruneResult.containersDeleted}</span>
+                    <span className="font-semibold">{systemPrune.result.containersDeleted}</span>
                   </div>
                 )}
-                {pruneResult.networksDeleted > 0 && (
+                {systemPrune.result.networksDeleted > 0 && (
                   <div>
                     Networks removed:{" "}
-                    <span className="font-semibold">{pruneResult.networksDeleted}</span>
+                    <span className="font-semibold">{systemPrune.result.networksDeleted}</span>
                   </div>
                 )}
-                {pruneResult.imagesDeleted > 0 && (
+                {systemPrune.result.imagesDeleted > 0 && (
                   <div>
                     Images removed:{" "}
-                    <span className="font-semibold">{pruneResult.imagesDeleted}</span>
+                    <span className="font-semibold">{systemPrune.result.imagesDeleted}</span>
                   </div>
                 )}
-                {pruneResult.volumesDeleted > 0 && (
+                {systemPrune.result.volumesDeleted > 0 && (
                   <div>
                     Volumes removed:{" "}
-                    <span className="font-semibold">{pruneResult.volumesDeleted}</span>
+                    <span className="font-semibold">{systemPrune.result.volumesDeleted}</span>
+                  </div>
+                )}
+                {systemPrune.result.buildCacheSpaceReclaimed > 0 && (
+                  <div>
+                    Build cache cleared:{" "}
+                    <span className="font-semibold">{formatBytes(systemPrune.result.buildCacheSpaceReclaimed)}</span>
                   </div>
                 )}
               </div>
+            </div>
+          ) : systemPrune.isPending ? (
+            <div className="flex items-center gap-3 py-2">
+              <Spinner />
+              <span className="text-muted text-sm">
+                {systemPrune.currentStep ? stepLabels[systemPrune.currentStep] : "Starting…"}
+              </span>
             </div>
           ) : (
             <>
@@ -350,7 +366,6 @@ export default function SystemPage() {
                     type="checkbox"
                     checked={pruneOptions.containers}
                     onChange={() => toggleOption("containers")}
-                    disabled={systemPrune.isPending}
                     className="rounded border-border"
                   />
                   <span>Stopped containers</span>
@@ -360,7 +375,6 @@ export default function SystemPage() {
                     type="checkbox"
                     checked={pruneOptions.networks}
                     onChange={() => toggleOption("networks")}
-                    disabled={systemPrune.isPending}
                     className="rounded border-border"
                   />
                   <span>Unused networks</span>
@@ -370,7 +384,6 @@ export default function SystemPage() {
                     type="checkbox"
                     checked={pruneOptions.images}
                     onChange={() => toggleOption("images")}
-                    disabled={systemPrune.isPending}
                     className="rounded border-border"
                   />
                   <span>Dangling images</span>
@@ -380,7 +393,7 @@ export default function SystemPage() {
                     type="checkbox"
                     checked={pruneOptions.allImages}
                     onChange={() => toggleOption("allImages")}
-                    disabled={systemPrune.isPending || !pruneOptions.images}
+                    disabled={!pruneOptions.images}
                     className="rounded border-border"
                   />
                   <span className={!pruneOptions.images ? "text-muted" : ""}>
@@ -392,16 +405,24 @@ export default function SystemPage() {
                     type="checkbox"
                     checked={pruneOptions.volumes}
                     onChange={() => toggleOption("volumes")}
-                    disabled={systemPrune.isPending}
                     className="rounded border-border"
                   />
                   <span>Unused volumes</span>
                   <span className="text-warning text-xs">(data loss risk)</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pruneOptions.buildCache}
+                    onChange={() => toggleOption("buildCache")}
+                    className="rounded border-border"
+                  />
+                  <span>Build cache</span>
+                </label>
               </div>
-              {systemPrune.isError && (
+              {systemPrune.error && (
                 <div className="text-sm text-error">
-                  {systemPrune.error?.message || "Failed to prune system"}
+                  {systemPrune.error}
                 </div>
               )}
             </>

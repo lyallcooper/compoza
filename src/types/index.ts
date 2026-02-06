@@ -299,6 +299,7 @@ export interface SystemPruneOptions {
   networks?: boolean;
   images?: boolean;
   volumes?: boolean;
+  buildCache?: boolean;
   allImages?: boolean;
 }
 
@@ -307,5 +308,6 @@ export interface SystemPruneResult {
   networksDeleted: number;
   imagesDeleted: number;
   volumesDeleted: number;
+  buildCacheSpaceReclaimed: number;
   spaceReclaimed: number;
 }

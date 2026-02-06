@@ -90,6 +90,30 @@ export async function getImage(id: string): Promise<DockerImageDetail | null> {
     ? Object.keys(info.Config.ExposedPorts)
     : undefined;
 
+  // Extract declared volumes
+  const volumes = info.Config?.Volumes
+    ? Object.keys(info.Config.Volumes)
+    : undefined;
+
+  // Parse environment variables from KEY=VALUE format
+  const env = info.Config?.Env?.length
+    ? Object.fromEntries(
+        info.Config.Env.map((entry) => {
+          const idx = entry.indexOf("=");
+          return idx >= 0 ? [entry.slice(0, idx), entry.slice(idx + 1)] : [entry, ""];
+        })
+      )
+    : undefined;
+
+  // Extract user (if set)
+  const user = info.Config?.User || undefined;
+
+  // Extract healthcheck (if defined and not disabled via NONE)
+  const healthcheckTest = info.Config?.Healthcheck?.Test;
+  const healthcheck = healthcheckTest && healthcheckTest[0] !== "NONE"
+    ? { test: healthcheckTest }
+    : undefined;
+
   const tags = info.RepoTags || [];
   const repoDigest = info.RepoDigests?.[0];
   const name = tags[0] || repoDigest?.split("@")[0] || formatShortId(info.Id);
@@ -115,6 +139,10 @@ export async function getImage(id: string): Promise<DockerImageDetail | null> {
       entrypoint: normalizeToArray(info.Config?.Entrypoint),
       cmd: normalizeToArray(info.Config?.Cmd),
       exposedPorts,
+      volumes,
+      env,
+      user,
+      healthcheck,
       labels: info.Config?.Labels || undefined,
     },
     containers: imageContainers,

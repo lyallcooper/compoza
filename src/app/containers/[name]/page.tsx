@@ -3,75 +3,12 @@
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal, EnvironmentVariablesSection } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
-import { formatDateTime, isSensitiveKey, extractSourceUrl } from "@/lib/format";
+import { formatDateTime, extractSourceUrl } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
-
-function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
-  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
-
-  const sortedEntries = useMemo(
-    () => Object.entries(env).sort(([a], [b]) => a.localeCompare(b)),
-    [env]
-  );
-
-  const columns: ColumnDef<[string, string]>[] = [
-    {
-      key: "key",
-      header: "Key",
-      shrink: true,
-      cardPosition: "header",
-      render: ([key]) => (
-        <span className="font-mono text-xs font-medium">{key}</span>
-      ),
-    },
-    {
-      key: "value",
-      header: "Value",
-      cardPosition: "body",
-      cardLabel: false,
-      render: ([key, value]) => {
-        const isSensitive = isSensitiveKey(key);
-        const isRevealed = revealedKeys.has(key);
-
-        return (
-          <span className="font-mono text-xs">
-            <TruncatedText
-              text={value}
-              maxLength={50}
-              sensitive={isSensitive}
-              revealed={isRevealed}
-              onRevealChange={(revealed) => {
-                setRevealedKeys((prev) => {
-                  const next = new Set(prev);
-                  if (revealed) {
-                    next.add(key);
-                  } else {
-                    next.delete(key);
-                  }
-                  return next;
-                });
-              }}
-            />
-          </span>
-        );
-      },
-    },
-  ];
-
-  return (
-    <Box title="Environment Variables" padding={false} className="break-inside-avoid" collapsible>
-      <ResponsiveTable
-        data={sortedEntries}
-        columns={columns}
-        keyExtractor={([key]) => key}
-      />
-    </Box>
-  );
-}
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   const { name } = use(params);

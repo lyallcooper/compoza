@@ -12,6 +12,7 @@ import {
   TruncatedText,
   ResponsiveTable,
   ColumnDef,
+  EnvironmentVariablesSection,
 } from "@/components/ui";
 import { useImage, useDeleteImage, useImageUpdates } from "@/hooks";
 import { formatDateTime, formatBytes, extractSourceUrl } from "@/lib/format";
@@ -126,7 +127,10 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
     image.config?.entrypoint ||
     image.config?.cmd ||
     image.config?.workingDir ||
-    (image.config?.exposedPorts && image.config.exposedPorts.length > 0);
+    image.config?.user ||
+    image.config?.healthcheck ||
+    (image.config?.exposedPorts && image.config.exposedPorts.length > 0) ||
+    (image.config?.volumes && image.config.volumes.length > 0);
 
   const configData = [
     ...(image.config?.entrypoint
@@ -144,8 +148,23 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
     ...(image.config?.workingDir
       ? [{ label: "Working Directory", value: image.config.workingDir, mono: true }]
       : []),
+    ...(image.config?.user
+      ? [{ label: "User", value: image.config.user, mono: true }]
+      : []),
     ...(image.config?.exposedPorts && image.config.exposedPorts.length > 0
       ? [{ label: "Exposed Ports", value: image.config.exposedPorts.join(", "), mono: true }]
+      : []),
+    ...(image.config?.volumes && image.config.volumes.length > 0
+      ? [{ label: "Volumes", value: image.config.volumes.join(", "), mono: true }]
+      : []),
+    ...(image.config?.healthcheck
+      ? [{
+          label: "Healthcheck",
+          value: image.config.healthcheck.test[0] === "CMD-SHELL"
+            ? image.config.healthcheck.test.slice(1).join(" ")
+            : image.config.healthcheck.test.filter((t) => t !== "CMD").join(" "),
+          mono: true,
+        }]
       : []),
   ];
 
@@ -291,6 +310,11 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
               keyExtractor={(c) => c.id}
             />
           </Box>
+        )}
+
+        {/* Environment Variables */}
+        {image.config?.env && Object.keys(image.config.env).length > 0 && (
+          <EnvironmentVariablesSection env={image.config.env} />
         )}
 
         {/* Labels */}

@@ -10,6 +10,7 @@ export { TruncatedTextCopyHandler } from "./truncated-text-copy-handler";
 export { PortsList } from "./ports-list";
 export type { Port } from "./ports-list";
 export { GroupedLabels } from "./grouped-labels";
+export { EnvironmentVariablesSection } from "./environment-variables";
 export { DropdownMenu, DropdownItem } from "./dropdown-menu";
 export { Toast } from "./toast";
 export { Tooltip } from "./tooltip";

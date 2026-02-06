@@ -134,6 +134,12 @@ export interface DockerImageDetail extends DockerImage {
     entrypoint?: string[];
     cmd?: string[];
     exposedPorts?: string[];
+    volumes?: string[];
+    env?: Record<string, string>;
+    user?: string;
+    healthcheck?: {
+      test: string[];
+    };
     labels?: Record<string, string>;
   };
   containers: { id: string; name: string }[];

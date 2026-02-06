@@ -12,7 +12,7 @@ import {
   ColumnDef,
 } from "@/components/ui";
 import { PullImageModal } from "@/components/images";
-import { useImages, useDeleteImage, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
+import { useImages, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
 import type { PruneResult } from "@/hooks";
 import type { DockerImage } from "@/types";
 import { formatBytes, formatDateTime } from "@/lib/format";
@@ -22,12 +22,9 @@ export default function ImagesPage() {
   const { data: images, isLoading, error } = useImages();
   const { data: containers } = useContainers();
   const { data: imageUpdates } = useImageUpdates();
-  const deleteImage = useDeleteImage();
   const pruneImages = usePruneImages();
 
   const [pullModalOpen, setPullModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [forceDelete, setForceDelete] = useState(false);
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
   const [pruneResult, setPruneResult] = useState<PruneResult | null>(null);
   const [pruneOnlyUntagged, setPruneOnlyUntagged] = useState(true);
@@ -68,26 +65,6 @@ export default function ImagesPage() {
     () => imagesToPrune.reduce((sum, img) => sum + img.size, 0),
     [imagesToPrune]
   );
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-
-    try {
-      await deleteImage.mutateAsync({ id: deleteTarget.id, force: forceDelete });
-      setDeleteTarget(null);
-      setForceDelete(false);
-    } catch {
-      // Error handled by mutation - keep modal open to show error or retry with force
-    }
-  };
-
-  const handleCloseDeleteModal = () => {
-    if (!deleteImage.isPending) {
-      setDeleteTarget(null);
-      setForceDelete(false);
-      deleteImage.reset();
-    }
-  };
 
   // Check if any tag for this image has an update
   const hasUpdate = (tags: string[]) => {
@@ -159,20 +136,6 @@ export default function ImagesPage() {
         </div>
       ),
     },
-    {
-      key: "actions",
-      header: "Actions",
-      shrink: true,
-      cardPosition: "footer",
-      render: (image) => (
-        <Button
-          variant="danger"
-          onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: image.id, name: image.name }); }}
-        >
-          Delete
-        </Button>
-      ),
-    },
   ];
 
   return (
@@ -213,49 +176,6 @@ export default function ImagesPage() {
       )}
 
       <PullImageModal open={pullModalOpen} onClose={() => setPullModalOpen(false)} />
-
-      <Modal
-        open={deleteTarget !== null}
-        onClose={handleCloseDeleteModal}
-        title="Delete Image"
-        footer={
-          <>
-            <Button variant="ghost" onClick={handleCloseDeleteModal} disabled={deleteImage.isPending}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleDelete} loading={deleteImage.isPending}>
-              Delete
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <p>
-            Are you sure you want to delete this image?
-          </p>
-          {deleteTarget && (
-            <div className="bg-surface border border-border rounded p-3">
-              <div className="font-mono text-sm">{deleteTarget.name}</div>
-            </div>
-          )}
-          {deleteImage.isError && (
-            <div className="space-y-2">
-              <div className="text-sm text-error">
-                {deleteImage.error?.message || "Failed to delete image"}
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={forceDelete}
-                  onChange={(e) => setForceDelete(e.target.checked)}
-                  className="rounded border-border"
-                />
-                Force delete (remove even if in use)
-              </label>
-            </div>
-          )}
-        </div>
-      </Modal>
 
       <Modal
         open={pruneModalOpen}

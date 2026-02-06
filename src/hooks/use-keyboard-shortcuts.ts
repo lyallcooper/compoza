@@ -60,7 +60,7 @@ export function useKeyboardShortcuts() {
               router.push("/containers");
               break;
             case "s":
-              router.push("/settings");
+              router.push("/system");
               break;
           }
           document.removeEventListener("keydown", handleSecondKey);

@@ -23,7 +23,7 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ["g", "d"], description: "Go to Dashboard" },
       { keys: ["g", "p"], description: "Go to Projects" },
       { keys: ["g", "c"], description: "Go to Containers" },
-      { keys: ["g", "s"], description: "Go to Settings" },
+      { keys: ["g", "s"], description: "Go to System" },
     ],
   },
   {

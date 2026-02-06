@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Disable 300ms tap delay on iOS (zoom already disabled via viewport meta) */
+html {
+  touch-action: manipulation;
+}
+
 :root {
   /* Light Theme (kuron-style) */
   --background: #ffffff;

@@ -85,7 +85,7 @@ export function DropdownItem({ children, onClick, disabled, disabledReason, vari
       role="menuitem"
       onClick={onClick}
       disabled={isDisabled}
-      className={`w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:bg-surface`}
+      className={`w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed ${disabledReason ? "disabled:pointer-events-none" : ""} focus:outline-none focus:bg-surface`}
     >
       {loading ? "..." : children}
     </button>

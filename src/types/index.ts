@@ -116,12 +116,12 @@ export interface ContainerStats {
 
 export interface DockerImage {
   id: string;
+  /** Primary display name: first RepoTag, or repository from RepoDigests, or short ID */
+  name: string;
   tags: string[];
   size: number;
   created: number;
   digest?: string;
-  /** Repository name extracted from RepoDigests (useful for untagged images) */
-  repository?: string;
   updateAvailable?: boolean;
 }
 

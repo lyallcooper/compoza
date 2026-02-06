@@ -13,14 +13,15 @@ import {
   ResponsiveTable,
   ColumnDef,
 } from "@/components/ui";
-import { useImage, useDeleteImage } from "@/hooks";
-import { formatDateTime, formatBytes, formatShortId, extractSourceUrl } from "@/lib/format";
+import { useImage, useDeleteImage, useImageUpdates } from "@/hooks";
+import { formatDateTime, formatBytes, extractSourceUrl } from "@/lib/format";
 import type { ImageRouteProps, VolumeContainer } from "@/types";
 
 export default function ImageDetailPage({ params }: ImageRouteProps) {
   const { id } = use(params);
   const router = useRouter();
   const { data: image, isLoading, error } = useImage(id);
+  const { data: imageUpdates } = useImageUpdates();
   const deleteImage = useDeleteImage();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -55,18 +56,17 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
     }
   };
 
-  // Display name: first tag, repository, or short ID
-  const displayName = useMemo(() => {
-    if (!image) return "";
-    if (image.tags.length > 0) return image.tags[0];
-    if (image.repository) return image.repository;
-    return formatShortId(image.id);
-  }, [image]);
+  // Find matched tags from the update check cache (tags sharing the same digest on the registry)
+  const matchedTags = useMemo(() => {
+    if (!image || !imageUpdates) return undefined;
+    const update = imageUpdates.find((u) => image.tags.includes(u.image));
+    return update?.matchedTags;
+  }, [image, imageUpdates]);
 
   const sourceUrl = useMemo(
-    () => image && image.tags.length > 0
-      ? extractSourceUrl(image.config?.labels, image.tags[0])
-      : image?.config?.labels?.["org.opencontainers.image.source"],
+    () => image
+      ? extractSourceUrl(image.config?.labels, image.name)
+      : undefined,
     [image]
   );
 
@@ -97,11 +97,19 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
   }
 
   const detailsData = [
-    {
-      label: "Tags",
-      value: image.tags.length > 0 ? image.tags.join(", ") : "-",
-      mono: image.tags.length > 0,
-    },
+    ...(matchedTags
+      ? [{
+          label: "Tags",
+          value: matchedTags.join(", "),
+          mono: true,
+        }]
+      : image.tags.length > 0
+        ? [{
+            label: "Tags",
+            value: [...new Set(image.tags.map((t) => t.split(":")[1] || "latest"))].join(", "),
+            mono: true,
+          }]
+        : []),
     { label: "ID", value: image.id, mono: true, truncate: true },
     { label: "Size", value: formatBytes(image.size) },
     { label: "Created", value: formatDateTime(new Date(image.created * 1000)) },
@@ -167,7 +175,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
             <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">
               Image
             </p>
-            <h1 className="text-xl font-semibold truncate">{displayName}</h1>
+            <h1 className="text-xl font-semibold truncate">{image.name}</h1>
           </div>
         </div>
 
@@ -314,7 +322,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
         }
       >
         <p>
-          Are you sure you want to delete <strong>{displayName}</strong>?
+          Are you sure you want to delete <strong>{image.name}</strong>?
         </p>
         {image.containers.length > 0 && (
           <p className="text-warning text-sm mt-2">

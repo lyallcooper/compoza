@@ -15,7 +15,7 @@ import { PullImageModal } from "@/components/images";
 import { useImages, useDeleteImage, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
 import type { PruneResult } from "@/hooks";
 import type { DockerImage } from "@/types";
-import { formatBytes, formatDateTime, formatShortId } from "@/lib/format";
+import { formatBytes, formatDateTime } from "@/lib/format";
 
 export default function ImagesPage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function ImagesPage() {
   const pruneImages = usePruneImages();
 
   const [pullModalOpen, setPullModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; tags: string[]; repository?: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [forceDelete, setForceDelete] = useState(false);
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
   const [pruneResult, setPruneResult] = useState<PruneResult | null>(null);
@@ -114,41 +114,13 @@ export default function ImagesPage() {
 
   const columns: ColumnDef<DockerImage>[] = [
     {
-      key: "tags",
-      header: "Tags",
+      key: "name",
+      header: "Name",
       cardPosition: "header",
       render: (image) => (
-        <div className="space-y-1">
-          {image.tags.length > 0 ? (
-            image.tags.map((tag) => (
-              <div key={tag} className="font-mono">
-                {tag}
-              </div>
-            ))
-          ) : (
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-mono">{image.repository || formatShortId(image.id)}</span>
-                <Badge variant="default">untagged</Badge>
-              </div>
-              {image.repository && (
-                <div className="font-mono text-muted">{formatShortId(image.id)}</div>
-              )}
-            </div>
-          )}
-        </div>
-      ),
-      renderCard: (image) => (
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono">
-              {image.tags.length > 0 ? image.tags[0] : (image.repository || formatShortId(image.id))}
-            </span>
-            {image.tags.length === 0 && <Badge variant="default">untagged</Badge>}
-          </div>
-          {image.tags.length === 0 && image.repository && (
-            <div className="font-mono text-xs text-muted">{formatShortId(image.id)}</div>
-          )}
+        <div className="flex items-center gap-2">
+          <span className="font-mono">{image.name}</span>
+          {image.tags.length === 0 && <Badge variant="default">untagged</Badge>}
         </div>
       ),
     },
@@ -196,7 +168,7 @@ export default function ImagesPage() {
         <Button
           variant="danger"
           size="sm"
-          onClick={() => setDeleteTarget({ id: image.id, tags: image.tags, repository: image.repository })}
+          onClick={() => setDeleteTarget({ id: image.id, name: image.name })}
         >
           Delete
         </Button>
@@ -264,23 +236,7 @@ export default function ImagesPage() {
           </p>
           {deleteTarget && (
             <div className="bg-surface border border-border rounded p-3">
-              {deleteTarget.tags.length > 0 ? (
-                deleteTarget.tags.map((tag) => (
-                  <div key={tag} className="font-mono text-sm">
-                    {tag}
-                  </div>
-                ))
-              ) : (
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm">{deleteTarget.repository || formatShortId(deleteTarget.id)}</span>
-                    <Badge variant="default">untagged</Badge>
-                  </div>
-                  {deleteTarget.repository && (
-                    <div className="font-mono text-xs text-muted">{formatShortId(deleteTarget.id)}</div>
-                  )}
-                </div>
-              )}
+              <div className="font-mono text-sm">{deleteTarget.name}</div>
             </div>
           )}
           {deleteImage.isError && (
@@ -360,18 +316,7 @@ export default function ImagesPage() {
                 <div className="space-y-2">
                   {imagesToPrune.map((img) => (
                     <div key={img.id} className="flex items-center justify-between gap-4 text-sm">
-                      <div className="min-w-0">
-                        {img.tags.length > 0 ? (
-                          <div className="font-mono truncate">{img.tags[0]}</div>
-                        ) : (
-                          <>
-                            <div className="font-mono truncate">{img.repository || formatShortId(img.id)}</div>
-                            {img.repository && (
-                              <div className="font-mono text-xs text-muted">{formatShortId(img.id)}</div>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      <div className="font-mono truncate min-w-0">{img.name}</div>
                       <span className="text-muted shrink-0">{formatBytes(img.size)}</span>
                     </div>
                   ))}

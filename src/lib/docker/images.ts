@@ -1,20 +1,23 @@
 import Dockerode from "dockerode";
-import { getDocker, getImageDistribution } from "./client";
+import { getDocker } from "./client";
 import type { DockerImage, DockerImageDetail } from "@/types";
+import { formatShortId } from "@/lib/format";
 
 export async function listImages(): Promise<DockerImage[]> {
   const docker = getDocker();
   const images = await docker.listImages();
 
   return images.map((img) => {
+    const tags = img.RepoTags || [];
     const repoDigest = img.RepoDigests?.[0];
+    const name = tags[0] || repoDigest?.split("@")[0] || formatShortId(img.Id);
     return {
       id: img.Id,
-      tags: img.RepoTags || [],
+      name,
+      tags,
       size: img.Size,
       created: img.Created,
       digest: repoDigest?.split("@")[1],
-      repository: repoDigest?.split("@")[0],
     };
   });
 }
@@ -87,7 +90,9 @@ export async function getImage(id: string): Promise<DockerImageDetail | null> {
     ? Object.keys(info.Config.ExposedPorts)
     : undefined;
 
+  const tags = info.RepoTags || [];
   const repoDigest = info.RepoDigests?.[0];
+  const name = tags[0] || repoDigest?.split("@")[0] || formatShortId(info.Id);
 
   // Normalize entrypoint and cmd to arrays (Docker can return string or string[])
   const normalizeToArray = (value: string | string[] | undefined): string[] | undefined => {
@@ -97,11 +102,11 @@ export async function getImage(id: string): Promise<DockerImageDetail | null> {
 
   return {
     id: info.Id,
-    tags: info.RepoTags || [],
+    name,
+    tags,
     size: info.Size,
     created: Math.floor(new Date(info.Created).getTime() / 1000),
     digest: repoDigest?.split("@")[1],
-    repository: repoDigest?.split("@")[0],
     architecture: info.Architecture,
     os: info.Os,
     author: info.Author || undefined,
@@ -142,28 +147,3 @@ export async function pruneImages(all = false): Promise<PruneResult> {
   };
 }
 
-// Check if an image has an update available by comparing digests
-export async function checkImageUpdate(imageName: string): Promise<boolean> {
-  const docker = getDocker();
-
-  // Get local image digest
-  const localImages = await docker.listImages({
-    filters: { reference: [imageName] },
-  });
-
-  if (localImages.length === 0) return false;
-
-  const localDigest = localImages[0].RepoDigests?.[0]?.split("@")[1];
-  if (!localDigest) return false;
-
-  // Try to get remote digest via distribution API
-  try {
-    const distribution = await getImageDistribution(imageName);
-    const remoteDigest = distribution.Descriptor?.digest;
-
-    return Boolean(remoteDigest && remoteDigest !== localDigest);
-  } catch {
-    // If we can't check (e.g., local-only image, private registry), assume no update
-    return false;
-  }
-}

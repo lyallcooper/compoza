@@ -1,11 +1,4 @@
-import type { RegistryClient, TagInfo } from "./types";
-import { isSemverLike } from "./version";
 import { getCredentialsForTokenEndpoint } from "./credentials";
-
-interface OciTagListResponse {
-  name: string;
-  tags: string[];
-}
 
 interface TokenResponse {
   token: string;
@@ -68,107 +61,8 @@ function setToken(key: string, token: string, expiresAt: number) {
  * Works with GHCR, lscr.io, and other OCI-compliant registries.
  * Handles anonymous token authentication for public images.
  */
-export class OciClient implements RegistryClient {
+export class OciClient {
   constructor(private baseUrl: string) {}
-
-  async listTags(namespace: string, repository: string): Promise<TagInfo[]> {
-    const name = `${namespace}/${repository}`;
-
-    try {
-      // Get all tags with pagination
-      const allTags = await this.fetchAllTags(name);
-
-      if (allTags.length === 0) {
-        return [];
-      }
-
-      // Filter to semver-like tags to reduce API calls
-      const semverTags = allTags.filter(isSemverLike);
-
-      // Sort by version (descending) and limit
-      const sortedTags = semverTags
-        .sort((a, b) => compareTags(b, a))
-        .slice(0, 50);
-
-      // Fetch digest for each tag
-      const tagInfos: TagInfo[] = [];
-
-      for (const tag of sortedTags) {
-        try {
-          const digest = await this.getManifestDigest(name, tag);
-          if (digest) {
-            tagInfos.push({ name: tag, digest });
-          }
-        } catch {
-          // Skip tags we can't fetch
-        }
-      }
-
-      return tagInfos;
-    } catch (error) {
-      console.warn(`[OCI] Failed to list tags for ${name}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch all tags with pagination support.
-   */
-  private async fetchAllTags(name: string): Promise<string[]> {
-    const allTags: string[] = [];
-    let url: string | null = `${this.baseUrl}/v2/${name}/tags/list?n=1000`;
-    let pageCount = 0;
-    const maxPages = 10; // Safety limit
-
-    while (url && pageCount < maxPages) {
-      pageCount++;
-      const response = await this.fetchWithAuth(url, name);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return [];
-        }
-        if (response.status === 401 || response.status === 403) {
-          console.warn(`[OCI] Access denied for ${name}`);
-          return [];
-        }
-        throw new Error(`OCI API error: ${response.status}`);
-      }
-
-      const data: OciTagListResponse = await response.json();
-
-      if (data.tags && data.tags.length > 0) {
-        allTags.push(...data.tags);
-      }
-
-      // Check for pagination via Link header
-      url = this.getNextPageUrl(response);
-    }
-
-    return allTags;
-  }
-
-  /**
-   * Parse the Link header to get the next page URL.
-   * Format: <url>; rel="next"
-   */
-  private getNextPageUrl(response: Response): string | null {
-    const linkHeader = response.headers.get("link");
-    if (!linkHeader) return null;
-
-    // Parse Link header: <url>; rel="next"
-    const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-    if (!match) return null;
-
-    const nextUrl = match[1];
-
-    // Handle relative URLs
-    if (nextUrl.startsWith("/")) {
-      return `${this.baseUrl}${nextUrl}`;
-    }
-
-    return nextUrl;
-  }
 
   /**
    * Fetch with automatic anonymous token authentication.
@@ -307,25 +201,6 @@ export class OciClient implements RegistryClient {
   ].join(", ");
 
   /**
-   * Get the digest for a specific tag by fetching its manifest.
-   */
-  private async getManifestDigest(name: string, tag: string): Promise<string | null> {
-    const url = `${this.baseUrl}/v2/${name}/manifests/${tag}`;
-
-    const response = await this.fetchWithAuth(url, name, {
-      method: "HEAD",
-      accept: OciClient.MANIFEST_ACCEPT,
-      timeoutMs: 5000,
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return response.headers.get("docker-content-digest");
-  }
-
-  /**
    * Get version from manifest labels/annotations by digest.
    * This is more efficient than listing all tags when we just need the version.
    */
@@ -430,37 +305,4 @@ export class OciClient implements RegistryClient {
 
     return null;
   }
-}
-
-/**
- * Compare two version tags for sorting.
- * Returns positive if a > b, negative if a < b, 0 if equal.
- */
-function compareTags(a: string, b: string): number {
-  const aParts = parseVersion(a);
-  const bParts = parseVersion(b);
-
-  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-    const aNum = aParts[i] ?? 0;
-    const bNum = bParts[i] ?? 0;
-    if (aNum !== bNum) {
-      return aNum - bNum;
-    }
-  }
-
-  return 0;
-}
-
-/**
- * Parse a version string into numeric parts.
- */
-function parseVersion(tag: string): number[] {
-  // Remove 'v' prefix if present
-  const version = tag.startsWith("v") ? tag.slice(1) : tag;
-
-  // Split on dots and dashes, take numeric parts
-  return version
-    .split(/[.-]/)
-    .map((part) => parseInt(part, 10))
-    .filter((n) => !isNaN(n));
 }

@@ -259,8 +259,8 @@ export function TruncatedText({
   }, [closePopup, selectable, selectText]);
 
   const handleClick = useCallback(() => {
-    // Don't select text if inside a clickable row (let navigation take precedence)
-    if (containerRef.current?.closest("[data-row-clickable]")) return;
+    // Don't select text if the click would also navigate somewhere
+    if (containerRef.current?.closest("a, [data-row-clickable]")) return;
     selectText();
   }, [selectText]);
 

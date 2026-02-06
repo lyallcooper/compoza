@@ -49,7 +49,7 @@ export function Header() {
 
         {/* Mobile menu button */}
         <button
-          className="sm:hidden px-2 py-1 text-muted hover:text-foreground"
+          className="sm:hidden p-2 -m-2 text-xl text-muted hover:text-foreground"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileMenuOpen}

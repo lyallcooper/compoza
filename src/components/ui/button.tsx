@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         className={`
           relative inline-flex items-center justify-center gap-2 border font-medium rounded
-          transition-all disabled:cursor-not-allowed disabled:opacity-50
+          transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50
           ${disabledReason ? "disabled:pointer-events-none" : ""}
           ${variantStyles[variant]}
           ${sizeStyles[size]}

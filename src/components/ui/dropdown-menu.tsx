@@ -61,7 +61,7 @@ export function DropdownMenu({ label = "Actions", children, className = "" }: Dr
         <div
           role="menu"
           aria-orientation="vertical"
-          className="absolute right-0 mt-1 min-w-[160px] bg-background border border-border rounded shadow-lg z-50"
+          className="absolute right-0 mt-1 min-w-[160px] max-w-[calc(100vw-2rem)] bg-background border border-border rounded shadow-lg z-50"
         >
           <div className="py-1" onClick={() => setOpen(false)}>
             {children}

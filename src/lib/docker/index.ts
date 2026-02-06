@@ -7,10 +7,11 @@ export {
   stopContainer,
   restartContainer,
   removeContainer,
+  pruneContainers,
   getContainerStats,
   streamContainerLogs,
 } from "./containers";
-export type { ListContainersOptions } from "./containers";
+export type { ListContainersOptions, ContainerPruneResult } from "./containers";
 export { listImages, pullImage, removeImage, inspectImage, getImage, pruneImages } from "./images";
 export type { PruneResult } from "./images";
 export {

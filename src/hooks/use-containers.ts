@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { queryKeys, invalidateContainerQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
+import type { ContainerPruneResult } from "@/lib/docker";
 import type { Container, ContainerStats } from "@/types";
 
 interface UseContainersOptions {
@@ -103,5 +104,15 @@ export function useRemoveContainer() {
     onSuccess: () => {
       invalidateContainerQueries(queryClient);
     },
+  });
+}
+
+export function usePruneContainers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      apiPost<ContainerPruneResult>("/api/containers/prune"),
+    onSuccess: () => invalidateContainerQueries(queryClient),
   });
 }

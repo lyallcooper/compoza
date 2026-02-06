@@ -326,6 +326,20 @@ export async function getContainerStats(id: string): Promise<ContainerStats> {
   };
 }
 
+export interface ContainerPruneResult {
+  containersDeleted: number;
+  spaceReclaimed: number;
+}
+
+export async function pruneContainers(): Promise<ContainerPruneResult> {
+  const docker = getDocker();
+  const result = await docker.pruneContainers();
+  return {
+    containersDeleted: result.ContainersDeleted?.length ?? 0,
+    spaceReclaimed: result.SpaceReclaimed || 0,
+  };
+}
+
 export async function* streamContainerLogs(
   id: string,
   options: { follow?: boolean; tail?: number; since?: number } = {}

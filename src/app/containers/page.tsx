@@ -1,21 +1,49 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Spinner, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef } from "@/components/ui";
+import { Box, Spinner, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
-import { useContainers } from "@/hooks";
+import { useContainers, usePruneContainers } from "@/hooks";
+import type { ContainerPruneResult } from "@/lib/docker";
+import { formatBytes } from "@/lib/format";
 import type { Container } from "@/types";
 
 export default function ContainersPage() {
   const router = useRouter();
   const { data: containers, isLoading, error } = useContainers();
+  const pruneContainers = usePruneContainers();
+
+  const [pruneModalOpen, setPruneModalOpen] = useState(false);
+  const [pruneResult, setPruneResult] = useState<ContainerPruneResult | null>(null);
 
   const sortedContainers = useMemo(
     () => [...(containers || [])].sort((a, b) => a.name.localeCompare(b.name)),
     [containers]
   );
+
+  const stoppedContainers = useMemo(
+    () => (containers || []).filter((c) => c.state === "exited"),
+    [containers]
+  );
+
+  const handlePrune = async () => {
+    try {
+      const result = await pruneContainers.mutateAsync();
+      setPruneResult(result);
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleClosePruneModal = () => {
+    if (!pruneContainers.isPending) {
+      setPruneModalOpen(false);
+      setPruneResult(null);
+      pruneContainers.reset();
+    }
+  };
 
   const columns: ColumnDef<Container>[] = [
     {
@@ -111,7 +139,12 @@ export default function ContainersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Containers</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold shrink-0">Containers</h1>
+        <Button variant="default" size="sm" onClick={() => setPruneModalOpen(true)}>
+          Remove Stopped…
+        </Button>
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -135,6 +168,65 @@ export default function ContainersPage() {
           />
         </Box>
       )}
+
+      <Modal
+        open={pruneModalOpen}
+        onClose={handleClosePruneModal}
+        title="Remove Stopped Containers"
+        footer={
+          pruneResult ? (
+            <Button variant="default" onClick={handleClosePruneModal}>
+              Close
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={handleClosePruneModal} disabled={pruneContainers.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handlePrune}
+                loading={pruneContainers.isPending}
+                disabled={stoppedContainers.length === 0}
+              >
+                Remove
+              </Button>
+            </>
+          )
+        }
+      >
+        <div className="space-y-4">
+          {pruneResult ? (
+            <div className="space-y-2">
+              <p className="text-success">Cleanup complete</p>
+              <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
+                <div>Containers removed: <span className="font-semibold">{pruneResult.containersDeleted}</span></div>
+                <div>Space reclaimed: <span className="font-semibold">{formatBytes(pruneResult.spaceReclaimed)}</span></div>
+              </div>
+            </div>
+          ) : stoppedContainers.length === 0 ? (
+            <p className="text-muted">No stopped containers to remove.</p>
+          ) : (
+            <>
+              <p>
+                The following {stoppedContainers.length === 1 ? "container" : `${stoppedContainers.length} containers`} will be removed:
+              </p>
+              <div className="bg-surface border border-border rounded p-3 h-48 overflow-y-auto">
+                <div className="space-y-2">
+                  {stoppedContainers.map((c) => (
+                    <div key={c.id} className="text-sm font-mono truncate">{c.name}</div>
+                  ))}
+                </div>
+              </div>
+              {pruneContainers.isError && (
+                <div className="text-sm text-error">
+                  {pruneContainers.error?.message || "Failed to remove stopped containers"}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

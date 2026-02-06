@@ -19,6 +19,7 @@ export {
   useRestartContainer,
   useContainerUpdate,
   useRemoveContainer,
+  usePruneContainers,
 } from "./use-containers";
 export { useImages, useImage, usePullImage, useDeleteImage, usePruneImages } from "./use-images";
 export type { PruneResult } from "./use-images";

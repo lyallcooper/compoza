@@ -14,6 +14,7 @@ export interface ImageUpdateStatus {
   latestDigest?: string;
   currentVersion?: string;
   latestVersion?: string;
+  matchedTags?: string[];
   versionStatus?: "pending" | "resolved" | "failed";
   sourceUrl?: string;
 }

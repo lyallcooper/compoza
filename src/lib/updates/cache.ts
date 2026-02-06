@@ -11,6 +11,8 @@ export interface CachedUpdate {
   currentVersion?: string;
   latestVersion?: string;
   versionStatus?: "pending" | "resolved" | "failed";
+  // Tags sharing the same digest as the tracked tag on the remote registry
+  matchedTags?: string[];
   // Source repository URL (from OCI labels)
   sourceUrl?: string;
 }

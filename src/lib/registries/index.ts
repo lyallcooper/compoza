@@ -1,7 +1,8 @@
-export type { ImageRef, TagInfo, VersionInfo, RegistryClient } from "./types";
+export type { ImageRef, VersionInfo } from "./types";
 export type { RegistryCredentials } from "./credentials";
+export type { RegistryQueryResult } from "./query";
 export { parseImageRef, getRegistryType, formatImageRef } from "./parse";
 export { getRegistryCredentials, getCredentialsForTokenEndpoint, isDockerHub, isGhcr } from "./credentials";
-export { DockerHubClient } from "./docker-hub";
 export { OciClient } from "./oci";
 export { resolveVersions, isSemverLike } from "./version";
+export { queryRegistry } from "./query";

@@ -1,10 +1,25 @@
 /**
  * Registry credentials from environment variables.
+ * Credentials are disabled for the session on first auth failure
+ * (env vars don't change at runtime, so a bad token stays bad).
  */
 
 export interface RegistryCredentials {
   username: string;
   token: string;
+}
+
+type RegistryKey = "dockerhub" | "ghcr";
+
+const disabledRegistries = new Set<RegistryKey>();
+
+/** Mark a registry's credentials as invalid for the rest of this process. */
+export function disableRegistryCredentials(registry: RegistryKey): void {
+  if (!disabledRegistries.has(registry)) {
+    disabledRegistries.add(registry);
+    const name = registry === "ghcr" ? "GHCR" : "Docker Hub";
+    console.warn(`[Registry] ${name} credentials are invalid — disabled for this session`);
+  }
 }
 
 /**
@@ -38,7 +53,7 @@ export function isGhcr(imageName: string): boolean {
  * Returns null if no credentials are configured for the image's registry.
  */
 export function getRegistryCredentials(imageName: string): RegistryCredentials | null {
-  if (isDockerHub(imageName)) {
+  if (isDockerHub(imageName) && !disabledRegistries.has("dockerhub")) {
     const username = process.env.DOCKERHUB_USERNAME;
     const token = process.env.DOCKERHUB_TOKEN;
     if (username && token) {
@@ -46,7 +61,7 @@ export function getRegistryCredentials(imageName: string): RegistryCredentials |
     }
   }
 
-  if (isGhcr(imageName)) {
+  if (isGhcr(imageName) && !disabledRegistries.has("ghcr")) {
     const token = process.env.GHCR_TOKEN;
     if (token) {
       // GHCR accepts any username with token auth
@@ -62,7 +77,7 @@ export function getRegistryCredentials(imageName: string): RegistryCredentials |
  * Used by OCI client when authenticating with registry token services.
  */
 export function getCredentialsForTokenEndpoint(tokenUrl: string): RegistryCredentials | null {
-  if (tokenUrl.includes("docker")) {
+  if (tokenUrl.includes("docker") && !disabledRegistries.has("dockerhub")) {
     const username = process.env.DOCKERHUB_USERNAME;
     const token = process.env.DOCKERHUB_TOKEN;
     if (username && token) {
@@ -70,7 +85,7 @@ export function getCredentialsForTokenEndpoint(tokenUrl: string): RegistryCreden
     }
   }
 
-  if (tokenUrl.includes("ghcr.io")) {
+  if (tokenUrl.includes("ghcr.io") && !disabledRegistries.has("ghcr")) {
     const token = process.env.GHCR_TOKEN;
     if (token) {
       return { username: "token", token };

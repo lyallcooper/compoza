@@ -1,5 +1,6 @@
 import type { ImageRef } from "./types";
 import { parseImageRef, getRegistryType } from "./parse";
+import { getRegistryCredentials, disableRegistryCredentials } from "./credentials";
 import { isSemverLike } from "./version";
 
 export interface RegistryQueryResult {
@@ -142,13 +143,13 @@ async function queryGhcr(
   ref: ImageRef,
   currentDigest: string
 ): Promise<RegistryQueryResult | null> {
-  const token = process.env.GHCR_TOKEN;
-  if (!token) return null;
+  const creds = getRegistryCredentials(`ghcr.io/${ref.namespace}/${ref.repository}`);
+  if (!creds) return null;
 
   const tags = await fetchGhcrTags(
     ref.namespace,
     ref.repository,
-    token,
+    creds.token,
     ref.tag,
     currentDigest
   );
@@ -212,7 +213,11 @@ async function fetchGhcrTagPages(
       });
 
       if (response.status === 404) return null; // Not found → caller tries user endpoint
-      if (!response.ok) return tags; // Auth/server error → stop with what we have
+      if (response.status === 401) {
+        disableRegistryCredentials("ghcr");
+        return tags;
+      }
+      if (!response.ok) return tags; // Server error → stop with what we have
 
       const data: GhcrVersion[] = await response.json();
 

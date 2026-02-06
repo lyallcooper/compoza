@@ -1,6 +1,6 @@
 import Docker from "dockerode";
 import type { DistributionInfo } from "@/types";
-import { getRegistryCredentials } from "@/lib/registries/credentials";
+import { getRegistryCredentials, disableRegistryCredentials, isDockerHub, isGhcr } from "@/lib/registries/credentials";
 
 let dockerClient: Docker | null = null;
 
@@ -48,5 +48,21 @@ export async function getImageDistribution(imageName: string): Promise<Distribut
 
   const creds = getRegistryCredentials(imageName);
   const authconfig = creds ? { username: creds.username, password: creds.token } : undefined;
-  return imageWithDistribution.distribution(authconfig ? { authconfig } : undefined);
+
+  if (authconfig) {
+    try {
+      return await imageWithDistribution.distribution({ authconfig });
+    } catch (error) {
+      const statusCode = (error as { statusCode?: number }).statusCode;
+      if (statusCode === 401) {
+        // Invalid credentials — disable and retry without auth (works for public images)
+        if (isDockerHub(imageName)) disableRegistryCredentials("dockerhub");
+        else if (isGhcr(imageName)) disableRegistryCredentials("ghcr");
+        return imageWithDistribution.distribution();
+      }
+      throw error;
+    }
+  }
+
+  return imageWithDistribution.distribution();
 }

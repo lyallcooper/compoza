@@ -53,6 +53,7 @@ export function TruncatedText({
   const popupRef = useRef<HTMLDivElement>(null);
   const [displayText, setDisplayText] = useState(text);
   const [isTruncated, setIsTruncated] = useState(false);
+  const [keepChars, setKeepChars] = useState<number | null>(null);
   const [popup, setPopup] = useState<PopupState>({ visible: false, pinned: false, rect: null });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,6 +131,7 @@ export function TruncatedText({
       if (textFitsInSpace && textUnderMaxLength) {
         setDisplayText(displaySourceText);
         setIsTruncated(false);
+        setKeepChars(null);
         return;
       }
 
@@ -159,6 +161,7 @@ export function TruncatedText({
 
       setDisplayText(`${displaySourceText.slice(0, bestKeep)}…${displaySourceText.slice(-bestKeep)}`);
       setIsTruncated(true);
+      setKeepChars(bestKeep);
     };
 
     calculateTruncation();
@@ -360,6 +363,7 @@ export function TruncatedText({
       className={`inline-flex items-center whitespace-nowrap overflow-hidden max-w-full ${classes}`}
       title={isTruncated ? undefined : text}
       data-full-text={isTruncated ? text : undefined}
+      data-keep-chars={isTruncated && keepChars !== null ? keepChars : undefined}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

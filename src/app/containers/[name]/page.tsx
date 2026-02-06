@@ -481,34 +481,31 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 },
                 {
                   key: "ipAddress",
-                  header: "IP Address",
-                  shrink: true,
+                  header: "IP Addr",
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
-                      {n.ipAddress || <span className="text-muted">-</span>}
+                      {n.ipAddress ? <TruncatedText text={n.ipAddress} /> : <span className="text-muted">-</span>}
                     </span>
                   ),
                 },
                 {
                   key: "gateway",
                   header: "Gateway",
-                  shrink: true,
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
-                      {n.gateway || <span className="text-muted">-</span>}
+                      {n.gateway ? <TruncatedText text={n.gateway} /> : <span className="text-muted">-</span>}
                     </span>
                   ),
                 },
                 {
                   key: "macAddress",
-                  header: "MAC Address",
-                  shrink: true,
+                  header: "MAC Addr",
                   cardPosition: "body",
                   render: (n) => (
                     <span className="font-mono">
-                      {n.macAddress || <span className="text-muted">-</span>}
+                      {n.macAddress ? <TruncatedText text={n.macAddress} /> : <span className="text-muted">-</span>}
                     </span>
                   ),
                 },

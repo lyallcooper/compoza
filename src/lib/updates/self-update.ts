@@ -1,5 +1,5 @@
 import { pullLatestImage } from "./pull";
-import { getDocker, getSelfProjectName, getOwnContainerId } from "@/lib/docker";
+import { getDocker, getSelfProjectName, getSelfImageName, getOwnContainerId } from "@/lib/docker";
 import { getProject, getHostProjectsDir, toHostPath } from "@/lib/projects/scanner";
 import { log } from "@/lib/logger";
 
@@ -22,14 +22,20 @@ const DOCKER_CLI_IMAGE = "docker:cli";
  * when Compoza's container is recreated during the update.
  */
 export async function selfUpdate(): Promise<SelfUpdateResult> {
-  const imageName = process.env.COMPOZA_IMAGE || "compoza:latest";
-
   try {
-    // Step 1: Pull the new image
+    // Step 1: Check if auto-restart is possible (also detects our image name)
+    const canAutoRestart = await checkAutoRestartPossible();
+
+    // Step 2: Pull the new image
+    const imageName = getSelfImageName();
+    if (!imageName) {
+      return {
+        success: false,
+        message: "Could not detect image name. Are you running in Docker?",
+      };
+    }
     await pullLatestImage(imageName);
 
-    // Step 2: Check if auto-restart is possible
-    const canAutoRestart = await checkAutoRestartPossible();
     if (!canAutoRestart.possible) {
       return {
         success: true,

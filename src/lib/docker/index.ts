@@ -1,5 +1,5 @@
 export { getDocker, resetDockerClient, getImageDistribution } from "./client";
-export { getSelfProjectName, getOwnContainerId } from "./self";
+export { getSelfProjectName, getSelfImageName, getOwnContainerId } from "./self";
 export {
   listContainers,
   getContainer,

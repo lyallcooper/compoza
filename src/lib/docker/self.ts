@@ -2,8 +2,9 @@ import { readFile } from "fs/promises";
 import { hostname } from "os";
 import { getDocker } from "./client";
 
-// Cache the detected project name
+// Cache the detected project name and image name
 let selfProjectName: string | null = null;
+let selfImageName: string | null = null;
 let detectionAttempted = false;
 
 /**
@@ -37,6 +38,11 @@ export async function getSelfProjectName(): Promise<string | null> {
     const container = docker.getContainer(containerId);
     const info = await container.inspect();
 
+    // Cache image name from the same inspect call
+    if (info.Config?.Image) {
+      selfImageName = info.Config.Image;
+    }
+
     // Docker Compose sets this label on all containers it manages
     const projectName = info.Config?.Labels?.["com.docker.compose.project"];
     if (projectName) {
@@ -49,6 +55,14 @@ export async function getSelfProjectName(): Promise<string | null> {
     // Detection failed - not critical, just means auto-restart won't work
     return null;
   }
+}
+
+/**
+ * Get the image name of the running Compoza container (e.g., "ghcr.io/lyallcooper/compoza:latest").
+ * Must be called after getSelfProjectName() which populates the cache.
+ */
+export function getSelfImageName(): string | null {
+  return selfImageName;
 }
 
 /**

@@ -64,3 +64,71 @@ export function isSensitiveKey(key: string): boolean {
  * Mask for hidden sensitive values.
  */
 export const SENSITIVE_MASK = "••••••••";
+
+/**
+ * Extract source URL from image labels, validating it relates to the image name.
+ * Checks org.opencontainers.image.source and org.label-schema.url labels.
+ * Validates the URL's owner/repo matches the image namespace/repository
+ * to filter out labels inherited from base images.
+ */
+export function extractSourceUrl(
+  labels: Record<string, string> | undefined,
+  imageName: string
+): string | undefined {
+  if (!labels) return undefined;
+
+  const sourceKeys = [
+    "org.opencontainers.image.source",
+    "org.label-schema.url",
+  ];
+
+  let raw: string | undefined;
+  for (const key of sourceKeys) {
+    if (labels[key]) {
+      raw = labels[key];
+      break;
+    }
+  }
+
+  if (!raw) return undefined;
+
+  // Extract namespace/repo from image name (e.g., "linuxserver/sonarr:latest" → "linuxserver", "sonarr")
+  const nameWithoutTag = imageName.replace(/:.*$/, "");
+  const parts = nameWithoutTag.split("/");
+  const imageRepo = parts[parts.length - 1].toLowerCase();
+  const imageNamespace = parts.length >= 2 ? parts[parts.length - 2].toLowerCase() : "";
+
+  try {
+    const url = new URL(raw);
+    const pathParts = url.pathname.split("/").filter(Boolean);
+    if (pathParts.length < 2) return raw;
+
+    const urlOwner = pathParts[0].toLowerCase();
+    const urlRepo = pathParts[1].toLowerCase();
+
+    // Owner matches namespace (e.g., linuxserver/sonarr → github.com/linuxserver/...)
+    if (urlOwner === imageNamespace) return raw;
+
+    // Image repo name appears in URL repo (e.g., nginx → github.com/nginxinc/docker-nginx)
+    if (urlRepo.includes(imageRepo) && imageRepo.length >= 3) return raw;
+
+    // URL repo (minus "docker-" prefix) appears in image repo
+    const cleanUrlRepo = urlRepo.replace(/^docker-/, "");
+    if (cleanUrlRepo.length >= 3 && imageRepo.includes(cleanUrlRepo)) return raw;
+
+    return undefined;
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Get a releases/changelog URL from a source repository URL.
+ * GitHub repos get /releases appended; others are returned as-is.
+ */
+export function getReleasesUrl(sourceUrl: string): string {
+  if (sourceUrl.includes("github.com")) {
+    return `${sourceUrl.replace(/\/$/, "")}/releases`;
+  }
+  return sourceUrl;
+}

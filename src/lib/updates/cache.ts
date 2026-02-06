@@ -11,6 +11,8 @@ export interface CachedUpdate {
   currentVersion?: string;
   latestVersion?: string;
   versionStatus?: "pending" | "resolved" | "failed";
+  // Source repository URL (from OCI labels)
+  sourceUrl?: string;
 }
 
 // In-memory cache with TTL

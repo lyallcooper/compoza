@@ -9,6 +9,7 @@ import {
   markVersionResolutionFailed,
 } from "./cache";
 import { resolveVersions } from "@/lib/registries";
+import { extractSourceUrl } from "@/lib/format";
 
 export interface ImageUpdateInfo {
   image: string;
@@ -19,6 +20,7 @@ export interface ImageUpdateInfo {
   fromCache?: boolean;
   currentVersion?: string;
   latestVersion?: string;
+  sourceUrl?: string;
 }
 
 export async function checkImageUpdates(images: string[]): Promise<ImageUpdateInfo[]> {
@@ -38,6 +40,7 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
         fromCache: true,
         currentVersion: cached.currentVersion,
         latestVersion: cached.latestVersion,
+        sourceUrl: cached.sourceUrl,
       });
 
       // Schedule background refresh if stale
@@ -91,6 +94,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           fromCache: true,
           currentVersion: cached.currentVersion,
           latestVersion: cached.latestVersion,
+          sourceUrl: cached.sourceUrl,
         });
       }
       continue;
@@ -105,6 +109,9 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
       const localImages = await docker.listImages({
         filters: { reference: [imageName] },
       });
+
+      // Extract sourceUrl from local image labels (free from the listImages response)
+      const sourceUrl = extractSourceUrl(localImages[0]?.Labels, imageName);
 
       const repoDigests = localImages[0]?.RepoDigests;
       if (localImages.length > 0 && repoDigests && repoDigests.length > 0) {
@@ -136,6 +143,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           image: imageName,
           updateAvailable: false,
           status: "unknown",
+          sourceUrl,
         };
         setCachedUpdate(imageName, result);
         results.push(result);
@@ -155,6 +163,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
             currentDigest,
             updateAvailable: false,
             status: "unknown",
+            sourceUrl,
           };
         } else if (!currentDigest) {
           result = {
@@ -162,6 +171,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
             latestDigest,
             updateAvailable: true,
             status: "unknown",
+            sourceUrl,
           };
         } else {
           result = {
@@ -170,6 +180,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
             latestDigest,
             updateAvailable: latestDigest !== currentDigest,
             status: "checked",
+            sourceUrl,
           };
         }
 
@@ -197,6 +208,7 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
           currentDigest,
           updateAvailable: false,
           status: "unknown",
+          sourceUrl,
         };
         // Cache rate-limited results longer to avoid hammering the API
         const ttl = statusCode === 429 ? 30 * 60 * 1000 : undefined; // 30 min for rate limits

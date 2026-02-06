@@ -141,7 +141,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const updatableImages = useMemo(() => {
     if (!project || !imageUpdates) return [];
     const seenImages = new Set<string>();
-    const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string }[] = [];
+    const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string; sourceUrl?: string }[] = [];
     for (const service of project.services) {
       if (service.image && updatesMap.get(service.image) && !seenImages.has(service.image)) {
         seenImages.add(service.image);
@@ -152,6 +152,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           latestVersion: update?.latestVersion,
           currentDigest: update?.currentDigest,
           latestDigest: update?.latestDigest,
+          sourceUrl: update?.sourceUrl,
         });
       }
     }

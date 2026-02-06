@@ -45,7 +45,7 @@ export async function resolveVersions(
   try {
     const client = new OciClient(ociRegistryUrl);
 
-    // Fetch versions from manifest labels in parallel
+    // Fetch version from manifest labels in parallel
     const [currentVersion, latestVersion] = await Promise.all([
       currentDigest
         ? client.getVersionFromDigest(ref.namespace, ref.repository, currentDigest)

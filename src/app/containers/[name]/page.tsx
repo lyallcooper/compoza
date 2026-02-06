@@ -7,7 +7,7 @@ import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
-import { formatDateTime, isSensitiveKey } from "@/lib/format";
+import { formatDateTime, isSensitiveKey, extractSourceUrl } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
 function EnvironmentVariablesSection({ env }: { env: Record<string, string> }) {
@@ -98,6 +98,12 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       updateAvailable: update.updateAvailable,
     };
   }, [container, imageUpdates]);
+
+  // Read sourceUrl directly from container labels
+  const sourceUrl = useMemo(
+    () => container ? extractSourceUrl(container.labels, container.image) : undefined,
+    [container]
+  );
 
   const hasUpdate = imageInfo?.updateAvailable ?? false;
 
@@ -337,6 +343,14 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               ...(imageInfo?.currentVersion
                 ? [{ label: "Version", value: imageInfo.currentVersion }]
                 : []),
+              ...(sourceUrl
+                ? [{
+                    label: "Source",
+                    value: sourceUrl,
+                    link: sourceUrl,
+                    external: true,
+                  }]
+                : []),
               {
                 label: "Created",
                 value: formatDateTime(new Date(container.created * 1000)),
@@ -374,6 +388,13 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                     ) : (
                       row.value
                     );
+                    if (row.external) {
+                      return (
+                        <a href={row.link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                          {content}
+                        </a>
+                      );
+                    }
                     return (
                       <Link href={row.link} className="text-accent hover:underline">
                         {content}
@@ -586,6 +607,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             latestVersion: updateInfo?.latestVersion,
             currentDigest: updateInfo?.currentDigest,
             latestDigest: updateInfo?.latestDigest,
+            sourceUrl,
           }]}
           isRunning={container.state === "running"}
         />

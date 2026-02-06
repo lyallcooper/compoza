@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { useUpdateAllProjects } from "@/hooks";
+import { getReleasesUrl } from "@/lib/format";
 
 interface ImageWithVersion {
   image: string;
   currentVersion?: string;
   latestVersion?: string;
+  sourceUrl?: string;
 }
 
 interface ProjectWithUpdates {
@@ -99,13 +101,26 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{project.name}</div>
                 <div className="text-muted text-xs space-y-0.5">
-                  {project.images.map(({ image, currentVersion, latestVersion }, idx) => (
-                    <div key={`${image}-${idx}`} className="flex items-center gap-2">
-                      <span className="font-mono truncate">{image}</span>
-                      {currentVersion && latestVersion && currentVersion !== latestVersion && (
-                        <span className="text-accent whitespace-nowrap">
-                          {currentVersion} → {latestVersion}
-                        </span>
+                  {project.images.map(({ image, currentVersion, latestVersion, sourceUrl }, idx) => (
+                    <div key={`${image}-${idx}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono truncate">{image}</span>
+                        {currentVersion && latestVersion && currentVersion !== latestVersion && (
+                          <span className="text-accent whitespace-nowrap">
+                            {currentVersion} → {latestVersion}
+                          </span>
+                        )}
+                      </div>
+                      {sourceUrl && (
+                        <a
+                          href={getReleasesUrl(sourceUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View releases
+                        </a>
                       )}
                     </div>
                   ))}

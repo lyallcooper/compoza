@@ -15,6 +15,7 @@ export interface ImageUpdateStatus {
   currentVersion?: string;
   latestVersion?: string;
   versionStatus?: "pending" | "resolved" | "failed";
+  sourceUrl?: string;
 }
 
 export interface ProjectWithUpdates {
@@ -24,6 +25,7 @@ export interface ProjectWithUpdates {
     image: string;
     currentVersion?: string;
     latestVersion?: string;
+    sourceUrl?: string;
   }[];
 }
 
@@ -63,6 +65,7 @@ export function getProjectsWithUpdates(
             image: service.image,
             currentVersion: update.currentVersion,
             latestVersion: update.latestVersion,
+            sourceUrl: update.sourceUrl,
           });
         }
       }

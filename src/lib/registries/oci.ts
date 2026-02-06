@@ -339,17 +339,13 @@ export class OciClient implements RegistryClient {
 
       // Check for version in manifest annotations (OCI image index)
       const version = this.extractVersionFromAnnotations(manifest.annotations);
-      if (version) {
-        return version;
-      }
+      if (version) return version;
 
       // For manifest lists/indexes, check the first manifest's annotations
       if (manifest.manifests && manifest.manifests.length > 0) {
         for (const m of manifest.manifests) {
           const v = this.extractVersionFromAnnotations(m.annotations);
-          if (v) {
-            return v;
-          }
+          if (v) return v;
         }
 
         // Try fetching the config from a platform-specific manifest
@@ -360,16 +356,14 @@ export class OciClient implements RegistryClient {
         if (linuxAmd64) {
           const platformManifest = await this.fetchManifest(name, linuxAmd64.digest);
           if (platformManifest?.config) {
-            const configVersion = await this.getVersionFromConfig(name, platformManifest.config.digest);
-            if (configVersion) return configVersion;
+            return this.getVersionFromConfig(name, platformManifest.config.digest);
           }
         }
       }
 
       // For single-platform manifests, fetch the config blob
       if (manifest.config) {
-        const configVersion = await this.getVersionFromConfig(name, manifest.config.digest);
-        if (configVersion) return configVersion;
+        return this.getVersionFromConfig(name, manifest.config.digest);
       }
 
       return null;
@@ -410,16 +404,7 @@ export class OciClient implements RegistryClient {
     if (!response.ok) return null;
 
     const config: OciImageConfig = await response.json();
-    const labels = config.config?.Labels;
-
-    if (labels) {
-      const version = this.extractVersionFromAnnotations(labels);
-      if (version) {
-        return version;
-      }
-    }
-
-    return null;
+    return this.extractVersionFromAnnotations(config.config?.Labels);
   }
 
   /**

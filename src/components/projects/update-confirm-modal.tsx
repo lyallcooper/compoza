@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal, Button } from "@/components/ui";
+import { getReleasesUrl } from "@/lib/format";
 
 interface ImageUpdate {
   image: string;
@@ -8,6 +9,7 @@ interface ImageUpdate {
   latestVersion?: string;
   currentDigest?: string;
   latestDigest?: string;
+  sourceUrl?: string;
 }
 
 /**
@@ -92,10 +94,22 @@ export function UpdateConfirmModal({
             {images.map((img, idx) => {
               const change = formatChange(img);
               return (
-                <div key={`${img.image}-${idx}`} className="text-sm font-mono flex items-center gap-2">
-                  <span className="truncate">{img.image}</span>
-                  {change && (
-                    <span className="text-accent whitespace-nowrap">{change}</span>
+                <div key={`${img.image}-${idx}`} className="text-sm">
+                  <div className="font-mono flex items-center gap-2">
+                    <span className="truncate">{img.image}</span>
+                    {change && (
+                      <span className="text-accent whitespace-nowrap">{change}</span>
+                    )}
+                  </div>
+                  {img.sourceUrl && (
+                    <a
+                      href={getReleasesUrl(img.sourceUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-accent hover:underline"
+                    >
+                      View releases
+                    </a>
                   )}
                 </div>
               );

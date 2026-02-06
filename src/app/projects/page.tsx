@@ -21,6 +21,7 @@ interface ImageUpdate {
   image: string;
   currentVersion?: string;
   latestVersion?: string;
+  sourceUrl?: string;
 }
 
 interface ProjectWithUpdates {

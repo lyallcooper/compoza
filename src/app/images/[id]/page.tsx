@@ -14,7 +14,7 @@ import {
   ColumnDef,
 } from "@/components/ui";
 import { useImage, useDeleteImage } from "@/hooks";
-import { formatDateTime, formatBytes, formatShortId } from "@/lib/format";
+import { formatDateTime, formatBytes, formatShortId, extractSourceUrl } from "@/lib/format";
 import type { ImageRouteProps, VolumeContainer } from "@/types";
 
 export default function ImageDetailPage({ params }: ImageRouteProps) {
@@ -63,6 +63,13 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
     return formatShortId(image.id);
   }, [image]);
 
+  const sourceUrl = useMemo(
+    () => image && image.tags.length > 0
+      ? extractSourceUrl(image.config?.labels, image.tags[0])
+      : image?.config?.labels?.["org.opencontainers.image.source"],
+    [image]
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -102,6 +109,9 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       ? [{ label: "Architecture", value: image.architecture }]
       : []),
     ...(image.os ? [{ label: "OS", value: image.os }] : []),
+    ...(sourceUrl
+      ? [{ label: "Source", value: sourceUrl, link: sourceUrl }]
+      : []),
   ];
 
   const hasConfig =
@@ -195,8 +205,15 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
                 header: "Value",
                 cardPosition: "body",
                 cardLabel: false,
-                render: (row) =>
-                  row.mono ? (
+                render: (row) => {
+                  if (row.link) {
+                    return (
+                      <a href={row.link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                        {row.value}
+                      </a>
+                    );
+                  }
+                  return row.mono ? (
                     <span className="font-mono text-xs">
                       {row.truncate ? (
                         <TruncatedText text={row.value} />
@@ -206,7 +223,8 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
                     </span>
                   ) : (
                     row.value
-                  ),
+                  );
+                },
               },
             ]}
             showHeader={false}

@@ -22,23 +22,24 @@ RUN pnpm build
 # Compile custom server to JavaScript
 RUN npx tsc -p server/tsconfig.json
 
+# Create a clean production-only deployment
+RUN pnpm --filter . deploy --legacy --prod /app/prod
+
 # Production stage
 FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-# Install pnpm and Docker CLI
-RUN corepack enable pnpm && \
-    apk add --no-cache docker-cli docker-cli-compose
+# Install Docker CLI
+RUN apk add --no-cache docker-cli docker-cli-compose
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy built application
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/node_modules ./node_modules
+# Copy built application with production-only dependencies
+COPY --from=builder /app/prod/package.json ./
+COPY --from=builder /app/prod/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 

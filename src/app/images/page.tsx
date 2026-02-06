@@ -168,7 +168,7 @@ export default function ImagesPage() {
         <Button
           variant="danger"
           size="sm"
-          onClick={() => setDeleteTarget({ id: image.id, name: image.name })}
+          onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: image.id, name: image.name }); }}
         >
           Delete
         </Button>

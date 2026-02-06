@@ -104,7 +104,7 @@ export function LogViewer({ url, className = "" }: LogViewerProps) {
             />
             Follow
           </label>
-          <Button size="sm" onClick={handleClear}>
+          <Button onClick={handleClear}>
             Clear
           </Button>
         </div>

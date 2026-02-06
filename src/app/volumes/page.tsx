@@ -154,10 +154,10 @@ export default function VolumesPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold shrink-0">Volumes</h1>
         <div className="flex items-center gap-2">
-          <Button variant="default" size="sm" onClick={() => setPruneModalOpen(true)}>
+          <Button variant="default" onClick={() => setPruneModalOpen(true)}>
             Remove Unused…
           </Button>
-          <Button variant="default" size="sm" onClick={() => setCreateModalOpen(true)}>
+          <Button variant="default" onClick={() => setCreateModalOpen(true)}>
             Create…
           </Button>
         </div>

@@ -169,8 +169,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   // Shared save/discard buttons for editor boxes
   const saveDiscardButtons = (
     <>
-      <Button size="sm" onClick={handleDiscard} disabled={saving}>Discard</Button>
-      <Button size="sm" variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+      <Button onClick={handleDiscard} disabled={saving}>Discard</Button>
+      <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
     </>
   );
 
@@ -340,7 +340,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       {actionOutput && (
         <Box title="Output">
           <pre className="text-sm text-muted whitespace-pre-wrap">{actionOutput}</pre>
-          <Button size="sm" onClick={() => setActionOutput(null)} className="mt-2">
+          <Button onClick={() => setActionOutput(null)} className="mt-2">
             Clear
           </Button>
         </Box>
@@ -468,7 +468,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <Toast
           onClose={() => setShowApplyPrompt(false)}
           actions={
-            <Button size="sm" variant="primary" onClick={handleUp} loading={projectUp.isPending}>
+            <Button variant="primary" onClick={handleUp} loading={projectUp.isPending}>
               Up
             </Button>
           }

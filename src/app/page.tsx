@@ -40,7 +40,6 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
           ))}
         </Link>
         <Button
-          size="sm"
           variant="accent"
           className="ml-2 flex-shrink-0"
           onClick={() => setShowModal(true)}
@@ -306,7 +305,6 @@ export default function Dashboard() {
           className="break-inside-avoid"
           actions={
             <Button
-              size="sm"
               variant="accent"
               onClick={() => setShowUpdateAllModal(true)}
             >

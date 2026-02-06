@@ -29,7 +29,7 @@ const sizeStyles: Record<ButtonSize, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "default", size = "md", loading, disabled, disabledReason, className = "", children, ...props }, ref) => {
+  ({ variant = "default", size = "sm", loading, disabled, disabledReason, className = "", children, ...props }, ref) => {
     const isDisabled = disabled || loading;
 
     const button = (

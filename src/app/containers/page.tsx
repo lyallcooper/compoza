@@ -141,7 +141,7 @@ export default function ContainersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold shrink-0">Containers</h1>
-        <Button variant="default" size="sm" onClick={() => setPruneModalOpen(true)}>
+        <Button variant="default" onClick={() => setPruneModalOpen(true)}>
           Remove Stopped…
         </Button>
       </div>

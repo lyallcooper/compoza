@@ -167,7 +167,6 @@ export default function ImagesPage() {
       render: (image) => (
         <Button
           variant="danger"
-          size="sm"
           onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: image.id, name: image.name }); }}
         >
           Delete
@@ -181,10 +180,10 @@ export default function ImagesPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold shrink-0">Images</h1>
         <div className="flex items-center gap-2">
-          <Button variant="default" size="sm" onClick={() => setPruneModalOpen(true)}>
+          <Button variant="default" onClick={() => setPruneModalOpen(true)}>
             Remove Unused…
           </Button>
-          <Button variant="default" size="sm" onClick={() => setPullModalOpen(true)}>
+          <Button variant="default" onClick={() => setPullModalOpen(true)}>
             Pull…
           </Button>
         </div>

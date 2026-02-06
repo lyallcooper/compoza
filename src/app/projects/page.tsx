@@ -111,12 +111,12 @@ export default function ProjectsPage() {
         {/* Buttons - visible on sm and up */}
         <div className="hidden sm:flex items-center gap-2">
           {projectsWithUpdates.length > 0 && (
-            <Button variant="accent" size="sm" onClick={() => setShowUpdateAllModal(true)}>
+            <Button variant="accent" onClick={() => setShowUpdateAllModal(true)}>
               Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
             </Button>
           )}
           <Link href="/projects/new">
-            <Button variant="primary" size="sm">+ New Project</Button>
+            <Button variant="primary">+ New Project</Button>
           </Link>
         </div>
         {/* Dropdown menu - visible below sm */}
@@ -196,7 +196,6 @@ function ProjectActions({
   return (
     <div className="flex gap-1">
       <Button
-        size="sm"
         onClick={(e) => {
           e.stopPropagation();
           projectUp.mutate();
@@ -206,7 +205,6 @@ function ProjectActions({
         Up
       </Button>
       <Button
-        size="sm"
         onClick={(e) => {
           e.stopPropagation();
           projectDown.mutate();
@@ -218,7 +216,6 @@ function ProjectActions({
       </Button>
       {hasUpdates && (
         <Button
-          size="sm"
           variant="accent"
           onClick={(e) => {
             e.stopPropagation();

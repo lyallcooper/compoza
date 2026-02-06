@@ -20,14 +20,12 @@ export function ContainerActions({ containerId, state }: ContainerActionsProps) 
       {isRunning ? (
         <>
           <Button
-            size="sm"
             onClick={() => stopContainer.mutate(containerId)}
             loading={stopContainer.isPending && stopContainer.variables === containerId}
           >
             Stop
           </Button>
           <Button
-            size="sm"
             onClick={() => restartContainer.mutate(containerId)}
             loading={restartContainer.isPending && restartContainer.variables === containerId}
           >
@@ -36,7 +34,6 @@ export function ContainerActions({ containerId, state }: ContainerActionsProps) 
         </>
       ) : (
         <Button
-          size="sm"
           onClick={() => startContainer.mutate(containerId)}
           loading={startContainer.isPending && startContainer.variables === containerId}
         >

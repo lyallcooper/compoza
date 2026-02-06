@@ -52,7 +52,7 @@ function TaskItem({ task }: { task: BackgroundTask }) {
       </div>
       <div className="flex-shrink-0">
         {isRunning && task.cancel && (
-          <Button size="sm" onClick={handleCancel}>
+          <Button onClick={handleCancel}>
             Cancel
           </Button>
         )}

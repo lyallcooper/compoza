@@ -63,7 +63,7 @@ export default function ContainersPage() {
       render: (c) => (
         <span className="text-muted font-mono">
           <Link
-            href={`/images/${encodeURIComponent(c.imageId)}`}
+            href={`/images/${encodeURIComponent(c.image)}`}
             className="group/link hover:text-foreground [&_span]:group-hover/link:underline"
             onClick={(e) => e.stopPropagation()}
           >
@@ -73,7 +73,7 @@ export default function ContainersPage() {
       ),
       renderCard: (c) => (
         <Link
-          href={`/images/${encodeURIComponent(c.imageId)}`}
+          href={`/images/${encodeURIComponent(c.image)}`}
           className="group/link font-mono text-accent [&_span]:group-hover/link:underline"
           onClick={(e) => e.stopPropagation()}
         >

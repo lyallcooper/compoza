@@ -324,7 +324,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 label: "Image",
                 value: container.image,
                 mono: true,
-                link: `/images/${encodeURIComponent(container.imageId)}`,
+                link: `/images/${encodeURIComponent(container.image)}`,
               },
               { label: "Status", value: container.status },
               {

@@ -236,7 +236,7 @@ export default function ImagesPage() {
             data={sortedImages}
             columns={columns}
             keyExtractor={(image) => image.id}
-            onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.id)}`)}
+            onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.tags[0] || image.id)}`)}
           />
         </Box>
       )}

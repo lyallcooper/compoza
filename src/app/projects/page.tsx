@@ -103,20 +103,20 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <h1 className="text-xl font-semibold">Projects</h1>
           {updatesLoading && <Spinner size="sm" />}
         </div>
         {/* Buttons - visible on sm and up */}
         <div className="hidden sm:flex items-center gap-2">
           {projectsWithUpdates.length > 0 && (
-            <Button variant="accent" onClick={() => setShowUpdateAllModal(true)}>
+            <Button variant="accent" size="sm" onClick={() => setShowUpdateAllModal(true)}>
               Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
             </Button>
           )}
           <Link href="/projects/new">
-            <Button variant="primary">+ New Project</Button>
+            <Button variant="primary" size="sm">+ New Project</Button>
           </Link>
         </div>
         {/* Dropdown menu - visible below sm */}

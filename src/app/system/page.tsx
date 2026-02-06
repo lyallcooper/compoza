@@ -173,9 +173,9 @@ export default function SystemPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">System</h1>
-        <Button variant="default" onClick={handleOpenPruneModal}>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold shrink-0">System</h1>
+        <Button variant="default" size="sm" onClick={handleOpenPruneModal}>
           System Prune…
         </Button>
       </div>

@@ -33,10 +33,6 @@ WORKDIR /app
 # Install Docker CLI
 RUN apk add --no-cache docker-cli docker-cli-compose
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
 # Copy built application with production-only dependencies
 COPY --from=builder /app/prod/package.json ./
 COPY --from=builder /app/prod/node_modules ./node_modules
@@ -51,9 +47,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV BIND_ADDRESS=0.0.0.0
-
-# Switch to non-root user
-USER nextjs
 
 EXPOSE 3000
 

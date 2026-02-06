@@ -14,7 +14,4 @@ services:
       - ${PROJECTS_DIR:-/home/user/docker}:${PROJECTS_DIR:-/home/user/docker}:rw
     environment:
       - PROJECTS_DIR=${PROJECTS_DIR:-/home/user/docker}
-    # Run as root to access docker socket
-    # Alternatively, use a socket proxy for better security
-    user: root
     restart: unless-stopped

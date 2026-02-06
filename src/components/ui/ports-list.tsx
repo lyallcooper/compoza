@@ -8,7 +8,7 @@ export interface Port {
 
 interface PortsListProps {
   ports: Port[];
-  maxVisible?: number;
+  maxLength?: number;
 }
 
 function formatPort(p: Port) {
@@ -24,24 +24,36 @@ function formatPort(p: Port) {
   return `${p.container}${protocolSuffix}`;
 }
 
-export function PortsList({ ports, maxVisible = 3 }: PortsListProps) {
+export function PortsList({ ports, maxLength = 5 }: PortsListProps) {
   if (ports.length === 0) {
     return <span>-</span>;
   }
 
-  const allPorts = ports.map(formatPort).join(", ");
-  const visiblePorts = ports.slice(0, maxVisible);
-  const hiddenCount = ports.length - maxVisible;
+  const fullText = ports.map(formatPort).join(", ");
+
+  // Find how many ports fit before the first comma after maxLength
+  let visibleCount = ports.length;
+  let len = 0;
+  for (let i = 0; i < ports.length; i++) {
+    if (i > 0) len += 2; // ", "
+    len += formatPort(ports[i]).length;
+    if (i < ports.length - 1 && len >= maxLength) {
+      visibleCount = i + 1;
+      break;
+    }
+  }
+
+  const truncated = visibleCount < ports.length;
 
   return (
-    <span title={allPorts}>
-      {visiblePorts.map((p, i) => (
+    <span title={fullText} className="font-mono">
+      {ports.slice(0, visibleCount).map((p, i) => (
         <span key={`${p.host}-${p.container}-${p.protocol}`}>
+          {i > 0 && ", "}
           {p.host ? formatPort(p) : <em>{formatPort(p)}</em>}
-          {i < visiblePorts.length - 1 && ", "}
         </span>
       ))}
-      {hiddenCount > 0 && <span> +{hiddenCount}</span>}
+      {truncated && "…"}
     </span>
   );
 }

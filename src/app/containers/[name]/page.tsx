@@ -313,6 +313,13 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
           <ResponsiveTable
             data={[
+              ...(container.projectName
+                ? [{
+                    label: "Project",
+                    value: container.projectName,
+                    link: `/projects/${encodeURIComponent(container.projectName)}`,
+                  }]
+                : []),
               {
                 label: "Image",
                 value: container.image,
@@ -355,13 +362,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 label: "Created",
                 value: formatDateTime(new Date(container.created * 1000)),
               },
-              ...(container.projectName
-                ? [{
-                    label: "Project",
-                    value: container.projectName,
-                    link: `/projects/${encodeURIComponent(container.projectName)}`,
-                  }]
-                : []),
             ]}
             keyExtractor={(row) => row.label}
             columns={[

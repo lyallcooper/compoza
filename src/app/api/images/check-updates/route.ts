@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdates } from "@/lib/updates";
 import { scanProjects } from "@/lib/projects";
+import { getDocker } from "@/lib/docker";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
 // Track if we've done an initial check in this process
@@ -14,9 +15,10 @@ async function ensureInitialCheck() {
   initialCheckPromise = (async () => {
     try {
       console.log("[Update Check] Triggering initial check from API...");
-      const projects = await scanProjects();
       const images = new Set<string>();
 
+      // Collect images from compose projects
+      const projects = await scanProjects();
       for (const project of projects) {
         for (const service of project.services) {
           if (service.image) {
@@ -25,11 +27,20 @@ async function ensureInitialCheck() {
         }
       }
 
+      // Collect images from all containers (includes standalone)
+      const docker = getDocker();
+      const containers = await docker.listContainers({ all: true });
+      for (const container of containers) {
+        if (container.Image) {
+          images.add(container.Image);
+        }
+      }
+
       if (images.size > 0) {
         await checkImageUpdates(Array.from(images));
       }
       initialCheckDone = true;
-      console.log("[Update Check] Initial check complete.");
+      console.log(`[Update Check] Initial check complete. ${images.size} images checked.`);
     } catch (err) {
       console.error("[Update Check] Initial check failed:", err);
       initialCheckPromise = null; // Allow retry on failure
@@ -45,6 +56,11 @@ export async function GET(request: NextRequest) {
     // Debug: return cache stats if requested
     if (request.nextUrl.searchParams.get("stats") === "true") {
       return success(getCacheStats());
+    }
+
+    // Wait for any in-progress initial check to finish before returning results
+    if (initialCheckPromise && !initialCheckDone) {
+      await initialCheckPromise;
     }
 
     // Trigger check if cache is empty (entries expire after 1 hour)

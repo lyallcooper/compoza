@@ -7,6 +7,8 @@ export interface CachedUpdate {
   // Digest information
   currentDigest?: string;
   latestDigest?: string;
+  // Local image ID (sha256:...) - used to detect stale containers
+  localImageId?: string;
   // Resolved version information
   currentVersion?: string;
   latestVersion?: string;

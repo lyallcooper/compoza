@@ -128,6 +128,7 @@ async function buildProject(
         const service: ProjectService = {
           name: serviceName,
           image: container?.image || serviceConfig.image,
+          imageId: container?.imageId,
           containerId: container?.id,
           containerName: container?.name,
           status: container?.state === "running" ? "running"

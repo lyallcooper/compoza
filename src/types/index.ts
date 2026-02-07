@@ -16,6 +16,8 @@ export function isProjectRunning(project: { status: ProjectStatus } | null | und
 export interface ProjectService {
   name: string;
   image?: string;
+  /** Image ID the container was created with (sha256:...) */
+  imageId?: string;
   containerId?: string;
   containerName?: string;
   status: "running" | "exited" | "paused" | "restarting" | "unknown";

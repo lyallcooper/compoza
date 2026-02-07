@@ -23,6 +23,8 @@ export interface ImageUpdateInfo {
   latestVersion?: string;
   matchedTags?: string[];
   sourceUrl?: string;
+  /** Local image ID (sha256:...) - used to detect stale containers */
+  localImageId?: string;
 }
 
 export async function checkImageUpdates(images: string[]): Promise<ImageUpdateInfo[]> {
@@ -44,6 +46,7 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
         latestVersion: cached.latestVersion,
         matchedTags: cached.matchedTags,
         sourceUrl: cached.sourceUrl,
+        localImageId: cached.localImageId,
       });
 
       // Schedule background refresh if stale
@@ -111,6 +114,7 @@ async function checkSingleImage(
         currentVersion: cached.currentVersion,
         latestVersion: cached.latestVersion,
         sourceUrl: cached.sourceUrl,
+        localImageId: cached.localImageId,
       };
     }
   }
@@ -124,6 +128,9 @@ async function checkSingleImage(
     const localImages = await docker.listImages({
       filters: { reference: [imageName] },
     });
+
+    // Capture the local image ID for stale container detection
+    const localImageId = localImages[0]?.Id;
 
     // Extract sourceUrl from local image labels (free from the listImages response)
     const sourceUrl = extractSourceUrl(localImages[0]?.Labels, imageName);
@@ -159,6 +166,7 @@ async function checkSingleImage(
         updateAvailable: false,
         status: "unknown",
         sourceUrl,
+        localImageId,
       };
       setCachedUpdate(imageName, result);
       return result;
@@ -181,6 +189,7 @@ async function checkSingleImage(
             latestVersion: registryResult.latestVersion,
             matchedTags: registryResult.matchedTags,
             sourceUrl,
+            localImageId,
           };
           setCachedUpdate(imageName, {
             ...result,
@@ -205,6 +214,7 @@ async function checkSingleImage(
           updateAvailable: false,
           status: "unknown",
           sourceUrl,
+          localImageId,
         };
       } else if (!currentDigest) {
         result = {
@@ -213,6 +223,7 @@ async function checkSingleImage(
           updateAvailable: true,
           status: "unknown",
           sourceUrl,
+          localImageId,
         };
       } else {
         result = {
@@ -222,6 +233,7 @@ async function checkSingleImage(
           updateAvailable: latestDigest !== currentDigest,
           status: "checked",
           sourceUrl,
+          localImageId,
         };
       }
 
@@ -251,6 +263,7 @@ async function checkSingleImage(
         updateAvailable: false,
         status: "unknown",
         sourceUrl,
+        localImageId,
       };
       // Cache rate-limited results longer to avoid hammering the API
       const ttl = statusCode === 429 ? 30 * 60 * 1000 : undefined; // 30 min for rate limits

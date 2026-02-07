@@ -51,6 +51,8 @@ export function useBackgroundProjectUpdate(projectName: string) {
         cancel,
       });
 
+      let images: string[] = [];
+
       try {
         // Check current project status
         updateTask(taskId, { progress: "Checking status..." });
@@ -61,7 +63,7 @@ export function useBackgroundProjectUpdate(projectName: string) {
         if (cancelled) return;
 
         const wasRunning = isProjectRunning(project);
-        const images = project?.services
+        images = project?.services
           .map((s) => s.image)
           .filter((img): img is string => !!img) || [];
 
@@ -104,6 +106,11 @@ export function useBackgroundProjectUpdate(projectName: string) {
             error: err instanceof Error ? err.message : "Update failed",
             cancel: undefined,
           });
+        }
+        // Clear cache even on failure — pull may have succeeded before up failed,
+        // so a recheck will pick up the new localImageId
+        if (images.length > 0) {
+          await clearUpdateCacheAndInvalidate(queryClient, images);
         }
       }
     },

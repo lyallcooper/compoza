@@ -71,36 +71,61 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
   const docker = getDocker();
   const containers = await docker.listContainers({ all });
 
-  // Only fetch detailed info when health data is requested (adds N API calls)
-  let detailMap = new Map<string, {
+  // Identify stale containers whose image is a sha256 hash.
+  // When a tag is reassigned to a newer pulled image, Docker reports the
+  // container's image as the raw hash instead of the tag name.
+  const staleIds = new Set(
+    containers.filter((c) => c.Image.startsWith("sha256:")).map((c) => c.Id)
+  );
+
+  // Inspect containers that need detailed info: health data (opt-in) or
+  // stale image resolution (always). This merges both into a single pass
+  // to avoid double-inspecting the same container.
+  const needsInspect = includeHealth
+    ? containers.map((c) => c.Id)
+    : [...staleIds];
+
+  const detailMap = new Map<string, {
     restartCount: number;
     health?: ContainerHealth;
     exitCode?: number;
   }>();
+  const resolvedImageMap = new Map<string, string>();
 
-  if (includeHealth) {
-    const detailedInfo = await Promise.all(
-      containers.map(async (c) => {
+  if (needsInspect.length > 0) {
+    const inspected = await Promise.all(
+      needsInspect.map(async (id) => {
         try {
-          const container = docker.getContainer(c.Id);
-          const info = await container.inspect();
-          return {
-            id: c.Id,
-            restartCount: info.RestartCount ?? 0,
-            health: info.State.Health
-              ? {
-                  status: parseHealthStatus(info.State.Health.Status),
-                  failingStreak: info.State.Health.FailingStreak,
-                }
-              : undefined,
-            exitCode: info.State.ExitCode,
-          };
+          const info = await docker.getContainer(id).inspect();
+          return { id, info };
         } catch {
-          return { id: c.Id, restartCount: 0, health: undefined, exitCode: undefined };
+          return { id, info: null };
         }
       })
     );
-    detailMap = new Map(detailedInfo.map((d) => [d.id, d]));
+
+    for (const { id, info } of inspected) {
+      if (!info) continue;
+
+      // Extract health/restart info when requested
+      if (includeHealth) {
+        detailMap.set(id, {
+          restartCount: info.RestartCount ?? 0,
+          health: info.State.Health
+            ? {
+                status: parseHealthStatus(info.State.Health.Status),
+                failingStreak: info.State.Health.FailingStreak,
+              }
+            : undefined,
+          exitCode: info.State.ExitCode,
+        });
+      }
+
+      // Resolve stale image name from Config.Image
+      if (staleIds.has(id)) {
+        resolvedImageMap.set(id, normalizeImageName(info.Config.Image));
+      }
+    }
   }
 
   return containers.map((c) => {
@@ -129,7 +154,7 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
     return {
       id: c.Id,
       name: c.Names[0]?.replace(/^\//, "") || c.Id.slice(0, 12),
-      image: normalizeImageName(c.Image),
+      image: resolvedImageMap.get(c.Id) || normalizeImageName(c.Image),
       imageId: c.ImageID,
       status: c.Status,
       state,

@@ -33,6 +33,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       latestDigest: update.latestDigest,
       latestVersion: update.latestVersion,
       updateAvailable: update.updateAvailable,
+      localImageId: update.localImageId,
     };
   }, [container, imageUpdates]);
 
@@ -42,7 +43,18 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
     [container]
   );
 
-  const hasUpdate = imageInfo?.updateAvailable ?? false;
+  // Detect stale containers: running old image while new one is pulled locally
+  const needsRecreate = !!container?.imageId && !!imageInfo?.localImageId
+    && container.imageId !== imageInfo.localImageId;
+  const hasUpdate = imageInfo?.updateAvailable || needsRecreate;
+
+  // For stale containers, strip the tag — it was reassigned to the newer pulled image
+  let displayImage = container?.image;
+  if (needsRecreate && displayImage) {
+    const tagIdx = displayImage.lastIndexOf(":");
+    const slashIdx = displayImage.lastIndexOf("/");
+    if (tagIdx > slashIdx) displayImage = displayImage.slice(0, tagIdx);
+  }
 
   // Build update info for the modal (only when update available)
   const updateInfo = hasUpdate ? imageInfo : null;
@@ -259,9 +271,9 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 : []),
               {
                 label: "Image",
-                value: container.image,
+                value: displayImage || container.image,
                 mono: true,
-                link: `/images/${encodeURIComponent(container.image)}`,
+                link: `/images/${encodeURIComponent(needsRecreate ? container.imageId : container.image)}`,
               },
               { label: "Status", value: container.status },
               {

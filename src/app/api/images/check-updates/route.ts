@@ -30,10 +30,12 @@ async function ensureInitialCheck() {
       }
 
       // Collect images from all containers (includes standalone)
+      // Skip raw SHA256 hashes — these are stale containers whose tag was
+      // reassigned to a newer image; the proper name is already collected above
       const docker = getDocker();
       const containers = await docker.listContainers({ all: true });
       for (const container of containers) {
-        if (container.Image) {
+        if (container.Image && !container.Image.startsWith("sha256:")) {
           images.add(normalizeImageName(container.Image));
         }
       }

@@ -36,6 +36,12 @@ export async function POST(
       return error(pullResult.error || "Failed to pull image");
     }
 
+    // Clear update cache after pull so stale cached "no update" is removed
+    // (must happen even if up fails below)
+    if (container.image) {
+      clearCachedUpdates([container.image]);
+    }
+
     // Recreate the service if it was running
     let restarted = false;
     if (wasRunning) {
@@ -46,11 +52,6 @@ export async function POST(
         return error(upResult.error || "Failed to recreate container");
       }
       restarted = true;
-    }
-
-    // Clear update cache for this image so it gets rechecked
-    if (container.image) {
-      clearCachedUpdates([container.image]);
     }
 
     return success({ output, restarted, image: container.image });

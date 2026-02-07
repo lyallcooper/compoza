@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return error(result.error || "Failed to create project");
     }
 
-    return success({ message: result.output });
+    return success({ message: result.output }, 201);
   } catch (err) {
     return error(getErrorMessage(err, "Failed to create project"));
   }

@@ -391,6 +391,7 @@ export function TruncatedText({
           type="button"
           onClick={handleRevealToggle}
           className="ml-1 text-muted hover:text-foreground text-xs leading-none shrink-0"
+          aria-label={revealed ? "Hide sensitive value" : "Reveal sensitive value"}
           tabIndex={-1}
         >
           {revealed ? "hide" : "reveal"}

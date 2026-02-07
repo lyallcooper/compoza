@@ -34,6 +34,7 @@ export function Header() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
               className={`
                 py-1 text-sm transition-colors border-b-2
                 ${isActive(item.href)
@@ -67,6 +68,7 @@ export function Header() {
               key={item.href}
               href={item.href}
               onClick={() => setMobileMenuOpen(false)}
+              aria-current={isActive(item.href) ? "page" : undefined}
               className={`
                 block px-4 py-3 text-sm transition-colors border-l-2
                 ${isActive(item.href)

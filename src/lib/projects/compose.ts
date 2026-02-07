@@ -163,22 +163,26 @@ async function runComposeCommand(
 
     let output = "";
     let resolved = false;
+    let timedOut = false;
+    let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const resolveOnce = (result: ComposeResult) => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeoutId);
+      clearTimeout(killTimeoutId);
       resolve(result);
     };
 
     // Timeout to prevent hanging forever
     const timeoutId = setTimeout(() => {
+      timedOut = true;
       log.compose.warn("Command timed out, killing process", {
         command: `docker ${composeArgs.join(" ")}`,
       });
       proc.kill("SIGTERM");
       // Force kill after 5 seconds if still running
-      setTimeout(() => {
+      killTimeoutId = setTimeout(() => {
         if (!proc.killed) {
           proc.kill("SIGKILL");
         }
@@ -203,7 +207,9 @@ async function runComposeCommand(
     });
 
     proc.on("close", async (code) => {
-      if (code !== 0) {
+      if (timedOut) {
+        log.compose.warn("Command killed after timeout", { exitCode: code, output: output.slice(0, 500) });
+      } else if (code !== 0) {
         log.compose.warn("Command failed", { exitCode: code, output: output.slice(0, 500) });
       } else {
         log.compose.debug("Command completed", { exitCode: code });
@@ -211,10 +217,13 @@ async function runComposeCommand(
       if (cleanup) {
         await cleanup();
       }
+      const error = timedOut
+        ? `Command timed out after ${COMPOSE_TIMEOUT / 1000}s`
+        : code !== 0 ? output : undefined;
       resolveOnce({
-        success: code === 0,
+        success: code === 0 && !timedOut,
         output,
-        error: code !== 0 ? output : undefined,
+        error,
       });
     });
 

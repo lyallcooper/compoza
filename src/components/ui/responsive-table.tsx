@@ -229,7 +229,7 @@ export function ResponsiveTable<T>({
               data-row-clickable={isClickable ? "true" : undefined}
               className={`
                 p-2 rounded-lg border border-border bg-surface-subtle overflow-hidden
-                ${isClickable ? "cursor-pointer transition-transform active:scale-[0.98] hover:bg-surface focus:outline-none focus-visible:bg-surface focus-visible:ring-1 focus-visible:ring-primary" : ""}
+                ${isClickable ? "cursor-pointer transition-transform active:not-[:has(button:active,a:active)]:scale-[0.98] hover:bg-surface focus:outline-none focus-visible:bg-surface focus-visible:ring-1 focus-visible:ring-primary" : ""}
               `}
             >
               {/* Header section */}

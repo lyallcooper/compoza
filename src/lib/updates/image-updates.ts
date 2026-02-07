@@ -10,7 +10,7 @@ import {
   markVersionResolutionFailed,
 } from "./cache";
 import { parseImageRef, getRegistryType, resolveVersions, queryRegistry } from "@/lib/registries";
-import { extractSourceUrl } from "@/lib/format";
+import { extractSourceUrl, normalizeImageName } from "@/lib/format";
 
 export interface ImageUpdateInfo {
   image: string;
@@ -93,8 +93,10 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
 
 async function checkSingleImage(
   docker: ReturnType<typeof getDocker>,
-  imageName: string
+  rawImageName: string
 ): Promise<ImageUpdateInfo> {
+  const imageName = normalizeImageName(rawImageName);
+
   // Skip if already being checked
   if (!shouldCheckImage(imageName)) {
     const cached = getCachedUpdate(imageName);

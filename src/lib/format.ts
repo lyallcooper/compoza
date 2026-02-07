@@ -66,6 +66,25 @@ export function isSensitiveKey(key: string): boolean {
 export const SENSITIVE_MASK = "••••••••";
 
 /**
+ * Normalize Docker image names by stripping the `docker.io/` prefix that
+ * Docker Compose v2 adds when creating containers. This ensures image names
+ * match the short form used in Docker's image store (RepoTags).
+ *
+ * - `docker.io/library/nginx` → `nginx`
+ * - `docker.io/linuxserver/sonarr` → `linuxserver/sonarr`
+ * - `ghcr.io/foo/bar` → `ghcr.io/foo/bar` (unchanged)
+ */
+export function normalizeImageName(name: string): string {
+  if (name.startsWith("docker.io/library/")) {
+    return name.slice("docker.io/library/".length);
+  }
+  if (name.startsWith("docker.io/")) {
+    return name.slice("docker.io/".length);
+  }
+  return name;
+}
+
+/**
  * Extract source URL from image labels, validating it relates to the image name.
  * Checks org.opencontainers.image.source and org.label-schema.url labels.
  * Validates the URL's owner/repo matches the image namespace/repository

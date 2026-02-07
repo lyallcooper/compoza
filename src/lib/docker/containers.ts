@@ -1,6 +1,7 @@
 import { getDocker } from "./client";
 import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions, ContainerHealth, ContainerMount, ContainerNetwork } from "@/types";
 import { log } from "@/lib/logger";
+import { normalizeImageName } from "@/lib/format";
 
 /**
  * Determine the update strategy for a container based on its labels.
@@ -128,7 +129,7 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
     return {
       id: c.Id,
       name: c.Names[0]?.replace(/^\//, "") || c.Id.slice(0, 12),
-      image: c.Image,
+      image: normalizeImageName(c.Image),
       imageId: c.ImageID,
       status: c.Status,
       state,
@@ -223,7 +224,7 @@ export async function getContainer(id: string): Promise<Container | null> {
     return {
       id: info.Id,
       name: info.Name.replace(/^\//, ""),
-      image: info.Config.Image,
+      image: normalizeImageName(info.Config.Image),
       imageId: info.Image,
       status: info.State.Status,
       state,

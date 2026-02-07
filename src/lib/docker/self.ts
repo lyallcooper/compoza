@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import { hostname } from "os";
 import { getDocker } from "./client";
+import { normalizeImageName } from "@/lib/format";
 
 // Cache the detected project name and image name
 let selfProjectName: string | null = null;
@@ -40,7 +41,7 @@ export async function getSelfProjectName(): Promise<string | null> {
 
     // Cache image name from the same inspect call
     if (info.Config?.Image) {
-      selfImageName = info.Config.Image;
+      selfImageName = normalizeImageName(info.Config.Image);
     }
 
     // Docker Compose sets this label on all containers it manages

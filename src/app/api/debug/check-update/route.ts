@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getDocker } from "@/lib/docker";
 import { success, error, badRequest, notFound } from "@/lib/api";
+import { normalizeImageName } from "@/lib/format";
 
 export async function GET(request: NextRequest) {
   // Only allow in development mode
@@ -8,12 +9,13 @@ export async function GET(request: NextRequest) {
     return notFound("Not found");
   }
 
-  const imageName = request.nextUrl.searchParams.get("image");
+  const rawImageName = request.nextUrl.searchParams.get("image");
 
-  if (!imageName) {
+  if (!rawImageName) {
     return badRequest("image parameter required");
   }
 
+  const imageName = normalizeImageName(rawImageName);
   const docker = getDocker();
   const debug: Record<string, unknown> = { imageName };
 

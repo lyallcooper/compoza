@@ -3,6 +3,7 @@ import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdat
 import { scanProjects } from "@/lib/projects";
 import { getDocker } from "@/lib/docker";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
+import { normalizeImageName } from "@/lib/format";
 import { log } from "@/lib/logger";
 
 // Track if we've done an initial check in this process
@@ -33,7 +34,7 @@ async function ensureInitialCheck() {
       const containers = await docker.listContainers({ all: true });
       for (const container of containers) {
         if (container.Image) {
-          images.add(container.Image);
+          images.add(normalizeImageName(container.Image));
         }
       }
 

@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdates } from "@/lib/updates";
 import { scanProjects } from "@/lib/projects";
-import { getDocker } from "@/lib/docker";
+import { listContainers } from "@/lib/docker";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
-import { normalizeImageName } from "@/lib/format";
 import { log } from "@/lib/logger";
 
 // Track if we've done an initial check in this process
@@ -17,34 +16,33 @@ async function ensureInitialCheck() {
   initialCheckPromise = (async () => {
     try {
       log.updates.info("Triggering initial check from API");
-      const images = new Set<string>();
+      const imageMap = new Map<string, string | undefined>();
 
-      // Collect images from compose projects
+      // Collect images from compose projects (only services with containers)
       const projects = await scanProjects();
       for (const project of projects) {
         for (const service of project.services) {
-          if (service.image) {
-            images.add(service.image);
+          if (service.image && service.containerId && !imageMap.has(service.image)) {
+            imageMap.set(service.image, service.imageId);
           }
         }
       }
 
       // Collect images from all containers (includes standalone)
-      // Skip raw SHA256 hashes — these are stale containers whose tag was
-      // reassigned to a newer image; the proper name is already collected above
-      const docker = getDocker();
-      const containers = await docker.listContainers({ all: true });
+      // Our listContainers wrapper resolves sha256: hashes back to their
+      // original tag name via Config.Image, so stale containers are included
+      const containers = await listContainers({ all: true });
       for (const container of containers) {
-        if (container.Image && !container.Image.startsWith("sha256:")) {
-          images.add(normalizeImageName(container.Image));
+        if (container.image && !imageMap.has(container.image)) {
+          imageMap.set(container.image, container.imageId);
         }
       }
 
-      if (images.size > 0) {
-        await checkImageUpdates(Array.from(images));
+      if (imageMap.size > 0) {
+        await checkImageUpdates(imageMap);
       }
       initialCheckDone = true;
-      log.updates.info(`Initial check complete`, { imageCount: images.size });
+      log.updates.info(`Initial check complete`, { imageCount: imageMap.size });
     } catch (err) {
       log.updates.error("Initial check failed", err);
       initialCheckPromise = null; // Allow retry on failure

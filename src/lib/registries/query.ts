@@ -259,10 +259,11 @@ function buildResult(
   tags: Array<{ name: string; digest: string }>,
   currentTag: string,
   currentDigest: string
-): RegistryQueryResult {
+): RegistryQueryResult | null {
   // Find the latest digest: the digest that the tracked tag currently points to
   const latestEntry = tags.find((t) => t.name === currentTag);
-  const latestDigest = latestEntry?.digest;
+  if (!latestEntry) return null; // Tag not found in results — let caller fall through
+  const latestDigest = latestEntry.digest;
 
   // Tags matching the local digest (for currentVersion)
   const currentTags = tags

@@ -250,6 +250,27 @@ export class OciClient {
   }
 
   /**
+   * Get the digest for a specific tag via a HEAD request to the manifest endpoint.
+   * Returns the Docker-Content-Digest header value, or null on failure.
+   */
+  async getDigestForTag(namespace: string, repository: string, tag: string): Promise<string | null> {
+    const name = `${namespace}/${repository}`;
+    const url = `${this.baseUrl}/v2/${name}/manifests/${tag}`;
+
+    try {
+      const response = await this.fetchWithAuth(url, name, {
+        method: "HEAD",
+        accept: OciClient.MANIFEST_ACCEPT,
+      });
+
+      if (!response.ok) return null;
+      return response.headers.get("docker-content-digest");
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Fetch a manifest by tag or digest.
    */
   private async fetchManifest(name: string, reference: string): Promise<OciManifest | null> {

@@ -3,6 +3,7 @@ export interface ImageRef {
   namespace: string;
   repository: string;
   tag: string;
+  digest?: string;
 }
 
 export interface VersionInfo {

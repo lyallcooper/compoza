@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import type { Project, ProjectService, ComposeConfig } from "@/types";
 import { listContainers } from "@/lib/docker";
 import { log } from "@/lib/logger";
+import { normalizeImageName } from "@/lib/format";
 
 const COMPOSE_FILENAMES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 
@@ -127,7 +128,7 @@ async function buildProject(
 
         const service: ProjectService = {
           name: serviceName,
-          image: container?.image || serviceConfig.image,
+          image: container?.image || (serviceConfig.image ? normalizeImageName(serviceConfig.image) : undefined),
           imageId: container?.imageId,
           containerId: container?.id,
           containerName: container?.name,

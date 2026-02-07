@@ -108,7 +108,7 @@ export function useBackgroundProjectUpdate(projectName: string) {
           });
         }
         // Clear cache even on failure — pull may have succeeded before up failed,
-        // so a recheck will pick up the new localImageId
+        // so a recheck will pick up the updated digest
         if (images.length > 0) {
           await clearUpdateCacheAndInvalidate(queryClient, images);
         }

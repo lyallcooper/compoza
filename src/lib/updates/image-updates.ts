@@ -9,7 +9,7 @@ import {
   updateCachedVersions,
   markVersionResolutionFailed,
 } from "./cache";
-import { parseImageRef, getRegistryType, resolveVersions, queryRegistry } from "@/lib/registries";
+import { parseImageRef, getRegistryType, resolveVersions, queryRegistry, OciClient, getOciRegistryUrl } from "@/lib/registries";
 import { extractSourceUrl, normalizeImageName } from "@/lib/format";
 
 export interface ImageUpdateInfo {
@@ -23,16 +23,15 @@ export interface ImageUpdateInfo {
   latestVersion?: string;
   matchedTags?: string[];
   sourceUrl?: string;
-  /** Local image ID (sha256:...) - used to detect stale containers */
-  localImageId?: string;
 }
 
-export async function checkImageUpdates(images: string[]): Promise<ImageUpdateInfo[]> {
+export async function checkImageUpdates(images: Map<string, string | undefined>): Promise<ImageUpdateInfo[]> {
   const results: ImageUpdateInfo[] = [];
-  const imagesToCheck: string[] = [];
+  const imagesToCheck: [string, string | undefined][] = [];
 
   // First, return cached results and identify what needs checking
-  for (const imageName of images) {
+  for (const [rawName, containerImageId] of images) {
+    const imageName = normalizeImageName(rawName);
     const cached = getCachedUpdate(imageName);
     if (cached) {
       results.push({
@@ -46,15 +45,14 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
         latestVersion: cached.latestVersion,
         matchedTags: cached.matchedTags,
         sourceUrl: cached.sourceUrl,
-        localImageId: cached.localImageId,
       });
 
       // Schedule background refresh if stale
       if (shouldCheckImage(imageName)) {
-        imagesToCheck.push(imageName);
+        imagesToCheck.push([imageName, containerImageId]);
       }
     } else {
-      imagesToCheck.push(imageName);
+      imagesToCheck.push([imageName, containerImageId]);
     }
   }
 
@@ -62,8 +60,8 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
   if (imagesToCheck.length > 0) {
     // For images without cache, check synchronously
     // For stale cache refreshes, check in background
-    const uncachedImages = imagesToCheck.filter((img) => !getCachedUpdate(img));
-    const staleImages = imagesToCheck.filter((img) => getCachedUpdate(img));
+    const uncachedImages = imagesToCheck.filter(([img]) => !getCachedUpdate(img));
+    const staleImages = imagesToCheck.filter(([img]) => getCachedUpdate(img));
 
     // Check uncached images synchronously
     if (uncachedImages.length > 0) {
@@ -74,7 +72,7 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
     // Refresh stale images in background (don't await)
     if (staleImages.length > 0) {
       checkImagesDirectly(staleImages).catch((err) => {
-        log.updates.error(`Background update check failed for ${staleImages.length} images`, err, { images: staleImages.slice(0, 3) });
+        log.updates.error(`Background update check failed for ${staleImages.length} images`, err, { images: staleImages.slice(0, 3).map(([img]) => img) });
       });
     }
   }
@@ -82,11 +80,11 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
   return results;
 }
 
-async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]> {
+async function checkImagesDirectly(images: [string, string | undefined][]): Promise<ImageUpdateInfo[]> {
   const docker = getDocker();
 
   const settled = await Promise.allSettled(
-    images.map((imageName) => checkSingleImage(docker, imageName))
+    images.map(([imageName, containerImageId]) => checkSingleImage(docker, imageName, containerImageId))
   );
 
   return settled
@@ -96,9 +94,24 @@ async function checkImagesDirectly(images: string[]): Promise<ImageUpdateInfo[]>
 
 async function checkSingleImage(
   docker: ReturnType<typeof getDocker>,
-  rawImageName: string
+  rawImageName: string,
+  containerImageId?: string
 ): Promise<ImageUpdateInfo> {
   const imageName = normalizeImageName(rawImageName);
+
+  // Digest-pinned refs (e.g. repo:tag@sha256:...) are intentionally locked
+  // to a specific version — skip update checking entirely
+  const ref = parseImageRef(imageName);
+  if (ref.digest) {
+    const result: ImageUpdateInfo = {
+      image: imageName,
+      currentDigest: ref.digest,
+      updateAvailable: false,
+      status: "checked",
+    };
+    setCachedUpdate(imageName, result);
+    return result;
+  }
 
   // Skip if already being checked
   if (!shouldCheckImage(imageName)) {
@@ -114,7 +127,6 @@ async function checkSingleImage(
         currentVersion: cached.currentVersion,
         latestVersion: cached.latestVersion,
         sourceUrl: cached.sourceUrl,
-        localImageId: cached.localImageId,
       };
     }
   }
@@ -123,58 +135,59 @@ async function checkSingleImage(
 
   try {
     let currentDigest: string | undefined;
+    let sourceUrl: string | undefined;
+    const repoBase = imageName.split(":")[0];
 
-    // Get local image info
-    const localImages = await docker.listImages({
-      filters: { reference: [imageName] },
-    });
-
-    // Capture the local image ID for stale container detection
-    const localImageId = localImages[0]?.Id;
-
-    // Extract sourceUrl from local image labels (free from the listImages response)
-    const sourceUrl = extractSourceUrl(localImages[0]?.Labels, imageName);
-
-    const repoDigests = localImages[0]?.RepoDigests;
-    if (localImages.length > 0 && repoDigests && repoDigests.length > 0) {
-      const matchingDigest = repoDigests.find((d) =>
-        d.startsWith(imageName.split(":")[0] + "@")
-      );
-      currentDigest = matchingDigest?.split("@")[1] || repoDigests[0]?.split("@")[1];
-    }
-
-    // Try inspecting directly if no digest from list
-    if (!currentDigest && localImages.length > 0) {
+    // Primary: inspect the image the container is actually running
+    if (containerImageId) {
       try {
-        const image = docker.getImage(imageName);
-        const inspection = await image.inspect();
-        if (inspection.RepoDigests?.length > 0) {
-          const matchingDigest = inspection.RepoDigests.find((d: string) =>
-            d.startsWith(imageName.split(":")[0] + "@")
-          );
-          currentDigest = matchingDigest?.split("@")[1] || inspection.RepoDigests[0]?.split("@")[1];
+        const inspection = await docker.getImage(containerImageId).inspect();
+        const repoDigests = inspection.RepoDigests;
+        if (repoDigests?.length > 0) {
+          const matching = repoDigests.find((d: string) => d.startsWith(repoBase + "@"));
+          currentDigest = matching?.split("@")[1] || repoDigests[0]?.split("@")[1];
         }
+        sourceUrl = extractSourceUrl(inspection.Config?.Labels, imageName);
       } catch {
-        // Image inspect failed - not critical, we'll continue without digest
+        // Image may have been pruned; fall through to listImages
       }
     }
 
-    // Image not pulled locally - mark as unknown, not an error
-    if (localImages.length === 0) {
-      const result: ImageUpdateInfo = {
-        image: imageName,
-        updateAvailable: false,
-        status: "unknown",
-        sourceUrl,
-        localImageId,
-      };
-      setCachedUpdate(imageName, result);
-      return result;
+    // Fallback when no containerImageId or inspect failed (image pruned)
+    if (!currentDigest) {
+      const localImages = await docker.listImages({
+        filters: { reference: [imageName] },
+      });
+
+      sourceUrl = sourceUrl || extractSourceUrl(localImages[0]?.Labels, imageName);
+
+      const repoDigests = localImages[0]?.RepoDigests;
+      if (localImages.length > 0 && repoDigests && repoDigests.length > 0) {
+        const matchingDigest = repoDigests.find((d) =>
+          d.startsWith(repoBase + "@")
+        );
+        currentDigest = matchingDigest?.split("@")[1] || repoDigests[0]?.split("@")[1];
+      }
+
+      // Try inspecting directly if no digest from list
+      if (!currentDigest && localImages.length > 0) {
+        try {
+          const image = docker.getImage(imageName);
+          const inspection = await image.inspect();
+          if (inspection.RepoDigests?.length > 0) {
+            const matchingDigest = inspection.RepoDigests.find((d: string) =>
+              d.startsWith(repoBase + "@")
+            );
+            currentDigest = matchingDigest?.split("@")[1] || inspection.RepoDigests[0]?.split("@")[1];
+          }
+        } catch {
+          // Image inspect failed - not critical, we'll continue without digest
+        }
+      }
     }
 
     // Try consolidated registry query first (1-2 API calls vs ~58)
     if (currentDigest) {
-      const ref = parseImageRef(imageName);
       const registryType = getRegistryType(ref.registry);
       if (registryType !== "unknown") {
         const registryResult = await queryRegistry(imageName, currentDigest);
@@ -189,7 +202,6 @@ async function checkSingleImage(
             latestVersion: registryResult.latestVersion,
             matchedTags: registryResult.matchedTags,
             sourceUrl,
-            localImageId,
           };
           setCachedUpdate(imageName, {
             ...result,
@@ -200,76 +212,51 @@ async function checkSingleImage(
       }
     }
 
-    // Check remote digest via distribution API
-    try {
-      const distribution = await getImageDistribution(imageName);
-      const latestDigest = distribution.Descriptor?.digest;
+    // Check remote digest via distribution API, then OCI fallback
+    const { digest: latestDigest, cacheTtl } = await getLatestDigest(imageName, ref);
 
-      let result: ImageUpdateInfo;
+    let result: ImageUpdateInfo;
 
-      if (!latestDigest) {
-        result = {
-          image: imageName,
-          currentDigest,
-          updateAvailable: false,
-          status: "unknown",
-          sourceUrl,
-          localImageId,
-        };
-      } else if (!currentDigest) {
-        result = {
-          image: imageName,
-          latestDigest,
-          updateAvailable: true,
-          status: "unknown",
-          sourceUrl,
-          localImageId,
-        };
-      } else {
-        result = {
-          image: imageName,
-          currentDigest,
-          latestDigest,
-          updateAvailable: latestDigest !== currentDigest,
-          status: "checked",
-          sourceUrl,
-          localImageId,
-        };
-      }
-
-      // Trigger async version resolution when we have digests
-      const willResolveVersions = currentDigest || latestDigest;
-
-      setCachedUpdate(imageName, {
-        ...result,
-        versionStatus: willResolveVersions ? "pending" : undefined,
-      });
-
-      if (willResolveVersions) {
-        triggerVersionResolution(imageName, currentDigest, latestDigest);
-      }
-
-      return result;
-    } catch (error) {
-      // Distribution API failures are common (private registries, local images, rate limits, etc.)
-      // Only log if it's not a typical expected error
-      const statusCode = (error as { statusCode?: number }).statusCode;
-      if (statusCode && ![401, 403, 404, 429].includes(statusCode)) {
-        log.updates.warn(`Distribution API failed for ${imageName}`, { statusCode });
-      }
-      const result: ImageUpdateInfo = {
+    if (!latestDigest) {
+      result = {
         image: imageName,
         currentDigest,
         updateAvailable: false,
         status: "unknown",
         sourceUrl,
-        localImageId,
       };
-      // Cache rate-limited results longer to avoid hammering the API
-      const ttl = statusCode === 429 ? 30 * 60 * 1000 : undefined; // 30 min for rate limits
-      setCachedUpdate(imageName, result, ttl);
-      return result;
+    } else if (!currentDigest) {
+      result = {
+        image: imageName,
+        latestDigest,
+        updateAvailable: true,
+        status: "unknown",
+        sourceUrl,
+      };
+    } else {
+      result = {
+        image: imageName,
+        currentDigest,
+        latestDigest,
+        updateAvailable: latestDigest !== currentDigest,
+        status: "checked",
+        sourceUrl,
+      };
     }
+
+    // Trigger async version resolution when we have digests
+    const willResolveVersions = currentDigest || latestDigest;
+
+    setCachedUpdate(imageName, {
+      ...result,
+      versionStatus: willResolveVersions ? "pending" : undefined,
+    }, cacheTtl);
+
+    if (willResolveVersions) {
+      triggerVersionResolution(imageName, currentDigest, latestDigest);
+    }
+
+    return result;
   } catch (error) {
     log.updates.error(`Failed to check image ${imageName}`, error);
     const result: ImageUpdateInfo = {
@@ -281,6 +268,54 @@ async function checkSingleImage(
     return result;
   } finally {
     markCheckComplete(imageName);
+  }
+}
+
+interface LatestDigestResult {
+  digest?: string;
+  /** Override cache TTL (e.g. longer backoff for rate limits) */
+  cacheTtl?: number;
+}
+
+/**
+ * Get the latest remote digest for an image tag.
+ * Tries Docker Engine distribution API first, falls back to OCI registry.
+ */
+async function getLatestDigest(
+  imageName: string,
+  ref: { registry: string; namespace: string; repository: string; tag: string }
+): Promise<LatestDigestResult> {
+  let rateLimited = false;
+
+  // Try Docker Engine distribution API (works when Engine can auth to the registry)
+  try {
+    const distribution = await getImageDistribution(imageName);
+    if (distribution.Descriptor?.digest) {
+      return { digest: distribution.Descriptor.digest };
+    }
+  } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    if (statusCode === 429) {
+      rateLimited = true;
+    } else if (statusCode && ![401, 403, 404].includes(statusCode)) {
+      log.updates.warn(`Distribution API failed for ${imageName}`, { statusCode });
+    }
+    // Try OCI directly regardless
+  }
+
+  // Fallback: query the OCI registry directly
+  const registryType = getRegistryType(ref.registry);
+  const ociUrl = getOciRegistryUrl(registryType, ref.registry);
+  if (!ociUrl) {
+    return rateLimited ? { cacheTtl: 30 * 60 * 1000 } : {};
+  }
+
+  try {
+    const client = new OciClient(ociUrl);
+    const digest = (await client.getDigestForTag(ref.namespace, ref.repository, ref.tag)) ?? undefined;
+    return { digest };
+  } catch {
+    return rateLimited ? { cacheTtl: 30 * 60 * 1000 } : {};
   }
 }
 

@@ -17,9 +17,18 @@ export function parseImageRef(image: string): ImageRef {
   let namespace = "library";
   let repository: string;
   let tag = "latest";
+  let digest: string | undefined;
 
-  // Split off tag/digest
   let reference = image;
+
+  // Strip digest pin first (e.g. repo:tag@sha256:...)
+  const digestIndex = reference.indexOf("@sha256:");
+  if (digestIndex > 0) {
+    digest = reference.slice(digestIndex + 1);
+    reference = reference.slice(0, digestIndex);
+  }
+
+  // Split off tag
   const tagIndex = reference.lastIndexOf(":");
   const slashIndex = reference.lastIndexOf("/");
 
@@ -51,7 +60,7 @@ export function parseImageRef(image: string): ImageRef {
     namespace = parts.slice(1, -1).join("/");
   }
 
-  return { registry, namespace, repository, tag };
+  return { registry, namespace, repository, tag, digest };
 }
 
 /**

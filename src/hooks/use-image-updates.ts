@@ -17,8 +17,6 @@ export interface ImageUpdateStatus {
   matchedTags?: string[];
   versionStatus?: "pending" | "resolved" | "failed";
   sourceUrl?: string;
-  /** Local image ID (sha256:...) - used to detect stale containers */
-  localImageId?: string;
 }
 
 export interface ProjectWithUpdates {
@@ -29,8 +27,6 @@ export interface ProjectWithUpdates {
     currentVersion?: string;
     latestVersion?: string;
     sourceUrl?: string;
-    /** Container needs recreating (running old image while new one is pulled) */
-    needsRecreate?: boolean;
   }[];
 }
 
@@ -65,23 +61,15 @@ export function getProjectsWithUpdates(
       for (const service of project.services) {
         if (!service.image || seenImages.has(service.image)) continue;
         const update = updateMap.get(service.image);
-        if (!update) continue;
+        if (!update?.updateAvailable) continue;
 
-        // Detect stale containers: running old image while new one is pulled locally
-        const needsRecreate = !!service.imageId && !!update.localImageId
-          && service.imageId !== update.localImageId;
-        const hasUpdate = update.updateAvailable || needsRecreate;
-
-        if (hasUpdate) {
-          seenImages.add(service.image);
-          images.push({
-            image: service.image,
-            currentVersion: update.currentVersion,
-            latestVersion: update.latestVersion,
-            sourceUrl: update.sourceUrl,
-            needsRecreate,
-          });
-        }
+        seenImages.add(service.image);
+        images.push({
+          image: service.image,
+          currentVersion: update.currentVersion,
+          latestVersion: update.latestVersion,
+          sourceUrl: update.sourceUrl,
+        });
       }
 
       const isRunning = isProjectRunning(project);

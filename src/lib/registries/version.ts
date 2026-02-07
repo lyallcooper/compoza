@@ -69,7 +69,7 @@ export async function resolveVersions(
 /**
  * Get the OCI Distribution API URL for a registry type.
  */
-function getOciRegistryUrl(
+export function getOciRegistryUrl(
   registryType: ReturnType<typeof getRegistryType>,
   registry: string
 ): string | null {

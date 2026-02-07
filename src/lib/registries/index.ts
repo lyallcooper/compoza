@@ -4,5 +4,5 @@ export type { RegistryQueryResult } from "./query";
 export { parseImageRef, getRegistryType, formatImageRef } from "./parse";
 export { getRegistryCredentials, getCredentialsForTokenEndpoint, isDockerHub, isGhcr } from "./credentials";
 export { OciClient } from "./oci";
-export { resolveVersions, isSemverLike } from "./version";
+export { resolveVersions, isSemverLike, getOciRegistryUrl } from "./version";
 export { queryRegistry } from "./query";

@@ -88,7 +88,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className="relative z-10 w-full max-w-lg mx-4 border border-border bg-background rounded shadow-lg outline-none"
+        className="relative z-10 w-full max-w-lg mx-4 min-w-0 border border-border bg-background rounded shadow-lg outline-none"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-3">

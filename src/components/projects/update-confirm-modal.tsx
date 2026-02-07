@@ -95,7 +95,7 @@ export function UpdateConfirmModal({
               const change = formatChange(img);
               return (
                 <div key={`${img.image}-${idx}`} className="text-sm">
-                  <div className="font-mono flex items-center gap-2">
+                  <div className="font-mono flex items-center gap-2 min-w-0">
                     <span className="truncate">{img.image}</span>
                     {change && (
                       <span className="text-accent whitespace-nowrap">{change}</span>

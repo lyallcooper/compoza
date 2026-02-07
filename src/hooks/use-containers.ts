@@ -47,7 +47,7 @@ export function useStartContainer() {
   return useMutation({
     mutationFn: (id: string) =>
       apiPost<{ message: string }>(`/api/containers/${encodeURIComponent(id)}/start`),
-    onSuccess: (_data, id) => {
+    onSettled: (_data, _err, id) => {
       invalidateContainerQueries(queryClient, id);
     },
   });
@@ -59,7 +59,7 @@ export function useStopContainer() {
   return useMutation({
     mutationFn: (id: string) =>
       apiPost<{ message: string }>(`/api/containers/${encodeURIComponent(id)}/stop`),
-    onSuccess: (_data, id) => {
+    onSettled: (_data, _err, id) => {
       invalidateContainerQueries(queryClient, id);
     },
   });
@@ -71,7 +71,7 @@ export function useRestartContainer() {
   return useMutation({
     mutationFn: (id: string) =>
       apiPost<{ message: string }>(`/api/containers/${encodeURIComponent(id)}/restart`),
-    onSuccess: (_data, id) => {
+    onSettled: (_data, _err, id) => {
       invalidateContainerQueries(queryClient, id);
     },
   });
@@ -85,9 +85,11 @@ export function useContainerUpdate() {
       apiPost<{ output: string; restarted: boolean; image?: string }>(
         `/api/containers/${encodeURIComponent(id)}/update`
       ),
-    onSuccess: async (data, id) => {
+    onSuccess: async (data) => {
       const images = data?.image ? [data.image] : undefined;
       await clearUpdateCacheAndInvalidate(queryClient, images);
+    },
+    onSettled: (_data, _err, id) => {
       invalidateContainerQueries(queryClient, id);
     },
   });
@@ -101,7 +103,7 @@ export function useRemoveContainer() {
       apiDelete<{ message: string }>(
         `/api/containers/${encodeURIComponent(id)}${force ? "?force=true" : ""}`
       ),
-    onSuccess: () => {
+    onSettled: () => {
       invalidateContainerQueries(queryClient);
     },
   });
@@ -113,6 +115,6 @@ export function usePruneContainers() {
   return useMutation({
     mutationFn: () =>
       apiPost<ContainerPruneResult>("/api/containers/prune"),
-    onSuccess: () => invalidateContainerQueries(queryClient),
+    onSettled: () => invalidateContainerQueries(queryClient),
   });
 }

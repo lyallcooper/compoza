@@ -30,6 +30,7 @@ export function usePullImage() {
       // Clear update cache for this image and optimistically remove from UI
       await clearUpdateCacheAndInvalidate(queryClient, [name]);
     },
+    onSettled: () => invalidateImageQueries(queryClient),
   });
 }
 
@@ -39,7 +40,7 @@ export function useDeleteImage() {
   return useMutation({
     mutationFn: ({ id, force }: { id: string; force?: boolean }) =>
       apiDelete<{ message: string }>(`/api/images/${encodeURIComponent(id)}`, { force }),
-    onSuccess: () => invalidateImageQueries(queryClient),
+    onSettled: () => invalidateImageQueries(queryClient),
   });
 }
 
@@ -52,6 +53,6 @@ export function usePruneImages() {
   return useMutation({
     mutationFn: (all: boolean = false) =>
       apiPost<{ imagesDeleted: number; spaceReclaimed: number }>("/api/images/prune", { all }),
-    onSuccess: () => invalidateImageQueries(queryClient),
+    onSettled: () => invalidateImageQueries(queryClient),
   });
 }

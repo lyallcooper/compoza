@@ -30,9 +30,7 @@ export function useCreateVolume() {
   return useMutation({
     mutationFn: (params: CreateVolumeOptions) =>
       apiPost<{ message: string }>("/api/volumes", params),
-    onSuccess: () => {
-      invalidateVolumeQueries(queryClient);
-    },
+    onSettled: () => invalidateVolumeQueries(queryClient),
   });
 }
 
@@ -42,9 +40,7 @@ export function useRemoveVolume() {
   return useMutation({
     mutationFn: (name: string) =>
       apiDelete<{ message: string }>(`/api/volumes/${encodeURIComponent(name)}`),
-    onSuccess: () => {
-      invalidateVolumeQueries(queryClient);
-    },
+    onSettled: () => invalidateVolumeQueries(queryClient),
   });
 }
 
@@ -54,8 +50,6 @@ export function usePruneVolumes() {
   return useMutation({
     mutationFn: (all: boolean = false) =>
       apiPost<VolumePruneResult>("/api/volumes/prune", { all }),
-    onSuccess: () => {
-      invalidateVolumeQueries(queryClient);
-    },
+    onSettled: () => invalidateVolumeQueries(queryClient),
   });
 }

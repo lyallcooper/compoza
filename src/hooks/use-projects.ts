@@ -42,6 +42,9 @@ export function useProjectUp(name: string) {
     onSuccess: () => {
       invalidateAllQueries(queryClient);
     },
+    onError: () => {
+      invalidateProjectQueries(queryClient, name);
+    },
   });
 }
 
@@ -51,9 +54,7 @@ export function useProjectDown(name: string) {
   return useMutation({
     mutationFn: () =>
       apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/down`),
-    onSuccess: () => {
-      invalidateProjectQueries(queryClient, name);
-    },
+    onSettled: () => invalidateProjectQueries(queryClient, name),
   });
 }
 
@@ -63,9 +64,7 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: (data: { name: string; composeContent: string; envContent?: string }) =>
       apiPost<{ message: string }>("/api/projects", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
-    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
   });
 }
 
@@ -75,9 +74,7 @@ export function useDeleteProject(name: string) {
   return useMutation({
     mutationFn: () =>
       apiDelete<{ message: string }>(`/api/projects/${encodeURIComponent(name)}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
-    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
   });
 }
 
@@ -100,8 +97,8 @@ export function useProjectPull(name: string) {
     },
     onSuccess: async (data) => {
       await clearUpdateCacheAndInvalidate(queryClient, data?.images);
-      invalidateProjectQueries(queryClient, name);
     },
+    onSettled: () => invalidateProjectQueries(queryClient, name),
   });
 }
 
@@ -141,6 +138,8 @@ export function useProjectUpdate(name: string) {
     },
     onSuccess: async (data) => {
       await clearUpdateCacheAndInvalidate(queryClient, data?.images);
+    },
+    onSettled: () => {
       invalidateProjectQueries(queryClient, name);
       invalidateContainerQueries(queryClient);
     },

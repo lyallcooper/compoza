@@ -30,9 +30,7 @@ export function useCreateNetwork() {
   return useMutation({
     mutationFn: (params: CreateNetworkOptions) =>
       apiPost<{ message: string }>("/api/networks", params),
-    onSuccess: () => {
-      invalidateNetworkQueries(queryClient);
-    },
+    onSettled: () => invalidateNetworkQueries(queryClient),
   });
 }
 
@@ -42,9 +40,7 @@ export function useRemoveNetwork() {
   return useMutation({
     mutationFn: (name: string) =>
       apiDelete<{ message: string }>(`/api/networks/${encodeURIComponent(name)}`),
-    onSuccess: () => {
-      invalidateNetworkQueries(queryClient);
-    },
+    onSettled: () => invalidateNetworkQueries(queryClient),
   });
 }
 
@@ -53,8 +49,6 @@ export function usePruneNetworks() {
 
   return useMutation({
     mutationFn: () => apiPost<NetworkPruneResult>("/api/networks/prune"),
-    onSuccess: () => {
-      invalidateNetworkQueries(queryClient);
-    },
+    onSettled: () => invalidateNetworkQueries(queryClient),
   });
 }

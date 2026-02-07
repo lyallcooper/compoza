@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useRef } from "react";
+import { ReactNode, useMemo } from "react";
 export interface ColumnDef<T> {
   key: string;
   header: string;
@@ -99,9 +99,6 @@ export function ResponsiveTable<T>({
     })
     .join(" ");
 
-  // Track if user had text selected before clicking (to distinguish from click-to-select)
-  const hadSelectionOnMouseDown = useRef(false);
-
   if (data.length === 0 && emptyState) {
     return <>{emptyState}</>;
   }
@@ -146,15 +143,9 @@ export function ResponsiveTable<T>({
             {data.map((row, rowIndex) => {
               const isClickable = !!onRowClick;
 
-              const handleMouseDown = () => {
-                const selection = window.getSelection();
-                hadSelectionOnMouseDown.current = !!(selection && selection.toString().length > 0);
-              };
-
               const handleClick = () => {
-                // Only skip navigation if user had text selected BEFORE clicking
-                // (not if selection was created by the click itself)
-                if (hadSelectionOnMouseDown.current) return;
+                const selection = window.getSelection();
+                if (selection && !selection.isCollapsed) return;
                 onRowClick?.(row, rowIndex);
               };
 
@@ -170,7 +161,6 @@ export function ResponsiveTable<T>({
                   key={keyExtractor(row, rowIndex)}
                   role="row"
                   className={`contents group ${isClickable ? "cursor-pointer" : ""}`}
-                  onMouseDown={isClickable ? handleMouseDown : undefined}
                   onClick={isClickable ? handleClick : undefined}
                   onKeyDown={isClickable ? handleKeyDown : undefined}
                   tabIndex={isClickable ? 0 : undefined}
@@ -200,14 +190,9 @@ export function ResponsiveTable<T>({
         {data.map((row, index) => {
           const isClickable = !!onRowClick;
 
-          const handleMouseDown = () => {
-            const selection = window.getSelection();
-            hadSelectionOnMouseDown.current = !!(selection && selection.toString().length > 0);
-          };
-
           const handleClick = () => {
-            // Only skip navigation if user had text selected BEFORE clicking
-            if (hadSelectionOnMouseDown.current) return;
+            const selection = window.getSelection();
+            if (selection && !selection.isCollapsed) return;
             onRowClick?.(row, index);
           };
 
@@ -221,7 +206,6 @@ export function ResponsiveTable<T>({
           return (
             <div
               key={keyExtractor(row, index)}
-              onMouseDown={isClickable ? handleMouseDown : undefined}
               onClick={isClickable ? handleClick : undefined}
               onKeyDown={isClickable ? handleKeyDown : undefined}
               tabIndex={isClickable ? 0 : undefined}

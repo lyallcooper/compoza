@@ -20,9 +20,11 @@ const shortcutGroups: ShortcutGroup[] = [
     title: "Navigation",
     shortcuts: [
       { keys: ["g", "h"], description: "Go to Dashboard" },
-      { keys: ["g", "d"], description: "Go to Dashboard" },
       { keys: ["g", "p"], description: "Go to Projects" },
       { keys: ["g", "c"], description: "Go to Containers" },
+      { keys: ["g", "i"], description: "Go to Images" },
+      { keys: ["g", "n"], description: "Go to Networks" },
+      { keys: ["g", "v"], description: "Go to Volumes" },
       { keys: ["g", "s"], description: "Go to System" },
     ],
   },

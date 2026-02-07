@@ -109,6 +109,9 @@ DOCKER_HOST=tcp://your-server:2375
 | `g h` | Go to Dashboard |
 | `g p` | Go to Projects |
 | `g c` | Go to Containers |
+| `g i` | Go to Images |
+| `g n` | Go to Networks |
+| `g v` | Go to Volumes |
 | `g s` | Go to System |
 | `Esc` | Close modal |
 | `Cmd/Ctrl + S` | Save (in editor) |

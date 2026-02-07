@@ -59,6 +59,15 @@ export function useKeyboardShortcuts() {
             case "c":
               router.push("/containers");
               break;
+            case "i":
+              router.push("/images");
+              break;
+            case "n":
+              router.push("/networks");
+              break;
+            case "v":
+              router.push("/volumes");
+              break;
             case "s":
               router.push("/system");
               break;

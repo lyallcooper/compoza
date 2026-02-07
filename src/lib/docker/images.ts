@@ -2,6 +2,7 @@ import Dockerode from "dockerode";
 import { getDocker } from "./client";
 import type { DockerImage, DockerImageDetail } from "@/types";
 import { formatShortId } from "@/lib/format";
+import { log } from "@/lib/logger";
 
 export async function listImages(): Promise<DockerImage[]> {
   const docker = getDocker();
@@ -64,7 +65,7 @@ export async function inspectImage(id: string): Promise<Dockerode.ImageInspectIn
     // 404 is expected for images not pulled locally
     const statusCode = (error as { statusCode?: number }).statusCode;
     if (statusCode !== 404) {
-      console.error(`[Docker] Failed to inspect image ${id}:`, error);
+      log.docker.error(`Failed to inspect image ${id}`, error);
     }
     return null;
   }

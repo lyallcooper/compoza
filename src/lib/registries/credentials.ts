@@ -1,3 +1,5 @@
+import { log } from "@/lib/logger";
+
 /**
  * Registry credentials from environment variables.
  * Credentials are disabled for the session on first auth failure
@@ -18,7 +20,7 @@ export function disableRegistryCredentials(registry: RegistryKey): void {
   if (!disabledRegistries.has(registry)) {
     disabledRegistries.add(registry);
     const name = registry === "ghcr" ? "GHCR" : "Docker Hub";
-    console.warn(`[Registry] ${name} credentials are invalid — disabled for this session`);
+    log.registry.warn(`${name} credentials are invalid — disabled for this session`);
   }
 }
 

@@ -3,6 +3,7 @@ import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdat
 import { scanProjects } from "@/lib/projects";
 import { getDocker } from "@/lib/docker";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 // Track if we've done an initial check in this process
 let initialCheckDone = false;
@@ -14,7 +15,7 @@ async function ensureInitialCheck() {
 
   initialCheckPromise = (async () => {
     try {
-      console.log("[Update Check] Triggering initial check from API...");
+      log.updates.info("Triggering initial check from API");
       const images = new Set<string>();
 
       // Collect images from compose projects
@@ -40,9 +41,9 @@ async function ensureInitialCheck() {
         await checkImageUpdates(Array.from(images));
       }
       initialCheckDone = true;
-      console.log(`[Update Check] Initial check complete. ${images.size} images checked.`);
+      log.updates.info(`Initial check complete`, { imageCount: images.size });
     } catch (err) {
-      console.error("[Update Check] Initial check failed:", err);
+      log.updates.error("Initial check failed", err);
       initialCheckPromise = null; // Allow retry on failure
     }
   })();

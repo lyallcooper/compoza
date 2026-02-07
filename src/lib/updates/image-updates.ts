@@ -1,4 +1,5 @@
 import { getDocker, getImageDistribution } from "@/lib/docker";
+import { log } from "@/lib/logger";
 import {
   getCachedUpdate,
   setCachedUpdate,
@@ -70,7 +71,7 @@ export async function checkImageUpdates(images: string[]): Promise<ImageUpdateIn
     // Refresh stale images in background (don't await)
     if (staleImages.length > 0) {
       checkImagesDirectly(staleImages).catch((err) => {
-        console.error(`Background update check failed for ${staleImages.length} images:`, staleImages.slice(0, 3).join(", "), err);
+        log.updates.error(`Background update check failed for ${staleImages.length} images`, err, { images: staleImages.slice(0, 3) });
       });
     }
   }
@@ -240,7 +241,7 @@ async function checkSingleImage(
       // Only log if it's not a typical expected error
       const statusCode = (error as { statusCode?: number }).statusCode;
       if (statusCode && ![401, 403, 404, 429].includes(statusCode)) {
-        console.warn(`[Update Check] Distribution API failed for ${imageName}:`, error);
+        log.updates.warn(`Distribution API failed for ${imageName}`, { statusCode });
       }
       const result: ImageUpdateInfo = {
         image: imageName,
@@ -255,7 +256,7 @@ async function checkSingleImage(
       return result;
     }
   } catch (error) {
-    console.error(`[Update Check] Failed to check image ${imageName}:`, error);
+    log.updates.error(`Failed to check image ${imageName}`, error);
     const result: ImageUpdateInfo = {
       image: imageName,
       updateAvailable: false,

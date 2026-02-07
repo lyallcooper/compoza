@@ -2,6 +2,7 @@ import type { ImageRef } from "./types";
 import { parseImageRef, getRegistryType } from "./parse";
 import { getRegistryCredentials, disableRegistryCredentials } from "./credentials";
 import { isSemverLike } from "./version";
+import { log } from "@/lib/logger";
 
 export interface RegistryQueryResult {
   latestDigest?: string;
@@ -34,7 +35,7 @@ export async function queryRegistry(
         return null;
     }
   } catch (error) {
-    console.warn(`[Registry Query] Failed for ${imageName}:`, error);
+    log.registry.warn(`Registry query failed for ${imageName}`, { error: String(error) });
     return null;
   }
 }

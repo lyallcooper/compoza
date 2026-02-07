@@ -1,5 +1,6 @@
 import { getDocker } from "./client";
 import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions, ContainerHealth, ContainerMount, ContainerNetwork } from "@/types";
+import { log } from "@/lib/logger";
 
 /**
  * Determine the update strategy for a container based on its labels.
@@ -246,7 +247,7 @@ export async function getContainer(id: string): Promise<Container | null> {
       networks,
     };
   } catch (error) {
-    console.error(`[Docker] Failed to get container ${id}:`, error);
+    log.docker.error(`Failed to get container ${id}`, error);
     return null;
   }
 }

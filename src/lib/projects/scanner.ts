@@ -3,6 +3,7 @@ import { join } from "path";
 import { parse as parseYaml } from "yaml";
 import type { Project, ProjectService, ComposeConfig } from "@/types";
 import { listContainers } from "@/lib/docker";
+import { log } from "@/lib/logger";
 
 const COMPOSE_FILENAMES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 
@@ -84,7 +85,7 @@ export async function scanProjects(): Promise<Project[]> {
 
     return projects.sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
-    console.error("Failed to scan projects:", error);
+    log.projects.error("Failed to scan projects", error);
     return [];
   }
 }
@@ -153,7 +154,7 @@ async function buildProject(
       }
     }
   } catch (error) {
-    console.error(`Failed to parse compose file for ${name}:`, error);
+    log.projects.error(`Failed to parse compose file for ${name}`, error);
   }
 
   return { name, path, composeFile, status, services };
@@ -161,7 +162,7 @@ async function buildProject(
 
 export async function getProject(name: string): Promise<Project | null> {
   if (!isValidProjectName(name)) {
-    console.warn(`[Projects] Invalid project name rejected: ${name}`);
+    log.projects.warn(`Invalid project name rejected: ${name}`);
     return null;
   }
 
@@ -178,7 +179,7 @@ export async function getProject(name: string): Promise<Project | null> {
     const containers = await listContainers({ all: true });
     return buildProject(name, projectPath, composeFile, containers);
   } catch (error) {
-    console.error(`[Projects] Failed to get project ${name}:`, error);
+    log.projects.error(`Failed to get project ${name}`, error);
     return null;
   }
 }
@@ -190,14 +191,14 @@ export async function readComposeFile(projectName: string): Promise<string | nul
   try {
     return await readFile(project.composeFile, "utf-8");
   } catch (error) {
-    console.error(`[Projects] Failed to read compose file for ${projectName}:`, error);
+    log.projects.error(`Failed to read compose file for ${projectName}`, error);
     return null;
   }
 }
 
 export async function readEnvFile(projectName: string): Promise<string | null> {
   if (!isValidProjectName(projectName)) {
-    console.warn(`[Projects] Invalid project name rejected: ${projectName}`);
+    log.projects.warn(`Invalid project name rejected: ${projectName}`);
     return null;
   }
 

@@ -1,4 +1,5 @@
 import { getCredentialsForTokenEndpoint } from "./credentials";
+import { log } from "@/lib/logger";
 
 interface TokenResponse {
   token: string;
@@ -177,7 +178,7 @@ export class OciClient {
         clearTimeout(timeout);
       }
     } catch (error) {
-      console.warn(`[OCI] Failed to get token:`, error);
+      log.registry.warn("Failed to get OCI token", { error: String(error) });
       return null;
     }
   }
@@ -243,7 +244,7 @@ export class OciClient {
 
       return null;
     } catch (error) {
-      console.warn(`[OCI] Failed to get version from digest:`, error);
+      log.registry.warn("Failed to get version from digest", { error: String(error) });
       return null;
     }
   }

@@ -3,6 +3,7 @@ import { tmpdir } from "os";
 import { join, isAbsolute, resolve } from "path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { getProjectsDir, getHostProjectsDir, toHostPath } from "./scanner";
+import { log } from "@/lib/logger";
 
 interface PreprocessResult {
   tempFile: string;
@@ -238,7 +239,7 @@ export async function preprocessComposeFile(
       await rmdir(tempDir);
     } catch (err) {
       // Log cleanup errors for debugging but don't fail the operation
-      console.warn(`[Preprocess] Failed to clean up temp file ${tempFile}:`, err);
+      log.projects.warn(`Failed to clean up temp file ${tempFile}`, { error: String(err) });
     }
   };
 

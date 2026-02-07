@@ -43,15 +43,3 @@ export function getErrorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
-/**
- * Wrap an async handler with standard error handling
- */
-export function withErrorHandling(
-  handler: () => Promise<NextResponse>,
-  fallbackMessage: string
-): Promise<NextResponse> {
-  return handler().catch((err: unknown) => {
-    console.error(fallbackMessage, err);
-    return error(getErrorMessage(err, fallbackMessage));
-  });
-}

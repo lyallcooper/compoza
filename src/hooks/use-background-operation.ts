@@ -123,6 +123,8 @@ export interface BackgroundOperationConfig<TArgs, TResult> {
   cancellable?: boolean;
 }
 
+let taskSeq = 0;
+
 export function useBackgroundOperation<TArgs = void, TResult = void>(
   config: BackgroundOperationConfig<TArgs, TResult>
 ) {
@@ -133,7 +135,7 @@ export function useBackgroundOperation<TArgs = void, TResult = void>(
   const execute = useCallback(
     async (args: TArgs): Promise<boolean> => {
       setInflightCount((c) => c + 1);
-      const taskId = `${config.type}-${Date.now()}`;
+      const taskId = `${config.type}-${Date.now()}-${taskSeq++}`;
       const abortController = new AbortController();
 
       let cancelled = false;

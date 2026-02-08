@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/", label: "Dashboard" },
   { href: "/projects", label: "Projects" },
   { href: "/containers", label: "Containers" },
   { href: "/images", label: "Images" },
@@ -24,7 +23,7 @@ export function Header() {
   return (
     <header className="border-b border-border">
       <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="text-lg font-bold text-foreground">
+        <Link href="/" className={`text-lg font-bold px-1.5 py-0.5 rounded-sm ${pathname === "/" ? "bg-surface text-foreground" : "text-foreground"}`}>
           compoza
         </Link>
 
@@ -36,10 +35,10 @@ export function Header() {
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
               className={`
-                py-1 text-sm transition-colors border-b-2
+                py-0.5 -mx-1.5 px-1.5 text-sm rounded-sm transition-colors
                 ${isActive(item.href)
-                  ? "text-foreground border-foreground"
-                  : "text-muted border-transparent hover:text-foreground"
+                  ? "bg-surface text-foreground"
+                  : "text-muted hover:text-foreground"
                 }
               `}
             >

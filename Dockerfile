@@ -46,7 +46,6 @@ COPY --from=builder /app/server/dist/index.js ./server/index.js
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV BIND_ADDRESS=0.0.0.0
 
 EXPOSE 3000
 

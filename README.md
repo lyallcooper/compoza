@@ -61,7 +61,6 @@ All configuration is via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PROJECTS_DIR` | Path to projects inside the container | `/home/user/docker` |
-| `HOST_PROJECTS_DIR` | Path to projects on the Docker host (see below) | Same as `PROJECTS_DIR` |
 | `DOCKER_HOST` | Docker socket or TCP endpoint | `/var/run/docker.sock` |
 | `PORT` | Port to listen on | `3000` |
 
@@ -76,6 +75,12 @@ Compoza queries container registries to check for image updates. For best perfor
 | `GHCR_TOKEN` | GitHub classic PAT with `read:packages` scope |
 
 Authenticated Docker Hub users get 200 requests per 6 hours. GHCR has no rate limits for authenticated users.
+
+### Advanced Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `HOST_PROJECTS_DIR` | Path to projects on the Docker host (see below) | Same as `PROJECTS_DIR` |
 
 ### Host Path Mapping
 

@@ -8,11 +8,10 @@ import Docker from "dockerode";
 const dev = process.env.NODE_ENV === "development";
 config({ path: ".env.local", debug: dev, quiet: !dev });
 config({ path: ".env", debug: dev, quiet: !dev });
-const hostname = process.env.BIND_ADDRESS || "0.0.0.0";
+const hostname = "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
-// Update check interval (default: 30 minutes)
-const UPDATE_CHECK_INTERVAL = parseInt(process.env.UPDATE_CHECK_INTERVAL || "1800000", 10);
+const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
 // Timeout for update check - half the interval, minimum 2 minutes
 const UPDATE_CHECK_TIMEOUT = Math.max(UPDATE_CHECK_INTERVAL / 2, 120000);
 

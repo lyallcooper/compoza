@@ -1,12 +1,20 @@
 import Docker from "dockerode";
 import type { DistributionInfo } from "@/types";
 import { getRegistryCredentials, disableRegistryCredentials, isDockerHub, isGhcr } from "@/lib/registries/credentials";
+import { isMockMode } from "@/lib/mock-mode";
+import { getCurrentSessionId } from "@/lib/mock-mode/context";
+import { getSessionClient } from "@/lib/mock-mode/sessions";
 
 let dockerClient: Docker | null = null;
 
 const DOCKER_TIMEOUT = 30000; // 30 second timeout
 
 export function getDocker(): Docker {
+  if (isMockMode()) {
+    const sessionId = getCurrentSessionId() ?? "__default__";
+    return getSessionClient(sessionId);
+  }
+
   if (!dockerClient) {
     dockerClient = createDockerClient(DOCKER_TIMEOUT);
   }
@@ -18,6 +26,7 @@ export function getDocker(): Docker {
  * like system prune or build cache cleanup.
  */
 export function getDockerLongRunning(): Docker {
+  if (isMockMode()) return getDocker();
   return createDockerClient(300000); // 5 minutes
 }
 
@@ -51,6 +60,17 @@ export function setDockerClient(client: Docker): void {
  * Uses env var credentials if available.
  */
 export async function getImageDistribution(imageName: string): Promise<DistributionInfo> {
+  if (isMockMode()) {
+    return {
+      Descriptor: {
+        digest: "sha256:mock-distribution-digest-" + imageName.replace(/[^a-z0-9]/g, ""),
+        mediaType: "application/vnd.docker.distribution.manifest.v2+json",
+        size: 1234,
+      },
+      Platforms: [{ architecture: "amd64", os: "linux" }],
+    };
+  }
+
   const docker = getDocker();
   const image = docker.getImage(imageName);
 

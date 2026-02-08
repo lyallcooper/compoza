@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/layout";
+import { showDemoBanner } from "@/lib/mock-mode";
 import { titleTemplate } from "./metadata";
 import "./globals.css";
 
@@ -34,6 +35,14 @@ export default function RootLayout({
                 {children}
               </div>
             </main>
+            {showDemoBanner() && (
+              <footer className="sticky bottom-0 bg-foreground px-4 py-2 text-center text-xs text-background">
+                <div><span className="inline-block rounded bg-background px-1.5 py-0.5 font-bold text-foreground">DEMO MODE</span></div>
+                <div className="mt-1">
+                  Using mock docker daemon. Changes not persisted. Terminal, compose commands and registry operations disabled.
+                </div>
+              </footer>
+            )}
           </div>
         </Providers>
       </body>

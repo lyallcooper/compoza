@@ -3,7 +3,24 @@ import { createMockLogStream } from "./mock-log-stream";
 
 export function createMockContainer(state: DockerState, id: string) {
   const getState = () => {
-    const cs = state.containers.get(id);
+    // Look up by ID, then by name, then by ID prefix
+    let cs = state.containers.get(id);
+    if (!cs) {
+      for (const c of state.containers.values()) {
+        if (c.inspectInfo.Name === `/${id}` || c.inspectInfo.Name === id) {
+          cs = c;
+          break;
+        }
+      }
+    }
+    if (!cs && id.length >= 12) {
+      for (const c of state.containers.values()) {
+        if (c.id.startsWith(id)) {
+          cs = c;
+          break;
+        }
+      }
+    }
     if (!cs) {
       const err = new Error("no such container") as Error & { statusCode: number; reason: string };
       err.statusCode = 404;

@@ -1,4 +1,5 @@
 import type Docker from "dockerode";
+import { Readable } from "node:stream";
 import type { DockerState } from "./state";
 import { createMockContainer } from "./mock-container";
 import { createMockImage } from "./mock-image";
@@ -42,8 +43,14 @@ export function createMockDocker(state: DockerState): Docker {
 
     // --- Images ---
 
-    listImages: async () => {
-      return [...state.images.values()].map((img) => img.listInfo);
+    listImages: async (opts?: { filters?: { reference?: string[] } }) => {
+      const all = [...state.images.values()].map((img) => img.listInfo);
+      const refs = opts?.filters?.reference;
+      if (!refs || refs.length === 0) return all;
+      return all.filter((img) => {
+        const tags = img.RepoTags || [];
+        return refs.some((ref) => tags.some((tag) => tag === ref || tag.startsWith(ref.split(":")[0] + ":")));
+      });
     },
 
     getImage: (id: string) => {
@@ -135,9 +142,48 @@ export function createMockDocker(state: DockerState): Docker {
       return { SpaceReclaimed: 0 };
     },
 
-    // Modem (for pull progress tracking — not used in tests)
+    // Pull image — returns a mock progress stream via callback
+    pull: (name: string, callback: (err: Error | null, stream: NodeJS.ReadableStream) => void) => {
+      const events = [
+        JSON.stringify({ status: "Pulling from library/" + name.split(":")[0] }),
+        JSON.stringify({ status: "Digest: sha256:mock" }),
+        JSON.stringify({ status: "Status: Image is up to date for " + name }),
+      ];
+      const stream = Readable.from(events.map((e) => e + "\n"));
+      callback(null, stream);
+    },
+
+    // Create container — no-op, returns object with id and start()
+    createContainer: async (opts: { Image?: string; name?: string }) => {
+      const id = "mock-" + (opts.name || "container") + "-" + Date.now();
+      return {
+        id,
+        start: async () => {},
+        attach: async () => Readable.from([]),
+        wait: async () => ({ StatusCode: 0 }),
+      };
+    },
+
+    // Modem (for pull progress tracking)
     modem: {
-      followProgress: () => {},
+      followProgress: (
+        stream: NodeJS.ReadableStream,
+        onFinished: (err: Error | null, output: unknown[]) => void,
+        onProgress?: (event: unknown) => void,
+      ) => {
+        const output: unknown[] = [];
+        stream.on("data", (chunk: Buffer | string) => {
+          try {
+            const event = JSON.parse(typeof chunk === "string" ? chunk : chunk.toString());
+            output.push(event);
+            onProgress?.(event);
+          } catch {
+            // ignore non-JSON chunks
+          }
+        });
+        stream.on("end", () => onFinished(null, output));
+        stream.on("error", (err: Error) => onFinished(err, output));
+      },
     },
   } as unknown as Docker;
 }

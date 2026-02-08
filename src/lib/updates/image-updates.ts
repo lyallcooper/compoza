@@ -11,6 +11,13 @@ import {
 } from "./cache";
 import { parseImageRef, getRegistryType, resolveVersions, queryRegistry, OciClient, getOciRegistryUrl } from "@/lib/registries";
 import { extractSourceUrl, normalizeImageName } from "@/lib/format";
+import { isMockMode } from "@/lib/mock-mode";
+
+// Images that show as having updates in demo mode
+const DEMO_UPDATES: Record<string, { currentVersion: string; latestVersion: string }> = {
+  "nginx:1.25-alpine": { currentVersion: "1.25.3", latestVersion: "1.25.4" },
+  "grafana/grafana:10.2.3": { currentVersion: "10.2.3", latestVersion: "10.4.1" },
+};
 
 export interface ImageUpdateInfo {
   image: string;
@@ -28,6 +35,22 @@ export interface ImageUpdateInfo {
 type ImageTrackingState = string[] | undefined;
 
 export async function checkImageUpdates(images: Map<string, ImageTrackingState>): Promise<ImageUpdateInfo[]> {
+  if (isMockMode()) {
+    return [...images.keys()].map((name) => {
+      const normalized = normalizeImageName(name);
+      const demo = DEMO_UPDATES[normalized];
+      const result: ImageUpdateInfo = {
+        image: normalized,
+        updateAvailable: !!demo,
+        status: "checked",
+        currentVersion: demo?.currentVersion,
+        latestVersion: demo?.latestVersion,
+      };
+      setCachedUpdate(normalized, { ...result, versionStatus: "resolved" });
+      return result;
+    });
+  }
+
   const results: ImageUpdateInfo[] = [];
   const imagesToCheck: [string, ImageTrackingState][] = [];
 

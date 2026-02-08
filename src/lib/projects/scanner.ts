@@ -1,10 +1,12 @@
 import { readdir, readFile, stat } from "fs/promises";
 import { isAbsolute, join, relative, resolve } from "path";
 import { parse as parseYaml } from "yaml";
-import type { Project, ProjectService, ComposeConfig } from "@/types";
+import type { Project, ProjectStatus, ProjectService, ComposeConfig, Container } from "@/types";
 import { listContainers } from "@/lib/docker";
 import { log } from "@/lib/logger";
 import { normalizeImageName } from "@/lib/format";
+import { isMockMode } from "@/lib/mock-mode";
+import { scanMockProjects, getMockProject, readMockComposeFile, readMockEnvFile } from "@/lib/mock-mode/demo-projects";
 
 const COMPOSE_FILENAMES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 const PROJECT_SCAN_CACHE_TTL_MS = 2000;
@@ -81,6 +83,8 @@ export function toHostPath(localPath: string): string {
 }
 
 export async function scanProjects(): Promise<Project[]> {
+  if (isMockMode()) return scanMockProjects();
+
   const projectsDir = getProjectsDir();
 
   if (process.env.NODE_ENV !== "test") {
@@ -174,55 +178,67 @@ async function findComposeFile(projectPath: string): Promise<string | null> {
   return null;
 }
 
+/**
+ * Build service list and determine project status from a parsed compose config
+ * and matching containers. Shared between the real scanner and mock project builder.
+ */
+export function buildServicesFromConfig(
+  config: ComposeConfig,
+  projectContainers: Container[],
+): { services: ProjectService[]; status: ProjectStatus } {
+  const services: ProjectService[] = [];
+  let runningCount = 0;
+
+  if (config.services) {
+    for (const [serviceName, serviceConfig] of Object.entries(config.services)) {
+      const container = projectContainers.find((c) => c.serviceName === serviceName);
+
+      const service: ProjectService = {
+        name: serviceName,
+        image: container?.image || (serviceConfig.image ? normalizeImageName(serviceConfig.image) : undefined),
+        imageId: container?.imageId,
+        containerId: container?.id,
+        containerName: container?.name,
+        status: container?.state === "running" ? "running"
+          : container?.state === "restarting" ? "restarting"
+          : container ? "exited" : "unknown",
+        ports: container?.ports,
+        hasBuild: !!serviceConfig.build,
+      };
+
+      if (container?.state === "running" || container?.state === "restarting") runningCount++;
+      services.push(service);
+    }
+  }
+
+  let status: ProjectStatus = "unknown";
+  if (services.length > 0) {
+    if (runningCount === services.length) {
+      status = "running";
+    } else if (runningCount > 0) {
+      status = "partial";
+    } else {
+      status = "stopped";
+    }
+  }
+
+  return { services, status };
+}
+
 async function buildProject(
   name: string,
   path: string,
   composeFile: string,
-  containers: Awaited<ReturnType<typeof listContainers>>
+  containers: Container[]
 ): Promise<Project> {
-  const services: ProjectService[] = [];
-  let status: Project["status"] = "unknown";
+  let services: ProjectService[] = [];
+  let status: ProjectStatus = "unknown";
 
   try {
     const content = await readFile(composeFile, "utf-8");
     const config = parseYaml(content) as ComposeConfig;
-
-    if (config.services) {
-      const projectContainers = containers.filter((c) => c.projectName === name);
-      let runningCount = 0;
-
-      for (const [serviceName, serviceConfig] of Object.entries(config.services)) {
-        const container = projectContainers.find((c) => c.serviceName === serviceName);
-
-        const service: ProjectService = {
-          name: serviceName,
-          image: container?.image || (serviceConfig.image ? normalizeImageName(serviceConfig.image) : undefined),
-          imageId: container?.imageId,
-          containerId: container?.id,
-          containerName: container?.name,
-          status: container?.state === "running" ? "running"
-            : container?.state === "restarting" ? "restarting"
-            : container ? "exited" : "unknown",
-          ports: container?.ports,
-          hasBuild: !!serviceConfig.build,
-        };
-
-        // Count running or restarting containers as "active" for project status
-        if (container?.state === "running" || container?.state === "restarting") runningCount++;
-        services.push(service);
-      }
-
-      // Determine project status
-      if (services.length === 0) {
-        status = "unknown";
-      } else if (runningCount === services.length) {
-        status = "running";
-      } else if (runningCount > 0) {
-        status = "partial";
-      } else {
-        status = "stopped";
-      }
-    }
+    const projectContainers = containers.filter((c) => c.projectName === name);
+    ({ services, status } = buildServicesFromConfig(config, projectContainers));
   } catch (error) {
     log.projects.error(`Failed to parse compose file for ${name}`, error);
   }
@@ -231,6 +247,8 @@ async function buildProject(
 }
 
 export async function getProject(name: string): Promise<Project | null> {
+  if (isMockMode()) return getMockProject(name);
+
   if (!isValidProjectName(name)) {
     log.projects.warn(`Invalid project name rejected: ${name}`);
     return null;
@@ -255,6 +273,8 @@ export async function getProject(name: string): Promise<Project | null> {
 }
 
 export async function readComposeFile(projectName: string): Promise<string | null> {
+  if (isMockMode()) return readMockComposeFile(projectName);
+
   const project = await getProject(projectName);
   if (!project) return null;
 
@@ -267,6 +287,8 @@ export async function readComposeFile(projectName: string): Promise<string | nul
 }
 
 export async function readEnvFile(projectName: string): Promise<string | null> {
+  if (isMockMode()) return readMockEnvFile(projectName);
+
   if (!isValidProjectName(projectName)) {
     log.projects.warn(`Invalid project name rejected: ${projectName}`);
     return null;

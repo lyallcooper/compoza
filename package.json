@@ -10,7 +10,9 @@
     "start": "node server/dist/index.js",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "demo": "DOCKER_HOST=mock pnpm dev",
+    "demo:no-banner": "DOCKER_HOST=mock+no-banner pnpm dev"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",

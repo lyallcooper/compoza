@@ -1,5 +1,5 @@
 import { readdir, readFile, stat } from "fs/promises";
-import { join } from "path";
+import { isAbsolute, join, relative, resolve } from "path";
 import { parse as parseYaml } from "yaml";
 import type { Project, ProjectService, ComposeConfig } from "@/types";
 import { listContainers } from "@/lib/docker";
@@ -7,6 +7,17 @@ import { log } from "@/lib/logger";
 import { normalizeImageName } from "@/lib/format";
 
 const COMPOSE_FILENAMES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
+const PROJECT_SCAN_CACHE_TTL_MS = 2000;
+
+const globalProjectScanCache = globalThis as typeof globalThis & {
+  __projectScanCache?: { projects: Project[]; expiresAt: number; projectsDir: string } | null;
+  __projectScanInFlight?: Promise<Project[]> | null;
+};
+
+if (globalProjectScanCache.__projectScanCache === undefined) {
+  globalProjectScanCache.__projectScanCache = null;
+  globalProjectScanCache.__projectScanInFlight = null;
+}
 
 /**
  * Valid project name pattern: alphanumeric, hyphens, underscores only.
@@ -36,6 +47,21 @@ export function getHostProjectsDir(): string {
 }
 
 /**
+ * Check whether a path is equal to or nested under a base directory.
+ */
+export function isPathWithinBase(pathToCheck: string, basePath: string): boolean {
+  const resolvedPath = resolve(pathToCheck);
+  const resolvedBase = resolve(basePath);
+  const rel = relative(resolvedBase, resolvedPath);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+export function invalidateProjectScanCache(): void {
+  globalProjectScanCache.__projectScanCache = null;
+  globalProjectScanCache.__projectScanInFlight = null;
+}
+
+/**
  * Translate a local project path to the path as seen by the Docker host.
  */
 export function toHostPath(localPath: string): string {
@@ -46,8 +72,9 @@ export function toHostPath(localPath: string): string {
     return localPath;
   }
 
-  if (localPath.startsWith(localBase)) {
-    return hostBase + localPath.slice(localBase.length);
+  if (isPathWithinBase(localPath, localBase)) {
+    const rel = relative(resolve(localBase), resolve(localPath));
+    return rel ? join(hostBase, rel) : hostBase;
   }
 
   return localPath;
@@ -56,6 +83,47 @@ export function toHostPath(localPath: string): string {
 export async function scanProjects(): Promise<Project[]> {
   const projectsDir = getProjectsDir();
 
+  if (process.env.NODE_ENV !== "test") {
+    const cached = globalProjectScanCache.__projectScanCache;
+    if (cached && cached.projectsDir === projectsDir && cached.expiresAt > Date.now()) {
+      return cached.projects;
+    }
+
+    if (globalProjectScanCache.__projectScanInFlight) {
+      return globalProjectScanCache.__projectScanInFlight;
+    }
+  }
+
+  const scanPromise = scanProjectsUncached(projectsDir);
+
+  if (process.env.NODE_ENV !== "test") {
+    globalProjectScanCache.__projectScanInFlight = scanPromise;
+  }
+
+  try {
+    const projects = await scanPromise;
+    if (
+      process.env.NODE_ENV !== "test"
+      && globalProjectScanCache.__projectScanInFlight === scanPromise
+    ) {
+      globalProjectScanCache.__projectScanCache = {
+        projects,
+        expiresAt: Date.now() + PROJECT_SCAN_CACHE_TTL_MS,
+        projectsDir,
+      };
+    }
+    return projects;
+  } finally {
+    if (
+      process.env.NODE_ENV !== "test"
+      && globalProjectScanCache.__projectScanInFlight === scanPromise
+    ) {
+      globalProjectScanCache.__projectScanInFlight = null;
+    }
+  }
+}
+
+async function scanProjectsUncached(projectsDir: string): Promise<Project[]> {
   try {
     const entries = await readdir(projectsDir, { withFileTypes: true });
     const containers = await listContainers({ all: true });

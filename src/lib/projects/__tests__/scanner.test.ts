@@ -113,6 +113,13 @@ describe("toHostPath", () => {
 
     expect(toHostPath("/other/path/file")).toBe("/other/path/file");
   });
+
+  it("does not rewrite sibling prefixes that only start with PROJECTS_DIR text", () => {
+    vi.stubEnv("PROJECTS_DIR", "/data/projects");
+    vi.stubEnv("HOST_PROJECTS_DIR", "/mnt/nas/projects");
+
+    expect(toHostPath("/data/projects-archive/file")).toBe("/data/projects-archive/file");
+  });
 });
 
 // ---------------------------------------------------------------------------

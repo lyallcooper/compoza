@@ -109,6 +109,20 @@ services:
     expect(volumes[0]).toBe("/etc/ssl/certs:/certs:ro");
   });
 
+  it("does not rewrite sibling prefixes that only start with PROJECTS_DIR text", async () => {
+    mockReadFile.mockResolvedValue(`
+services:
+  web:
+    image: nginx
+    volumes:
+      - /data/projects-archive/data:/app/data
+`);
+    await preprocessComposeFile("/data/projects/myapp/compose.yaml", "/data/projects/myapp");
+    const yaml = getWrittenYaml();
+    const volumes = (yaml.services as Record<string, { volumes: string[] }>).web.volumes;
+    expect(volumes[0]).toBe("/data/projects-archive/data:/app/data");
+  });
+
   it("rewrites long syntax bind mount source", async () => {
     mockReadFile.mockResolvedValue(`
 services:

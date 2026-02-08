@@ -2,7 +2,7 @@ import { readFile, writeFile, unlink, mkdtemp, rmdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join, isAbsolute, resolve } from "path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { getProjectsDir, getHostProjectsDir, toHostPath } from "./scanner";
+import { getProjectsDir, getHostProjectsDir, isPathWithinBase, toHostPath } from "./scanner";
 import { log } from "@/lib/logger";
 
 interface PreprocessResult {
@@ -66,7 +66,7 @@ function toAbsoluteHostPath(relativePath: string, projectDir: string): string {
   if (isAbsolute(relativePath)) {
     // If absolute and within PROJECTS_DIR, translate it
     const localBase = getProjectsDir();
-    if (relativePath.startsWith(localBase)) {
+    if (isPathWithinBase(relativePath, localBase)) {
       return toHostPath(relativePath);
     }
     return relativePath;
@@ -112,7 +112,7 @@ function rewriteVolumes(
       // If source is absolute and within PROJECTS_DIR, translate it
       if (volume.type === "bind" && volume.source && isAbsolute(volume.source)) {
         const localBase = getProjectsDir();
-        if (volume.source.startsWith(localBase)) {
+        if (isPathWithinBase(volume.source, localBase)) {
           return { ...volume, source: toHostPath(volume.source) };
         }
       }
@@ -133,7 +133,7 @@ function rewriteVolumes(
       // Skip absolute paths unless they're within PROJECTS_DIR
       if (isAbsolute(source)) {
         const localBase = getProjectsDir();
-        if (source.startsWith(localBase)) {
+        if (isPathWithinBase(source, localBase)) {
           return toHostPath(source) + rest;
         }
         return volume;

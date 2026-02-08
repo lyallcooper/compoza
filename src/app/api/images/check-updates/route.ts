@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdates } from "@/lib/updates";
-import { scanProjects } from "@/lib/projects";
 import { listContainers } from "@/lib/docker";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
 import { log } from "@/lib/logger";
@@ -9,6 +8,47 @@ import { log } from "@/lib/logger";
 let initialCheckDone = false;
 let initialCheckPromise: Promise<void> | null = null;
 
+interface ImageTrackingContainer {
+  image?: string;
+  imageId?: string;
+  created: number;
+}
+
+export function buildImageTrackingMap(
+  containers: readonly ImageTrackingContainer[]
+): Map<string, string[] | undefined> {
+  const imageCandidates = new Map<string, Map<string, number>>();
+  for (const container of containers) {
+    if (!container.image) continue;
+
+    let imageIds = imageCandidates.get(container.image);
+    if (!imageIds) {
+      imageIds = new Map<string, number>();
+      imageCandidates.set(container.image, imageIds);
+    }
+
+    if (container.imageId) {
+      const existingCreated = imageIds.get(container.imageId);
+      if (existingCreated === undefined || container.created < existingCreated) {
+        imageIds.set(container.imageId, container.created);
+      }
+    }
+  }
+
+  const imageMap = new Map<string, string[] | undefined>();
+  for (const [image, imageIds] of imageCandidates) {
+    if (imageIds.size === 0) {
+      imageMap.set(image, undefined);
+      continue;
+    }
+    const orderedImageIds = [...imageIds.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .map(([imageId]) => imageId);
+    imageMap.set(image, orderedImageIds);
+  }
+  return imageMap;
+}
+
 async function ensureInitialCheck() {
   if (initialCheckDone) return;
   if (initialCheckPromise) return initialCheckPromise;
@@ -16,27 +56,11 @@ async function ensureInitialCheck() {
   initialCheckPromise = (async () => {
     try {
       log.updates.info("Triggering initial check from API");
-      const imageMap = new Map<string, string | undefined>();
-
-      // Collect images from compose projects (only services with containers)
-      const projects = await scanProjects();
-      for (const project of projects) {
-        for (const service of project.services) {
-          if (service.image && service.containerId && !imageMap.has(service.image)) {
-            imageMap.set(service.image, service.imageId);
-          }
-        }
-      }
-
-      // Collect images from all containers (includes standalone)
-      // Our listContainers wrapper resolves sha256: hashes back to their
-      // original tag name via Config.Image, so stale containers are included
+      // Collect images from all containers (compose + standalone).
+      // If multiple containers share the same image tag, keep all image IDs,
+      // ordered by oldest container first so stale deployments remain visible.
       const containers = await listContainers({ all: true });
-      for (const container of containers) {
-        if (container.image && !imageMap.has(container.image)) {
-          imageMap.set(container.image, container.imageId);
-        }
-      }
+      const imageMap = buildImageTrackingMap(containers);
 
       if (imageMap.size > 0) {
         await checkImageUpdates(imageMap);

@@ -25,12 +25,14 @@ export interface ImageUpdateInfo {
   sourceUrl?: string;
 }
 
-export async function checkImageUpdates(images: Map<string, string | undefined>): Promise<ImageUpdateInfo[]> {
+type ImageTrackingState = string[] | undefined;
+
+export async function checkImageUpdates(images: Map<string, ImageTrackingState>): Promise<ImageUpdateInfo[]> {
   const results: ImageUpdateInfo[] = [];
-  const imagesToCheck: [string, string | undefined][] = [];
+  const imagesToCheck: [string, ImageTrackingState][] = [];
 
   // First, return cached results and identify what needs checking
-  for (const [rawName, containerImageId] of images) {
+  for (const [rawName, containerImageIds] of images) {
     const imageName = normalizeImageName(rawName);
     const cached = getCachedUpdate(imageName);
     if (cached) {
@@ -49,10 +51,10 @@ export async function checkImageUpdates(images: Map<string, string | undefined>)
 
       // Schedule background refresh if stale
       if (shouldCheckImage(imageName)) {
-        imagesToCheck.push([imageName, containerImageId]);
+        imagesToCheck.push([imageName, containerImageIds]);
       }
     } else {
-      imagesToCheck.push([imageName, containerImageId]);
+      imagesToCheck.push([imageName, containerImageIds]);
     }
   }
 
@@ -80,11 +82,13 @@ export async function checkImageUpdates(images: Map<string, string | undefined>)
   return results;
 }
 
-async function checkImagesDirectly(images: [string, string | undefined][]): Promise<ImageUpdateInfo[]> {
+async function checkImagesDirectly(images: [string, ImageTrackingState][]): Promise<ImageUpdateInfo[]> {
   const docker = getDocker();
 
   const settled = await Promise.allSettled(
-    images.map(([imageName, containerImageId]) => checkSingleImage(docker, imageName, containerImageId))
+    images.map(([imageName, containerImageIds]) =>
+      checkSingleImage(docker, imageName, containerImageIds)
+    )
   );
 
   return settled
@@ -92,10 +96,16 @@ async function checkImagesDirectly(images: [string, string | undefined][]): Prom
     .map((r) => r.value);
 }
 
+function extractDigestForRepo(repoDigests: string[] | undefined, repoBase: string): string | undefined {
+  if (!repoDigests?.length) return undefined;
+  const matchingDigest = repoDigests.find((d) => d.startsWith(repoBase + "@"));
+  return matchingDigest?.split("@")[1] || repoDigests[0]?.split("@")[1];
+}
+
 async function checkSingleImage(
   docker: ReturnType<typeof getDocker>,
   rawImageName: string,
-  containerImageId?: string
+  containerImageIds?: string[]
 ): Promise<ImageUpdateInfo> {
   const imageName = normalizeImageName(rawImageName);
 
@@ -135,38 +145,44 @@ async function checkSingleImage(
 
   try {
     let currentDigest: string | undefined;
+    const currentDigests = new Set<string>();
     let sourceUrl: string | undefined;
     const repoBase = imageName.split(":")[0];
 
-    // Primary: inspect the image the container is actually running
-    if (containerImageId) {
+    // Primary: inspect the images containers are actually running.
+    const trackedImageIds = containerImageIds?.length
+      ? [...new Set(containerImageIds)]
+      : [];
+    for (const containerImageId of trackedImageIds) {
       try {
         const inspection = await docker.getImage(containerImageId).inspect();
-        const repoDigests = inspection.RepoDigests;
-        if (repoDigests?.length > 0) {
-          const matching = repoDigests.find((d: string) => d.startsWith(repoBase + "@"));
-          currentDigest = matching?.split("@")[1] || repoDigests[0]?.split("@")[1];
+        const digest = extractDigestForRepo(inspection.RepoDigests, repoBase);
+        if (digest) {
+          currentDigests.add(digest);
+          if (!currentDigest) {
+            currentDigest = digest;
+          }
         }
-        sourceUrl = extractSourceUrl(inspection.Config?.Labels, imageName);
+        sourceUrl = sourceUrl || extractSourceUrl(inspection.Config?.Labels, imageName);
       } catch {
         // Image may have been pruned; fall through to listImages
       }
     }
 
-    // Fallback when no containerImageId or inspect failed (image pruned)
-    if (!currentDigest) {
+    // Fallback when no tracked image IDs resolve (e.g. images were pruned)
+    if (currentDigests.size === 0) {
       const localImages = await docker.listImages({
         filters: { reference: [imageName] },
       });
 
       sourceUrl = sourceUrl || extractSourceUrl(localImages[0]?.Labels, imageName);
 
-      const repoDigests = localImages[0]?.RepoDigests;
-      if (localImages.length > 0 && repoDigests && repoDigests.length > 0) {
-        const matchingDigest = repoDigests.find((d) =>
-          d.startsWith(repoBase + "@")
-        );
-        currentDigest = matchingDigest?.split("@")[1] || repoDigests[0]?.split("@")[1];
+      if (localImages.length > 0) {
+        const digest = extractDigestForRepo(localImages[0]?.RepoDigests, repoBase);
+        if (digest) {
+          currentDigest = digest;
+          currentDigests.add(digest);
+        }
       }
 
       // Try inspecting directly if no digest from list
@@ -174,11 +190,10 @@ async function checkSingleImage(
         try {
           const image = docker.getImage(imageName);
           const inspection = await image.inspect();
-          if (inspection.RepoDigests?.length > 0) {
-            const matchingDigest = inspection.RepoDigests.find((d: string) =>
-              d.startsWith(repoBase + "@")
-            );
-            currentDigest = matchingDigest?.split("@")[1] || inspection.RepoDigests[0]?.split("@")[1];
+          const digest = extractDigestForRepo(inspection.RepoDigests, repoBase);
+          if (digest) {
+            currentDigest = digest;
+            currentDigests.add(digest);
           }
         } catch {
           // Image inspect failed - not critical, we'll continue without digest
@@ -196,7 +211,9 @@ async function checkSingleImage(
             image: imageName,
             currentDigest,
             latestDigest: registryResult.latestDigest,
-            updateAvailable: registryResult.updateAvailable,
+            updateAvailable: registryResult.latestDigest
+              ? !currentDigests.has(registryResult.latestDigest)
+              : registryResult.updateAvailable,
             status: registryResult.latestDigest ? "checked" : "unknown",
             currentVersion: registryResult.currentVersion,
             latestVersion: registryResult.latestVersion,
@@ -225,7 +242,7 @@ async function checkSingleImage(
         status: "unknown",
         sourceUrl,
       };
-    } else if (!currentDigest) {
+    } else if (currentDigests.size === 0) {
       result = {
         image: imageName,
         latestDigest,
@@ -238,7 +255,7 @@ async function checkSingleImage(
         image: imageName,
         currentDigest,
         latestDigest,
-        updateAvailable: latestDigest !== currentDigest,
+        updateAvailable: !currentDigests.has(latestDigest),
         status: "checked",
         sourceUrl,
       };

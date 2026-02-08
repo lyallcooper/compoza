@@ -8,7 +8,9 @@
     "dev:next": "next dev",
     "build": "next build && tsc -p server/tsconfig.json",
     "start": "node server/dist/index.js",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",
@@ -32,7 +34,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "tsx": "^4.21.0",
     "@types/dockerode": "^4.0.1",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -40,9 +41,14 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.0",
+    "vitest": "^4.0.18"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

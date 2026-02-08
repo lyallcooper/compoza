@@ -41,6 +41,10 @@ export function resetDockerClient(): void {
   dockerClient = null;
 }
 
+export function setDockerClient(client: Docker): void {
+  dockerClient = client;
+}
+
 /**
  * Get distribution info for an image from the registry.
  * The distribution() method exists on dockerode but is not in @types/dockerode.

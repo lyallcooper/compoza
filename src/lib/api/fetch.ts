@@ -86,9 +86,11 @@ export async function apiPut<T>(
  */
 export async function apiDelete<T>(
   url: string,
-  body?: unknown
+  body?: unknown,
+  options?: Omit<FetchOptions, "method" | "body">
 ): Promise<T> {
   return apiFetch<T>(url, {
+    ...options,
     method: "DELETE",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,

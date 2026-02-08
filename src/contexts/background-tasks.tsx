@@ -8,9 +8,11 @@ import {
   ReactNode,
 } from "react";
 
+const MAX_OUTPUT_LINES = 200;
+
 export interface BackgroundTask {
   id: string;
-  type: "update-all" | "update-project" | "update-container";
+  type: string;
   label: string;
   progress?: string;
   total?: number;
@@ -18,6 +20,9 @@ export interface BackgroundTask {
   status: "running" | "complete" | "error" | "disconnected";
   error?: string;
   cancel?: () => void;
+  output?: string[];
+  result?: Record<string, unknown>;
+  hidden?: boolean;
 }
 
 interface BackgroundTasksContextValue {
@@ -25,6 +30,7 @@ interface BackgroundTasksContextValue {
   addTask: (task: BackgroundTask) => void;
   updateTask: (id: string, updates: Partial<BackgroundTask>) => void;
   removeTask: (id: string) => void;
+  appendOutput: (id: string, lines: string[]) => void;
 }
 
 const BackgroundTasksContext = createContext<BackgroundTasksContextValue | null>(null);
@@ -46,9 +52,25 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   }, []);
 
+  const appendOutput = useCallback((id: string, lines: string[]) => {
+    setTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== id) return task;
+        const existing = task.output || [];
+        const combined = [...existing, ...lines];
+        return {
+          ...task,
+          output: combined.length > MAX_OUTPUT_LINES
+            ? combined.slice(combined.length - MAX_OUTPUT_LINES)
+            : combined,
+        };
+      })
+    );
+  }, []);
+
   return (
     <BackgroundTasksContext.Provider
-      value={{ tasks, addTask, updateTask, removeTask }}
+      value={{ tasks, addTask, updateTask, removeTask, appendOutput }}
     >
       {children}
     </BackgroundTasksContext.Provider>

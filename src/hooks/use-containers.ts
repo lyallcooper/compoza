@@ -43,15 +43,15 @@ export function useContainerStats(id: string, enabled = true) {
   });
 }
 
-export function useStartContainer() {
+function useSimpleContainerAction(action: string, verb: string) {
   const queryClient = useQueryClient();
 
   const config = useMemo(() => ({
-    type: "container-start",
-    getLabel: (id: string) => `Starting ${id}`,
+    type: `container-${action}`,
+    getLabel: (id: string) => `${verb} ${id}`,
     execute: async (id: string, { signal }: OperationCallbacks) => {
       await apiPost<{ message: string }>(
-        `/api/containers/${encodeURIComponent(id)}/start`,
+        `/api/containers/${encodeURIComponent(id)}/${action}`,
         undefined,
         { signal }
       );
@@ -62,58 +62,14 @@ export function useStartContainer() {
     onError: async (_error: Error, id: string) => {
       invalidateContainerQueries(queryClient, id);
     },
-  }), [queryClient]);
+  }), [queryClient, action, verb]);
 
   return useBackgroundOperation<string>(config);
 }
 
-export function useStopContainer() {
-  const queryClient = useQueryClient();
-
-  const config = useMemo(() => ({
-    type: "container-stop",
-    getLabel: (id: string) => `Stopping ${id}`,
-    execute: async (id: string, { signal }: OperationCallbacks) => {
-      await apiPost<{ message: string }>(
-        `/api/containers/${encodeURIComponent(id)}/stop`,
-        undefined,
-        { signal }
-      );
-    },
-    onSuccess: async (_result: void | undefined, id: string) => {
-      invalidateContainerQueries(queryClient, id);
-    },
-    onError: async (_error: Error, id: string) => {
-      invalidateContainerQueries(queryClient, id);
-    },
-  }), [queryClient]);
-
-  return useBackgroundOperation<string>(config);
-}
-
-export function useRestartContainer() {
-  const queryClient = useQueryClient();
-
-  const config = useMemo(() => ({
-    type: "container-restart",
-    getLabel: (id: string) => `Restarting ${id}`,
-    execute: async (id: string, { signal }: OperationCallbacks) => {
-      await apiPost<{ message: string }>(
-        `/api/containers/${encodeURIComponent(id)}/restart`,
-        undefined,
-        { signal }
-      );
-    },
-    onSuccess: async (_result: void | undefined, id: string) => {
-      invalidateContainerQueries(queryClient, id);
-    },
-    onError: async (_error: Error, id: string) => {
-      invalidateContainerQueries(queryClient, id);
-    },
-  }), [queryClient]);
-
-  return useBackgroundOperation<string>(config);
-}
+export function useStartContainer() { return useSimpleContainerAction("start", "Starting"); }
+export function useStopContainer() { return useSimpleContainerAction("stop", "Stopping"); }
+export function useRestartContainer() { return useSimpleContainerAction("restart", "Restarting"); }
 
 export function useRemoveContainer() {
   const queryClient = useQueryClient();

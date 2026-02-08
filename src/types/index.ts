@@ -171,11 +171,6 @@ export interface ComposeService {
   entrypoint?: string | string[];
 }
 
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-}
-
 // Docker Distribution API response (not in @types/dockerode)
 export interface DistributionInfo {
   Descriptor?: {

@@ -20,6 +20,8 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 // Docker client - handle both socket and TCP connections
+// Note: similar factory exists in src/lib/docker/client.ts for the Next.js API routes.
+// Duplicated because the server and src use different TS module systems.
 function createDockerClient(): Docker {
   const dockerHost = process.env.DOCKER_HOST || "/var/run/docker.sock";
   console.log(`[Docker] Connecting to: ${dockerHost}`);

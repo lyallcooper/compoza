@@ -61,7 +61,7 @@ export function useBackgroundProjectUpdate() {
       if (result) invalidateProjectQueries(queryClient, result.projectName);
       invalidateContainerQueries(queryClient);
     },
-    onError: async (_error: Error) => {
+    onError: async () => {
       // Clear cache even on failure — pull may have succeeded before up failed
       await clearUpdateCacheAndInvalidate(queryClient);
     },

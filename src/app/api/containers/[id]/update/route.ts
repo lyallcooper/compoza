@@ -32,9 +32,14 @@ export async function POST(
     const wasRunning = container.state === "running";
 
     // Pull the image for this service
-    const pullResult = await composePullService(projectName, serviceName, (data) => {
-      send({ type: "output", data });
-    });
+    const pullResult = await composePullService(
+      projectName,
+      serviceName,
+      {},
+      (data) => {
+        send({ type: "output", data });
+      }
+    );
 
     if (!pullResult.success) {
       send({ type: "error", message: pullResult.error || "Failed to pull image" });
@@ -49,9 +54,14 @@ export async function POST(
     // Recreate the service if it was running
     let restarted = false;
     if (wasRunning) {
-      const upResult = await composeUpService(projectName, serviceName, (data) => {
-        send({ type: "output", data });
-      });
+      const upResult = await composeUpService(
+        projectName,
+        serviceName,
+        {},
+        (data) => {
+          send({ type: "output", data });
+        }
+      );
 
       if (!upResult.success) {
         send({ type: "error", message: upResult.error || "Failed to recreate container" });

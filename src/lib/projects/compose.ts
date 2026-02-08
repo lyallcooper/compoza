@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { writeFile, mkdir, access, rm } from "fs/promises";
 import { join } from "path";
-import { getProjectsDir, getProject, toHostPath, isValidProjectName } from "./scanner";
+import { getProjectsDir, getProject, toHostPath, isValidProjectName, invalidateProjectScanCache } from "./scanner";
 import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
 import { log } from "@/lib/logger";
 import { getDocker, getSelfProjectName } from "@/lib/docker";
@@ -91,6 +91,7 @@ interface ComposeResult {
   success: boolean;
   output: string;
   error?: string;
+  status?: number;
 }
 
 const COMPOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
@@ -99,6 +100,7 @@ const MAX_OUTPUT_SIZE = 10 * 1024 * 1024; // 10MB
 interface RunComposeOptions {
   onOutput?: (data: string) => void;
   composeFile?: string;
+  signal?: AbortSignal;
 }
 
 interface PreparedComposeCommand {
@@ -146,9 +148,25 @@ async function runComposeCommand(
   args: string[],
   options: RunComposeOptions = {}
 ): Promise<ComposeResult> {
-  const { onOutput, composeFile } = options;
+  const { onOutput, composeFile, signal } = options;
   const { args: composeArgs, cleanup } = await prepareComposeCommand(projectPath, composeFile);
   composeArgs.push(...args);
+
+  const runCleanup = async () => {
+    if (!cleanup) return;
+    try {
+      await cleanup();
+    } catch (error) {
+      log.compose.warn("Compose cleanup failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  if (signal?.aborted) {
+    await runCleanup();
+    return { success: false, output: "", error: "Command aborted" };
+  }
 
   log.compose.debug("Running command", {
     command: `docker ${composeArgs.join(" ")}`,
@@ -164,15 +182,40 @@ async function runComposeCommand(
     let output = "";
     let resolved = false;
     let timedOut = false;
+    let cancelled = false;
     let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const abortProcess = (reason: string) => {
+      if (cancelled || timedOut || proc.killed) return;
+      cancelled = true;
+      log.compose.info("Command cancelled", {
+        reason,
+        command: `docker ${composeArgs.join(" ")}`,
+      });
+      proc.kill("SIGTERM");
+      killTimeoutId = setTimeout(() => {
+        if (!proc.killed) {
+          proc.kill("SIGKILL");
+        }
+      }, 5000);
+    };
+
+    const onAbort = () => {
+      abortProcess("request aborted");
+    };
 
     const resolveOnce = (result: ComposeResult) => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeoutId);
       clearTimeout(killTimeoutId);
+      signal?.removeEventListener("abort", onAbort);
       resolve(result);
     };
+
+    if (signal) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
 
     // Timeout to prevent hanging forever
     const timeoutId = setTimeout(() => {
@@ -189,21 +232,27 @@ async function runComposeCommand(
       }, 5000);
     }, COMPOSE_TIMEOUT);
 
-    proc.stdout.on("data", (data) => {
+    const handleOutput = (data: Buffer) => {
       const str = data.toString();
       if (output.length < MAX_OUTPUT_SIZE) {
         output += str;
       }
-      onOutput?.(str);
-    });
+      if (!onOutput) return;
+      try {
+        onOutput(str);
+      } catch (error) {
+        log.compose.warn("Output callback failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        abortProcess("output callback failed");
+      }
+    };
+
+    proc.stdout.on("data", handleOutput);
 
     proc.stderr.on("data", (data) => {
-      const str = data.toString();
       // docker compose often writes progress to stderr
-      if (output.length < MAX_OUTPUT_SIZE) {
-        output += str;
-      }
-      onOutput?.(str);
+      handleOutput(data);
     });
 
     proc.on("close", async (code) => {
@@ -214,14 +263,14 @@ async function runComposeCommand(
       } else {
         log.compose.debug("Command completed", { exitCode: code });
       }
-      if (cleanup) {
-        await cleanup();
-      }
+      await runCleanup();
       const error = timedOut
         ? `Command timed out after ${COMPOSE_TIMEOUT / 1000}s`
-        : code !== 0 ? output : undefined;
+        : cancelled
+          ? "Command aborted"
+          : code !== 0 ? output : undefined;
       resolveOnce({
-        success: code === 0 && !timedOut,
+        success: code === 0 && !timedOut && !cancelled,
         output,
         error,
       });
@@ -229,9 +278,7 @@ async function runComposeCommand(
 
     proc.on("error", async (err) => {
       log.compose.error("Spawn error", err);
-      if (cleanup) {
-        await cleanup();
-      }
+      await runCleanup();
       resolveOnce({
         success: false,
         output,
@@ -243,7 +290,7 @@ async function runComposeCommand(
 
 export async function composeUp(
   projectName: string,
-  options: { detach?: boolean; build?: boolean; pull?: boolean } = {},
+  options: { detach?: boolean; build?: boolean; pull?: boolean; signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -254,6 +301,9 @@ export async function composeUp(
   // If updating ourselves, use the updater container approach
   const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile);
   if (selfUpdateResult) {
+    if (selfUpdateResult.success) {
+      invalidateProjectScanCache();
+    }
     return selfUpdateResult;
   }
 
@@ -262,15 +312,20 @@ export async function composeUp(
   if (options.build) args.push("--build");
   if (options.pull) args.push("--pull", "always");
 
-  return runComposeCommand(project.path, args, {
+  const result = await runComposeCommand(project.path, args, {
     onOutput,
     composeFile: project.composeFile,
+    signal: options.signal,
   });
+  if (result.success) {
+    invalidateProjectScanCache();
+  }
+  return result;
 }
 
 export async function composeDown(
   projectName: string,
-  options: { volumes?: boolean; removeOrphans?: boolean } = {},
+  options: { volumes?: boolean; removeOrphans?: boolean; signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -282,11 +337,20 @@ export async function composeDown(
   if (options.volumes) args.push("-v");
   if (options.removeOrphans) args.push("--remove-orphans");
 
-  return runComposeCommand(project.path, args, { onOutput, composeFile: project.composeFile });
+  const result = await runComposeCommand(project.path, args, {
+    onOutput,
+    composeFile: project.composeFile,
+    signal: options.signal,
+  });
+  if (result.success) {
+    invalidateProjectScanCache();
+  }
+  return result;
 }
 
 export async function composePull(
   projectName: string,
+  options: { signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -294,12 +358,17 @@ export async function composePull(
     return { success: false, output: "", error: "Project not found" };
   }
 
-  return runComposeCommand(project.path, ["pull"], { onOutput, composeFile: project.composeFile });
+  return runComposeCommand(project.path, ["pull"], {
+    onOutput,
+    composeFile: project.composeFile,
+    signal: options.signal,
+  });
 }
 
 export async function composePullService(
   projectName: string,
   serviceName: string,
+  options: { signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -307,12 +376,17 @@ export async function composePullService(
     return { success: false, output: "", error: "Project not found" };
   }
 
-  return runComposeCommand(project.path, ["pull", serviceName], { onOutput, composeFile: project.composeFile });
+  return runComposeCommand(project.path, ["pull", serviceName], {
+    onOutput,
+    composeFile: project.composeFile,
+    signal: options.signal,
+  });
 }
 
 export async function composeUpService(
   projectName: string,
   serviceName: string,
+  options: { signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -323,13 +397,21 @@ export async function composeUpService(
   // If updating ourselves, use the updater container approach
   const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile);
   if (selfUpdateResult) {
+    if (selfUpdateResult.success) {
+      invalidateProjectScanCache();
+    }
     return selfUpdateResult;
   }
 
-  return runComposeCommand(project.path, ["up", "-d", serviceName], {
+  const result = await runComposeCommand(project.path, ["up", "-d", serviceName], {
     onOutput,
     composeFile: project.composeFile,
+    signal: options.signal,
   });
+  if (result.success) {
+    invalidateProjectScanCache();
+  }
+  return result;
 }
 
 export async function composeLogs(
@@ -469,6 +551,7 @@ export async function saveComposeFile(projectName: string, content: string): Pro
 
   try {
     await writeFile(project.composeFile, content, "utf-8");
+    invalidateProjectScanCache();
     return { success: true, output: "Compose file saved" };
   } catch (error) {
     return { success: false, output: "", error: String(error) };
@@ -497,7 +580,7 @@ export async function createProject(
   envContent?: string
 ): Promise<ComposeResult> {
   if (!isValidProjectName(name)) {
-    return { success: false, output: "", error: "Invalid project name" };
+    return { success: false, output: "", error: "Invalid project name", status: 400 };
   }
 
   const projectsDir = getProjectsDir();
@@ -505,22 +588,33 @@ export async function createProject(
   const composePath = join(projectPath, "compose.yaml");
 
   try {
-    await mkdir(projectPath, { recursive: true });
+    await mkdir(projectsDir, { recursive: true });
+    await mkdir(projectPath, { recursive: false });
     await writeFile(composePath, composeContent, "utf-8");
 
     if (envContent) {
       await writeFile(join(projectPath, ".env"), envContent, "utf-8");
     }
 
+    invalidateProjectScanCache();
     return { success: true, output: `Project "${name}" created` };
   } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "EEXIST") {
+      return {
+        success: false,
+        output: "",
+        error: `Project "${name}" already exists`,
+        status: 409,
+      };
+    }
     return { success: false, output: "", error: String(error) };
   }
 }
 
 export async function deleteProject(
   name: string,
-  options: { removeVolumes?: boolean } = {},
+  options: { removeVolumes?: boolean; signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(name);
@@ -532,6 +626,7 @@ export async function deleteProject(
   const downResult = await composeDown(name, {
     volumes: options.removeVolumes,
     removeOrphans: true,
+    signal: options.signal,
   }, onOutput);
 
   if (!downResult.success) {
@@ -541,6 +636,7 @@ export async function deleteProject(
   // Then remove the directory
   try {
     await rm(project.path, { recursive: true });
+    invalidateProjectScanCache();
     return { success: true, output: `Project "${name}" deleted` };
   } catch (error) {
     return { success: false, output: "", error: String(error) };

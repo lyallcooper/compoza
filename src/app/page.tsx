@@ -72,8 +72,12 @@ interface StorageItem {
   size: number | null;
 }
 
+const RESTART_LOOP_WINDOW = 600; // 10 minutes in seconds
+
 function getContainersNeedingAttention(containers: Container[] | undefined): ContainerIssue[] {
   if (!containers) return [];
+
+  const now = Date.now() / 1000;
 
   return containers
     .map((container) => {
@@ -83,8 +87,10 @@ function getContainersNeedingAttention(containers: Container[] | undefined): Con
         issues.push("Unhealthy");
       }
 
-      if (container.restartCount && container.restartCount > 0) {
-        issues.push(`${container.restartCount} restart${container.restartCount > 1 ? "s" : ""}`);
+      const restarts = container.restartCount ?? 0;
+      const recentlyStarted = container.startedAt && (now - container.startedAt) < RESTART_LOOP_WINDOW;
+      if (container.state === "restarting" || (restarts > 0 && recentlyStarted)) {
+        issues.push(container.state === "restarting" ? "Restart loop" : `${restarts} restart${restarts > 1 ? "s" : ""}`);
       }
 
       if (container.state === "exited" && container.exitCode !== undefined && container.exitCode !== 0) {
@@ -252,7 +258,7 @@ export default function Dashboard() {
           {issues.map((issue) => (
             <Badge
               key={issue}
-              variant={issue === "Unhealthy" ? "error" : "warning"}
+              variant={issue === "Unhealthy" || issue === "Restart loop" ? "error" : "warning"}
             >
               {issue}
             </Badge>

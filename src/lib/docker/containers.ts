@@ -89,6 +89,7 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
     restartCount: number;
     health?: ContainerHealth;
     exitCode?: number;
+    startedAt?: number;
   }>();
   const resolvedImageMap = new Map<string, string>();
 
@@ -118,6 +119,9 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
               }
             : undefined,
           exitCode: info.State.ExitCode,
+          startedAt: info.State.StartedAt && info.State.StartedAt !== "0001-01-01T00:00:00Z"
+            ? new Date(info.State.StartedAt).getTime() / 1000
+            : undefined,
         });
       }
 
@@ -168,6 +172,7 @@ export async function listContainers(options: ListContainersOptions = {}): Promi
       restartCount: detail?.restartCount,
       health: detail?.health,
       exitCode: detail?.exitCode,
+      startedAt: detail?.startedAt,
       env: {},
       mounts: [],
       networks: [],
@@ -261,6 +266,9 @@ export async function getContainer(id: string): Promise<Container | null> {
       updateStrategy,
       actions: getContainerActions(state, updateStrategy),
       restartCount: info.RestartCount ?? 0,
+      startedAt: info.State.StartedAt && info.State.StartedAt !== "0001-01-01T00:00:00Z"
+        ? new Date(info.State.StartedAt).getTime() / 1000
+        : undefined,
       health: info.State.Health
         ? {
             status: parseHealthStatus(info.State.Health.Status),

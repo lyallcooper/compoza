@@ -93,6 +93,8 @@ export interface Container {
   actions: ContainerActions;
   /** Number of times the container has restarted */
   restartCount?: number;
+  /** When the container last started (unix timestamp) */
+  startedAt?: number;
   /** Health check status */
   health?: ContainerHealth;
   /** Exit code if container has exited */

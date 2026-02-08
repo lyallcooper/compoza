@@ -4,8 +4,6 @@ import { config } from "dotenv";
 import next from "next";
 import { Server as SocketServer } from "socket.io";
 import Docker from "dockerode";
-import { runWithSession } from "../src/lib/mock-mode/context";
-
 // Load .env files (Next.js does this automatically, but our custom server doesn't)
 const dev = process.env.NODE_ENV === "development";
 config({ path: ".env.local", debug: dev, quiet: !dev });
@@ -46,6 +44,20 @@ const docker = mockMode ? null! as Docker : createDockerClient();
 
 if (mockMode) {
   console.log("[Mock Mode] Running with mock Docker backend — no real Docker needed");
+}
+
+// --- Mock mode session context (mirrors src/lib/mock-mode/context.ts via globalThis) ---
+import { AsyncLocalStorage } from "node:async_hooks";
+const SESSION_STORAGE_KEY = Symbol.for("compoza:demo-session");
+
+function getSessionStorage(): AsyncLocalStorage<string> {
+  const g = globalThis as Record<symbol, unknown>;
+  if (!g[SESSION_STORAGE_KEY]) g[SESSION_STORAGE_KEY] = new AsyncLocalStorage<string>();
+  return g[SESSION_STORAGE_KEY] as AsyncLocalStorage<string>;
+}
+
+function runWithSession<T>(sessionId: string, fn: () => T): T {
+  return getSessionStorage().run(sessionId, fn);
 }
 
 // --- Mock mode rate limiting (inline, uses globalThis for cross-module sharing) ---

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type Dockerode from "dockerode";
-import type { DockerState, MockContainerState } from "./state";
+import type { DockerState, MockContainerState, MockImageState, MockNetworkState, MockVolumeState, DfData } from "./state";
 
 const DEFAULT_NETWORK: Dockerode.NetworkInfo = {
   IPAMConfig: null,
@@ -226,10 +226,201 @@ export function createDefaultStats(overrides: Record<string, unknown> = {}): Doc
   } as unknown as Dockerode.ContainerStats;
 }
 
-export function createDockerState(containers: MockContainerState[] = []): DockerState {
-  const map = new Map<string, MockContainerState>();
+export function createDockerState(
+  containers: MockContainerState[] = [],
+  options: {
+    images?: MockImageState[];
+    networks?: MockNetworkState[];
+    volumes?: MockVolumeState[];
+    dfData?: DfData;
+    systemInfo?: Record<string, unknown>;
+  } = {}
+): DockerState {
+  const containerMap = new Map<string, MockContainerState>();
   for (const c of containers) {
-    map.set(c.id, c);
+    containerMap.set(c.id, c);
   }
-  return { containers: map };
+
+  const imageMap = new Map<string, MockImageState>();
+  for (const img of options.images ?? []) {
+    imageMap.set(img.id, img);
+  }
+
+  const networkMap = new Map<string, MockNetworkState>();
+  for (const net of options.networks ?? []) {
+    networkMap.set(net.id, net);
+  }
+
+  const volumeMap = new Map<string, MockVolumeState>();
+  for (const vol of options.volumes ?? []) {
+    volumeMap.set(vol.name, vol);
+  }
+
+  return {
+    containers: containerMap,
+    images: imageMap,
+    networks: networkMap,
+    volumes: volumeMap,
+    dfData: options.dfData ?? {},
+    systemInfo: options.systemInfo ?? {},
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Image factories
+// ---------------------------------------------------------------------------
+
+interface ImageOverrides {
+  id?: string;
+  repoTags?: string[];
+  repoDigests?: string[];
+  size?: number;
+  created?: number;
+  config?: Record<string, unknown>;
+  architecture?: string;
+  os?: string;
+  author?: string;
+  healthcheck?: { Test: string[] };
+}
+
+export function createImageState(overrides: ImageOverrides = {}): MockImageState {
+  const uid = randomUUID().replace(/-/g, "");
+  const id = overrides.id ?? `sha256:${uid}${uid}`;
+  const repoTags = overrides.repoTags ?? ["nginx:latest"];
+  const repoDigests = overrides.repoDigests ?? [];
+  const size = overrides.size ?? 100000000;
+  const created = overrides.created ?? 1700000000;
+
+  const listInfo = {
+    Id: id,
+    ParentId: "",
+    RepoTags: repoTags,
+    RepoDigests: repoDigests,
+    Created: created,
+    Size: size,
+    SharedSize: 0,
+    VirtualSize: size,
+    Labels: {},
+    Containers: 0,
+  } as unknown as Dockerode.ImageInfo;
+
+  const inspectInfo = {
+    Id: id,
+    RepoTags: repoTags,
+    RepoDigests: repoDigests,
+    Parent: "",
+    Comment: "",
+    Created: new Date(created * 1000).toISOString(),
+    DockerVersion: "20.10.0",
+    Author: overrides.author ?? "",
+    Architecture: overrides.architecture ?? "amd64",
+    Os: overrides.os ?? "linux",
+    Size: size,
+    VirtualSize: size,
+    Config: {
+      Hostname: "",
+      Domainname: "",
+      User: "",
+      AttachStdin: false,
+      AttachStdout: false,
+      AttachStderr: false,
+      ExposedPorts: {},
+      Tty: false,
+      OpenStdin: false,
+      StdinOnce: false,
+      Env: ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
+      Cmd: ["/bin/sh"],
+      Image: "",
+      Volumes: null,
+      WorkingDir: "",
+      Entrypoint: null,
+      OnBuild: null,
+      Labels: {},
+      Healthcheck: overrides.healthcheck ?? undefined,
+      ...(overrides.config ?? {}),
+    },
+    RootFS: { Type: "layers", Layers: [] },
+    GraphDriver: { Name: "overlay2", Data: {} },
+    Metadata: { LastTagTime: "" },
+  } as unknown as Dockerode.ImageInspectInfo;
+
+  return { id, listInfo, inspectInfo };
+}
+
+// ---------------------------------------------------------------------------
+// Network factories
+// ---------------------------------------------------------------------------
+
+interface NetworkOverrides {
+  id?: string;
+  name?: string;
+  driver?: string;
+  scope?: string;
+  internal?: boolean;
+  attachable?: boolean;
+  ipamConfig?: Array<{ Subnet?: string; Gateway?: string }>;
+  containers?: Record<string, { Name: string; IPv4Address?: string; MacAddress?: string }>;
+  labels?: Record<string, string>;
+  options?: Record<string, string>;
+  created?: string;
+}
+
+export function createNetworkState(overrides: NetworkOverrides = {}): MockNetworkState {
+  const uid = randomUUID().replace(/-/g, "");
+  const id = overrides.id ?? uid;
+  const name = overrides.name ?? `network-${uid.slice(0, 8)}`;
+
+  const info = {
+    Id: id,
+    Name: name,
+    Created: overrides.created ?? "2024-01-01T00:00:00Z",
+    Scope: overrides.scope ?? "local",
+    Driver: overrides.driver ?? "bridge",
+    EnableIPv6: false,
+    Internal: overrides.internal ?? false,
+    Attachable: overrides.attachable ?? false,
+    Ingress: false,
+    IPAM: {
+      Driver: "default",
+      Config: overrides.ipamConfig ?? [],
+      Options: {},
+    },
+    Containers: overrides.containers ?? {},
+    Options: overrides.options ?? {},
+    Labels: overrides.labels ?? {},
+  } as unknown as Dockerode.NetworkInspectInfo;
+
+  return { id, listInfo: info, inspectInfo: info };
+}
+
+// ---------------------------------------------------------------------------
+// Volume factories
+// ---------------------------------------------------------------------------
+
+interface VolumeOverrides {
+  name?: string;
+  driver?: string;
+  mountpoint?: string;
+  scope?: string;
+  labels?: Record<string, string>;
+  options?: Record<string, string> | null;
+  createdAt?: string;
+}
+
+export function createVolumeState(overrides: VolumeOverrides = {}): MockVolumeState {
+  const uid = randomUUID().replace(/-/g, "").slice(0, 16);
+  const name = overrides.name ?? `volume-${uid.slice(0, 8)}`;
+
+  const info = {
+    Name: name,
+    Driver: overrides.driver ?? "local",
+    Mountpoint: overrides.mountpoint ?? `/var/lib/docker/volumes/${name}/_data`,
+    CreatedAt: overrides.createdAt ?? "2024-01-01T00:00:00Z",
+    Status: {},
+    Labels: overrides.labels ?? {},
+    Scope: overrides.scope ?? "local",
+    Options: overrides.options ?? null,
+  } as unknown as Dockerode.VolumeInspectInfo;
+
+  return { name, info };
 }

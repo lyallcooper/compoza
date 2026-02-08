@@ -8,6 +8,7 @@ import {
   Badge,
   Modal,
   Input,
+  SearchInput,
   ResponsiveTable,
   ColumnDef,
   TruncatedText,
@@ -15,7 +16,7 @@ import {
   Select,
   Checkbox,
 } from "@/components/ui";
-import { useVolumes, useCreateVolume, usePruneVolumes } from "@/hooks";
+import { useVolumes, useCreateVolume, usePruneVolumes, useTableSort, useTableSearch } from "@/hooks";
 import { formatBytes } from "@/lib/format";
 import type { DockerVolume } from "@/types";
 import type { CreateVolumeOptions } from "@/lib/docker";
@@ -41,11 +42,8 @@ export default function VolumesPage() {
   // Prune options
   const [pruneOnlyAnonymous, setPruneOnlyAnonymous] = useState(true);
 
-  // Sort volumes by name
-  const sortedVolumes = useMemo(
-    () => [...(volumes || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [volumes]
-  );
+  const { sortState, onSortChange, sortData } = useTableSort<DockerVolume>("name", "asc");
+  const { query, setQuery, filterData } = useTableSearch<DockerVolume>();
 
   // Get unused volumes for prune preview
   const allUnusedVolumes = useMemo(
@@ -94,17 +92,21 @@ export default function VolumesPage() {
     setPruneOnlyAnonymous(true);
   };
 
-  const columns: ColumnDef<DockerVolume>[] = [
+  const columns: ColumnDef<DockerVolume>[] = useMemo(() => [
     {
       key: "name",
       header: "Name",
       cardPosition: "header",
+      sortValue: (vol) => vol.name,
+      searchValue: (vol) => vol.name,
       render: (vol) => <TruncatedText text={vol.name} maxLength={30} className="font-medium" />,
     },
     {
       key: "status",
       header: "Status",
       cardPosition: "body",
+      sortValue: (vol) => (isAnonymousVolume(vol.labels) ? 2 : 0) + (vol.containerCount === 0 ? 1 : 0),
+      defaultSortDirection: "desc",
       render: (vol) => (
         <div className="flex items-center gap-1">
           {isAnonymousVolume(vol.labels) && <Badge variant="default">Anonymous</Badge>}
@@ -121,6 +123,8 @@ export default function VolumesPage() {
       header: "Driver",
       shrink: true,
       cardPosition: "body",
+      sortValue: (vol) => vol.driver,
+      searchValue: (vol) => vol.driver,
       render: (vol) => <span className="text-muted">{vol.driver}</span>,
     },
     {
@@ -128,6 +132,8 @@ export default function VolumesPage() {
       header: "Size",
       shrink: true,
       cardPosition: "body",
+      sortValue: (vol) => vol.size ?? -1,
+      defaultSortDirection: "desc",
       render: (vol) => (
         <span className="text-muted">
           {vol.size !== null ? formatBytes(vol.size) : "-"}
@@ -139,9 +145,16 @@ export default function VolumesPage() {
       header: "Containers",
       shrink: true,
       cardPosition: "body",
+      sortValue: (vol) => vol.containerCount,
+      defaultSortDirection: "desc",
       render: (vol) => <span className="text-muted">{vol.containerCount}</span>,
     },
-  ];
+  ], []);
+
+  const processedData = useMemo(
+    () => sortData(filterData(volumes || [], columns), columns),
+    [volumes, sortData, filterData, columns]
+  );
 
   return (
     <div className="space-y-6">
@@ -159,16 +172,22 @@ export default function VolumesPage() {
 
       <DataView data={volumes} isLoading={isLoading} error={error} resourceName="volumes">
         {() => (
-          <Box padding={false}>
-            <ResponsiveTable
-              data={sortedVolumes}
-              columns={columns}
-              keyExtractor={(vol) => vol.name}
-              onRowClick={(vol) =>
-                router.push(`/volumes/${encodeURIComponent(vol.name)}`)
-              }
-            />
-          </Box>
+          <>
+            <SearchInput value={query} onChange={setQuery} className="mb-3" />
+            <Box padding={false}>
+              <ResponsiveTable
+                data={processedData}
+                columns={columns}
+                keyExtractor={(vol) => vol.name}
+                onRowClick={(vol) =>
+                  router.push(`/volumes/${encodeURIComponent(vol.name)}`)
+                }
+                sortState={sortState}
+                onSortChange={onSortChange}
+                emptyState={query ? <div className="text-center py-8 text-muted">No volumes matching &quot;{query}&quot;</div> : undefined}
+              />
+            </Box>
+          </>
         )}
       </DataView>
 

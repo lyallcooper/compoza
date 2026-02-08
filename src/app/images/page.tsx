@@ -7,13 +7,14 @@ import {
   Button,
   Badge,
   Modal,
+  SearchInput,
   ResponsiveTable,
   ColumnDef,
   DataView,
   Checkbox,
 } from "@/components/ui";
 import { PullImageModal } from "@/components/images";
-import { useImages, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
+import { useImages, useImageUpdates, usePruneImages, useContainers, useTableSort, useTableSearch } from "@/hooks";
 import type { DockerImage } from "@/types";
 import { formatBytes, formatDateTime } from "@/lib/format";
 
@@ -28,6 +29,9 @@ export default function ImagesPage() {
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
   const [pruneOnlyUntagged, setPruneOnlyUntagged] = useState(true);
 
+  const { sortState, onSortChange, sortData } = useTableSort<DockerImage>("name", "asc");
+  const { query, setQuery, filterData } = useTableSearch<DockerImage>();
+
   // Create a map of image tags to update status
   const updateStatusMap = useMemo(() => {
     if (!imageUpdates) return new Map<string, boolean>();
@@ -39,12 +43,6 @@ export default function ImagesPage() {
     if (!containers) return new Set<string>();
     return new Set(containers.map((c) => c.imageId));
   }, [containers]);
-
-  // Sort images by most recently created
-  const sortedImages = useMemo(
-    () => [...(images || [])].sort((a, b) => b.created - a.created),
-    [images]
-  );
 
   // Get dangling images for prune preview (untagged AND unused)
   const danglingImages = useMemo(
@@ -65,11 +63,6 @@ export default function ImagesPage() {
     [imagesToPrune]
   );
 
-  // Check if any tag for this image has an update
-  const hasUpdate = (tags: string[]) => {
-    return tags.some((tag) => updateStatusMap.get(tag));
-  };
-
   const handlePrune = () => {
     pruneImages.execute(!pruneOnlyUntagged);
     setPruneModalOpen(false);
@@ -81,54 +74,70 @@ export default function ImagesPage() {
     setPruneOnlyUntagged(true);
   };
 
-  const columns: ColumnDef<DockerImage>[] = [
-    {
-      key: "name",
-      header: "Name",
-      cardPosition: "header",
-      render: (image) => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono">{image.name}</span>
-          {image.tags.length === 0 && <Badge variant="default">untagged</Badge>}
-        </div>
-      ),
-    },
-    {
-      key: "size",
-      header: "Size",
-      shrink: true,
-      cardPosition: "body",
-      render: (image) => <span className="text-muted">{formatBytes(image.size)}</span>,
-    },
-    {
-      key: "created",
-      header: "Created",
-      shrink: true,
-      cardPosition: "body",
-      render: (image) => (
-        <span className="text-muted">{formatDateTime(new Date(image.created * 1000))}</span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      shrink: true,
-      cardPosition: "body",
-      render: (image) => (
-        <div className="flex flex-wrap gap-1">
-          {hasUpdate(image.tags) && (
-            <Badge variant="accent">Update</Badge>
-          )}
-          {!usedImageIds.has(image.id) && (
-            <Badge variant="warning">Unused</Badge>
-          )}
-          {!hasUpdate(image.tags) && usedImageIds.has(image.id) && (
-            <span className="text-muted">-</span>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const columns = useMemo((): ColumnDef<DockerImage>[] => {
+    const checkUpdate = (tags: string[]) => tags.some((tag) => updateStatusMap.get(tag));
+    return [
+      {
+        key: "name",
+        header: "Name",
+        cardPosition: "header",
+        sortValue: (image) => image.name,
+        searchValue: (image) => image.name,
+        render: (image) => (
+          <div className="flex items-center gap-2">
+            <span className="font-mono">{image.name}</span>
+            {image.tags.length === 0 && <Badge variant="default">untagged</Badge>}
+          </div>
+        ),
+      },
+      {
+        key: "size",
+        header: "Size",
+        shrink: true,
+        cardPosition: "body",
+        sortValue: (image) => image.size,
+        defaultSortDirection: "desc",
+        render: (image) => <span className="text-muted">{formatBytes(image.size)}</span>,
+      },
+      {
+        key: "created",
+        header: "Created",
+        shrink: true,
+        cardPosition: "body",
+        sortValue: (image) => image.created,
+        defaultSortDirection: "desc",
+        render: (image) => (
+          <span className="text-muted">{formatDateTime(new Date(image.created * 1000))}</span>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        shrink: true,
+        cardPosition: "body",
+        sortValue: (image) => (checkUpdate(image.tags) ? 2 : 0) + (usedImageIds.has(image.id) ? 0 : 1),
+        defaultSortDirection: "desc",
+        render: (image) => (
+          <div className="flex flex-wrap gap-1">
+            {checkUpdate(image.tags) && (
+              <Badge variant="accent">Update</Badge>
+            )}
+            {!usedImageIds.has(image.id) && (
+              <Badge variant="warning">Unused</Badge>
+            )}
+            {!checkUpdate(image.tags) && usedImageIds.has(image.id) && (
+              <span className="text-muted">-</span>
+            )}
+          </div>
+        ),
+      },
+    ];
+  }, [updateStatusMap, usedImageIds]);
+
+  const processedData = useMemo(
+    () => sortData(filterData(images || [], columns), columns),
+    [images, sortData, filterData, columns]
+  );
 
   return (
     <div className="space-y-6">
@@ -147,14 +156,20 @@ export default function ImagesPage() {
 
       <DataView data={images} isLoading={isLoading} error={error} resourceName="images">
         {() => (
-          <Box padding={false}>
-            <ResponsiveTable
-              data={sortedImages}
-              columns={columns}
-              keyExtractor={(image) => image.id}
-              onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.tags[0] || image.id)}`)}
-            />
-          </Box>
+          <>
+            <SearchInput value={query} onChange={setQuery} className="mb-3" />
+            <Box padding={false}>
+              <ResponsiveTable
+                data={processedData}
+                columns={columns}
+                keyExtractor={(image) => image.id}
+                onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.tags[0] || image.id)}`)}
+                sortState={sortState}
+                onSortChange={onSortChange}
+                emptyState={query ? <div className="text-center py-8 text-muted">No images matching &quot;{query}&quot;</div> : undefined}
+              />
+            </Box>
+          </>
         )}
       </DataView>
 

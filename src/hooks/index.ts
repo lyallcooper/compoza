@@ -47,3 +47,4 @@ export { useEventSource, useStreamingFetch } from "./use-event-source";
 export type { EventSourceState, UseEventSourceOptions } from "./use-event-source";
 export { useTerminalSocket } from "./use-terminal-socket";
 export type { ConnectionStatus, TerminalSocketState, TerminalSocketActions } from "./use-terminal-socket";
+export { useTableSort, useTableSearch } from "./use-table-controls";

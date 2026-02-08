@@ -3,9 +3,9 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef, DataView } from "@/components/ui";
+import { Box, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, SearchInput, ResponsiveTable, ColumnDef, DataView } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
-import { useContainers, usePruneContainers } from "@/hooks";
+import { useContainers, usePruneContainers, useTableSort, useTableSearch } from "@/hooks";
 import type { Container } from "@/types";
 
 export default function ContainersPage() {
@@ -15,10 +15,8 @@ export default function ContainersPage() {
 
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
 
-  const sortedContainers = useMemo(
-    () => [...(containers || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [containers]
-  );
+  const { sortState, onSortChange, sortData } = useTableSort<Container>("name", "asc");
+  const { query, setQuery, filterData } = useTableSearch<Container>();
 
   const stoppedContainers = useMemo(
     () => (containers || []).filter((c) => c.state === "exited"),
@@ -30,12 +28,14 @@ export default function ContainersPage() {
     setPruneModalOpen(false);
   };
 
-  const columns: ColumnDef<Container>[] = [
+  const columns: ColumnDef<Container>[] = useMemo(() => [
     {
       key: "name",
       header: "Name",
       shrink: true,
       cardPosition: "header",
+      sortValue: (c) => c.name,
+      searchValue: (c) => c.name,
       render: (c) => c.name,
     },
     {
@@ -43,6 +43,8 @@ export default function ContainersPage() {
       header: "Project",
       shrink: true,
       cardPosition: "body",
+      sortValue: (c) => c.projectName || "",
+      searchValue: (c) => c.projectName || "",
       render: (c) => (
         <span className="text-muted">
           {c.projectName ? (
@@ -73,6 +75,8 @@ export default function ContainersPage() {
       key: "image",
       header: "Image",
       cardPosition: "body",
+      sortValue: (c) => c.image,
+      searchValue: (c) => c.image,
       render: (c) => (
         <span className="text-muted font-mono">
           <Link
@@ -99,6 +103,8 @@ export default function ContainersPage() {
       header: "Status",
       shrink: true,
       cardPosition: "body",
+      sortValue: (c) => c.state,
+      searchValue: (c) => c.state,
       render: (c) => <ContainerStateBadge state={c.state} />,
     },
     {
@@ -120,7 +126,12 @@ export default function ContainersPage() {
       cardPosition: "footer",
       render: (c) => <ContainerActions containerId={c.id} state={c.state} />,
     },
-  ];
+  ], []);
+
+  const processedData = useMemo(
+    () => sortData(filterData(containers || [], columns), columns),
+    [containers, sortData, filterData, columns]
+  );
 
   return (
     <div className="space-y-6">
@@ -133,14 +144,20 @@ export default function ContainersPage() {
 
       <DataView data={containers} isLoading={isLoading} error={error} resourceName="containers">
         {() => (
-          <Box padding={false}>
-            <ResponsiveTable
-              data={sortedContainers}
-              columns={columns}
-              keyExtractor={(c) => c.id}
-              onRowClick={(c) => router.push(`/containers/${encodeURIComponent(c.name)}`)}
-            />
-          </Box>
+          <>
+            <SearchInput value={query} onChange={setQuery} className="mb-3" />
+            <Box padding={false}>
+              <ResponsiveTable
+                data={processedData}
+                columns={columns}
+                keyExtractor={(c) => c.id}
+                onRowClick={(c) => router.push(`/containers/${encodeURIComponent(c.name)}`)}
+                sortState={sortState}
+                onSortChange={onSortChange}
+                emptyState={query ? <div className="text-center py-8 text-muted">No containers matching &quot;{query}&quot;</div> : undefined}
+              />
+            </Box>
+          </>
         )}
       </DataView>
 

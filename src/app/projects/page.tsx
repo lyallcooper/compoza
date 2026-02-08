@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
+  SearchInput,
   Spinner,
   ProjectStatusBadge,
   ResponsiveTable,
@@ -13,7 +14,7 @@ import {
   DataView,
 } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
-import { useProjects, useImageUpdates, useProjectUp, useProjectDown, useBackgroundProjectUpdate, getProjectsWithUpdates } from "@/hooks";
+import { useProjects, useImageUpdates, useProjectUp, useProjectDown, useBackgroundProjectUpdate, getProjectsWithUpdates, useTableSort, useTableSearch } from "@/hooks";
 import { isProjectRunning, type Project } from "@/types";
 
 interface ImageUpdate {
@@ -43,10 +44,8 @@ export default function ProjectsPage() {
     [projects, imageUpdates]
   );
 
-  const sortedProjects = useMemo(
-    () => [...(projects || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [projects]
-  );
+  const { sortState, onSortChange, sortData } = useTableSort<Project>("name", "asc");
+  const { query, setQuery, filterData } = useTableSearch<Project>();
 
   // Create a map of project name to update info
   const updateInfoMap = useMemo(() => {
@@ -57,11 +56,13 @@ export default function ProjectsPage() {
     return map;
   }, [projectsWithUpdates]);
 
-  const columns: ColumnDef<Project>[] = [
+  const columns: ColumnDef<Project>[] = useMemo(() => [
     {
       key: "name",
       header: "Name",
       cardPosition: "header",
+      sortValue: (p) => p.name,
+      searchValue: (p) => p.name,
       render: (p) => <span className="font-medium">{p.name}</span>,
     },
     {
@@ -69,6 +70,8 @@ export default function ProjectsPage() {
       header: "Services",
       shrink: true,
       cardPosition: "body",
+      sortValue: (p) => p.services.length,
+      defaultSortDirection: "desc",
       render: (p) => {
         const runningCount = p.services.filter((s) => s.status === "running").length;
         return <span className="text-muted">{runningCount}/{p.services.length}</span>;
@@ -83,6 +86,8 @@ export default function ProjectsPage() {
       header: "Status",
       shrink: true,
       cardPosition: "body",
+      sortValue: (p) => p.status,
+      searchValue: (p) => p.status,
       render: (p) => <ProjectStatusBadge status={p.status} />,
     },
     {
@@ -98,7 +103,12 @@ export default function ProjectsPage() {
         />
       ),
     },
-  ];
+  ], [updateInfoMap]);
+
+  const processedData = useMemo(
+    () => sortData(filterData(projects || [], columns), columns),
+    [projects, sortData, filterData, columns]
+  );
 
   return (
     <div className="space-y-6">
@@ -131,14 +141,20 @@ export default function ProjectsPage() {
         }
       >
         {() => (
-          <Box padding={false}>
-            <ResponsiveTable
-              data={sortedProjects}
-              columns={columns}
-              keyExtractor={(p) => p.name}
-              onRowClick={(p) => router.push(`/projects/${encodeURIComponent(p.name)}`)}
-            />
-          </Box>
+          <>
+            <SearchInput value={query} onChange={setQuery} className="mb-3" />
+            <Box padding={false}>
+              <ResponsiveTable
+                data={processedData}
+                columns={columns}
+                keyExtractor={(p) => p.name}
+                onRowClick={(p) => router.push(`/projects/${encodeURIComponent(p.name)}`)}
+                sortState={sortState}
+                onSortChange={onSortChange}
+                emptyState={query ? <div className="text-center py-8 text-muted">No projects matching &quot;{query}&quot;</div> : undefined}
+              />
+            </Box>
+          </>
         )}
       </DataView>
 

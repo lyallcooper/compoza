@@ -8,12 +8,13 @@ import {
   Badge,
   Modal,
   Input,
+  SearchInput,
   ResponsiveTable,
   ColumnDef,
   DataView,
   Select,
 } from "@/components/ui";
-import { useNetworks, useCreateNetwork, usePruneNetworks } from "@/hooks";
+import { useNetworks, useCreateNetwork, usePruneNetworks, useTableSort, useTableSearch } from "@/hooks";
 import type { DockerNetwork } from "@/types";
 import type { CreateNetworkOptions } from "@/lib/docker";
 
@@ -32,11 +33,8 @@ export default function NetworksPage() {
   const [networkSubnet, setNetworkSubnet] = useState("");
   const [networkGateway, setNetworkGateway] = useState("");
 
-  // Sort networks by name
-  const sortedNetworks = useMemo(
-    () => [...(networks || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [networks]
-  );
+  const { sortState, onSortChange, sortData } = useTableSort<DockerNetwork>("name", "asc");
+  const { query, setQuery, filterData } = useTableSearch<DockerNetwork>();
 
   // Get networks with 0 containers for prune preview
   const unusedNetworks = useMemo(
@@ -78,11 +76,13 @@ export default function NetworksPage() {
     setPruneModalOpen(false);
   };
 
-  const columns: ColumnDef<DockerNetwork>[] = [
+  const columns: ColumnDef<DockerNetwork>[] = useMemo(() => [
     {
       key: "name",
       header: "Name",
       cardPosition: "header",
+      sortValue: (net) => net.name,
+      searchValue: (net) => net.name,
       render: (net) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">{net.name}</span>
@@ -96,15 +96,24 @@ export default function NetworksPage() {
       key: "driver",
       header: "Driver",
       cardPosition: "body",
+      sortValue: (net) => net.driver,
+      searchValue: (net) => net.driver,
       render: (net) => <span className="text-muted">{net.driver}</span>,
     },
     {
       key: "containers",
       header: "Containers",
       cardPosition: "body",
+      sortValue: (net) => net.containerCount,
+      defaultSortDirection: "desc",
       render: (net) => <span className="text-muted">{net.containerCount}</span>,
     },
-  ];
+  ], []);
+
+  const processedData = useMemo(
+    () => sortData(filterData(networks || [], columns), columns),
+    [networks, sortData, filterData, columns]
+  );
 
   return (
     <div className="space-y-6">
@@ -122,16 +131,22 @@ export default function NetworksPage() {
 
       <DataView data={networks} isLoading={isLoading} error={error} resourceName="networks">
         {() => (
-          <Box padding={false}>
-            <ResponsiveTable
-              data={sortedNetworks}
-              columns={columns}
-              keyExtractor={(net) => net.id}
-              onRowClick={(net) =>
-                router.push(`/networks/${encodeURIComponent(net.name)}`)
-              }
-            />
-          </Box>
+          <>
+            <SearchInput value={query} onChange={setQuery} className="mb-3" />
+            <Box padding={false}>
+              <ResponsiveTable
+                data={processedData}
+                columns={columns}
+                keyExtractor={(net) => net.id}
+                onRowClick={(net) =>
+                  router.push(`/networks/${encodeURIComponent(net.name)}`)
+                }
+                sortState={sortState}
+                onSortChange={onSortChange}
+                emptyState={query ? <div className="text-center py-8 text-muted">No networks matching &quot;{query}&quot;</div> : undefined}
+              />
+            </Box>
+          </>
         )}
       </DataView>
 

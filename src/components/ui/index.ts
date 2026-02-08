@@ -23,5 +23,6 @@ export { Toast } from "./toast";
 export { Tooltip } from "./tooltip";
 export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
 export { BackgroundTaskToast } from "./background-task-toast";
+export { SearchInput } from "./search-input";
 export { ResponsiveTable } from "./responsive-table";
-export type { ColumnDef, ResponsiveTableProps } from "./responsive-table";
+export type { ColumnDef, ResponsiveTableProps, SortState, SortDirection } from "./responsive-table";

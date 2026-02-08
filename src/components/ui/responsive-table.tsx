@@ -1,6 +1,13 @@
 "use client";
 
 import { ReactNode, useMemo } from "react";
+
+export type SortDirection = "asc" | "desc";
+export interface SortState {
+  columnKey: string;
+  direction: SortDirection;
+}
+
 export interface ColumnDef<T> {
   key: string;
   header: string;
@@ -16,6 +23,12 @@ export interface ColumnDef<T> {
    * Only applies when shrink is false.
    */
   getValue?: (row: T) => string;
+  /** Returns a sortable value. Presence implies the column is sortable. */
+  sortValue?: (row: T) => string | number;
+  /** Direction to use when this column is first sorted. Defaults to "asc". */
+  defaultSortDirection?: SortDirection;
+  /** Returns a searchable string. Presence implies the column is searchable. */
+  searchValue?: (row: T) => string;
   /** Custom render function */
   render: (row: T, index: number) => ReactNode;
   /** Custom render for card view */
@@ -35,6 +48,8 @@ export interface ResponsiveTableProps<T> {
   className?: string;
   showHeader?: boolean;
   emptyState?: ReactNode;
+  sortState?: SortState;
+  onSortChange?: (columnKey: string, defaultDirection?: SortDirection) => void;
 }
 
 const breakpointClasses = {
@@ -42,6 +57,22 @@ const breakpointClasses = {
   md: { hide: "md:hidden", show: "hidden md:block" },
   lg: { hide: "lg:hidden", show: "hidden lg:block" },
 };
+
+function SortArrow({ direction, className }: { direction: SortDirection; className?: string }) {
+  const path = direction === "asc" ? "M8 13V3M3 7l5-5 5 5" : "M8 3v10M3 9l5 5 5-5";
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`ml-0.5 w-2.5 h-2.5 shrink-0 ${className ?? ""}`} aria-hidden="true">
+      <path d={path} />
+    </svg>
+  );
+}
+
+function SortIndicator({ active, direction }: { active: boolean; direction: SortDirection }) {
+  if (!active) {
+    return <SortArrow direction={direction} className="opacity-0 group-hover/sort:opacity-100 text-muted transition-opacity" />;
+  }
+  return <SortArrow direction={direction} className="text-muted" />;
+}
 
 export function ResponsiveTable<T>({
   data,
@@ -52,6 +83,8 @@ export function ResponsiveTable<T>({
   className = "",
   showHeader = true,
   emptyState,
+  sortState,
+  onSortChange,
 }: ResponsiveTableProps<T>) {
   const { hide, show } = breakpointClasses[breakpoint];
 
@@ -123,17 +156,33 @@ export function ResponsiveTable<T>({
           {showHeader && (
             <div role="rowgroup" className="contents">
               <div role="row" className="contents">
-                {columns.map((col) => (
-                  <div
-                    key={col.key}
-                    role="columnheader"
-                    className={`px-2 py-1.5 flex items-center text-left text-xs font-semibold bg-surface-subtle border-b border-border ${
-                      col.shrink ? "whitespace-nowrap" : "min-w-0"
-                    }`}
-                  >
-                    {col.header}
-                  </div>
-                ))}
+                {columns.map((col) => {
+                  const isSortable = !!col.sortValue && !!onSortChange && !!sortState;
+                  const isActive = isSortable && sortState.columnKey === col.key;
+
+                  return (
+                    <div
+                      key={col.key}
+                      role="columnheader"
+                      className={`px-2 py-1.5 flex items-center text-left text-xs font-semibold bg-surface-subtle border-b border-border ${
+                        col.shrink ? "whitespace-nowrap" : "min-w-0"
+                      }`}
+                    >
+                      {isSortable ? (
+                        <button
+                          type="button"
+                          className="group/sort flex items-center hover:text-foreground transition-colors cursor-pointer"
+                          onClick={() => onSortChange(col.key, col.defaultSortDirection)}
+                        >
+                          {col.header}
+                          <SortIndicator active={isActive} direction={isActive ? sortState.direction : (col.defaultSortDirection ?? "asc")} />
+                        </button>
+                      ) : (
+                        col.header
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

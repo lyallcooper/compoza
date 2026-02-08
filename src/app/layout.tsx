@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/layout";
+import { titleTemplate } from "./metadata";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Compoza - Docker Compose Manager",
+  title: {
+    default: "Compoza",
+    template: titleTemplate,
+  },
   description: "A TUI-inspired web application for managing Docker Compose projects",
 };
 

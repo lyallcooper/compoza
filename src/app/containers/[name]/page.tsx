@@ -176,17 +176,17 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         {/* Mobile actions dropdown */}
         <DropdownMenu className="md:hidden">
           {container.actions.canStart && (
-            <DropdownItem onClick={() => startContainer.execute(name)}>
+            <DropdownItem onClick={() => startContainer.execute(name)} loading={startContainer.isPending}>
               Start
             </DropdownItem>
           )}
           {container.actions.canStop && (
-            <DropdownItem onClick={() => stopContainer.execute(name)}>
+            <DropdownItem onClick={() => stopContainer.execute(name)} loading={stopContainer.isPending}>
               Stop
             </DropdownItem>
           )}
           {container.actions.canRestart && (
-            <DropdownItem onClick={() => restartContainer.execute(name)}>
+            <DropdownItem onClick={() => restartContainer.execute(name)} loading={restartContainer.isPending}>
               Restart
             </DropdownItem>
           )}

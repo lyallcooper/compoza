@@ -240,6 +240,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             onClick={handleUp}
             disabled={!canUp}
             disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+            loading={projectUp.isPending}
           >
             Up
           </Button>
@@ -250,6 +251,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               hasChanges ? "Save or discard changes first" :
               project?.status === "stopped" ? "Project is already stopped" : undefined
             }
+            loading={projectDown.isPending}
           >
             Down
           </Button>
@@ -281,6 +283,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             onClick={handleUp}
             disabled={!canUp}
             disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+            loading={projectUp.isPending}
           >
             Up
           </DropdownItem>
@@ -291,6 +294,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               hasChanges ? "Save or discard changes first" :
               project?.status === "stopped" ? "Project is already stopped" : undefined
             }
+            loading={projectDown.isPending}
           >
             Down
           </DropdownItem>
@@ -429,7 +433,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <Toast
           onClose={() => setShowApplyPrompt(false)}
           actions={
-            <Button variant="primary" onClick={handleUp}>
+            <Button variant="primary" onClick={handleUp} loading={projectUp.isPending}>
               Up
             </Button>
           }

@@ -200,6 +200,7 @@ function ProjectActions({
           e.stopPropagation();
           projectUp.execute();
         }}
+        loading={projectUp.isPending}
       >
         Up
       </Button>
@@ -209,6 +210,7 @@ function ProjectActions({
           projectDown.execute();
         }}
         disabled={project.status === "stopped"}
+        loading={projectDown.isPending}
       >
         Down
       </Button>

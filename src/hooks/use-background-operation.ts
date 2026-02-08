@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBackgroundTasks } from "@/contexts";
 import { handleDisconnection, isNetworkError } from "@/lib/reconnect";
@@ -128,9 +128,11 @@ export function useBackgroundOperation<TArgs = void, TResult = void>(
 ) {
   const queryClient = useQueryClient();
   const { addTask, updateTask, appendOutput } = useBackgroundTasks();
+  const [inflightCount, setInflightCount] = useState(0);
 
   const execute = useCallback(
     async (args: TArgs): Promise<boolean> => {
+      setInflightCount((c) => c + 1);
       const taskId = `${config.type}-${Date.now()}`;
       const abortController = new AbortController();
 
@@ -211,11 +213,13 @@ export function useBackgroundOperation<TArgs = void, TResult = void>(
         }
 
         return false;
+      } finally {
+        setInflightCount((c) => c - 1);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [config.type, queryClient, addTask, updateTask, appendOutput]
   );
 
-  return { execute };
+  return { execute, isPending: inflightCount > 0 };
 }

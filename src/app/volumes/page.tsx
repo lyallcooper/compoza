@@ -151,8 +151,8 @@ export default function VolumesPage() {
           <Button variant="default" onClick={() => setPruneModalOpen(true)}>
             Remove Unused…
           </Button>
-          <Button variant="default" onClick={() => setCreateModalOpen(true)}>
-            Create…
+          <Button variant="primary" onClick={() => setCreateModalOpen(true)}>
+            + New
           </Button>
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function VolumesPage() {
         footer={
           <>
             <Button
-              variant="ghost"
+              variant="default"
               onClick={handleCloseCreateModal}
               disabled={createVolume.isPending}
             >
@@ -237,7 +237,7 @@ export default function VolumesPage() {
               label="Only anonymous"
             />
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={handleClosePruneModal}>
+              <Button variant="default" onClick={handleClosePruneModal}>
                 Cancel
               </Button>
               <Button

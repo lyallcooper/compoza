@@ -150,7 +150,7 @@ export default function ContainersPage() {
         title="Remove Stopped Containers"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setPruneModalOpen(false)}>
+            <Button variant="default" onClick={() => setPruneModalOpen(false)}>
               Cancel
             </Button>
             <Button

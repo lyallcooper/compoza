@@ -46,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         `}
         {...props}
       >
-        <span className={loading ? "invisible" : ""}>{children}</span>
+        <span className={`inline-flex items-center gap-1.5 ${loading ? "invisible" : ""}`}>{children}</span>
         {loading && (
           <span className="absolute inset-0 flex items-center justify-center">
             <span className="h-3 w-3 animate-spin border-2 border-current border-t-transparent rounded-full" />

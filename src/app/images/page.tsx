@@ -138,8 +138,9 @@ export default function ImagesPage() {
           <Button variant="default" onClick={() => setPruneModalOpen(true)}>
             Remove Unused…
           </Button>
-          <Button variant="default" onClick={() => setPullModalOpen(true)}>
-            Pull…
+          <Button variant="primary" onClick={() => setPullModalOpen(true)}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 shrink-0 -ml-0.5" aria-hidden="true"><path d="M8 3v10M3 9l5 5 5-5" /></svg>
+            Pull
           </Button>
         </div>
       </div>
@@ -171,7 +172,7 @@ export default function ImagesPage() {
               label="Only untagged"
             />
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={handleClosePruneModal}>
+              <Button variant="default" onClick={handleClosePruneModal}>
                 Cancel
               </Button>
               <Button

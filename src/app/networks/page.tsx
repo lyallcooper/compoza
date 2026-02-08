@@ -114,8 +114,8 @@ export default function NetworksPage() {
           <Button variant="default" onClick={() => setPruneModalOpen(true)}>
             Remove Unused…
           </Button>
-          <Button variant="default" onClick={() => setCreateModalOpen(true)}>
-            Create…
+          <Button variant="primary" onClick={() => setCreateModalOpen(true)}>
+            + New
           </Button>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function NetworksPage() {
         footer={
           <>
             <Button
-              variant="ghost"
+              variant="default"
               onClick={handleCloseCreateModal}
               disabled={createNetwork.isPending}
             >
@@ -220,7 +220,7 @@ export default function NetworksPage() {
         title="Remove Unused Networks"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setPruneModalOpen(false)}>
+            <Button variant="default" onClick={() => setPruneModalOpen(false)}>
               Cancel
             </Button>
             <Button

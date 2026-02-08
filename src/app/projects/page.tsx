@@ -10,8 +10,6 @@ import {
   ProjectStatusBadge,
   ResponsiveTable,
   ColumnDef,
-  DropdownMenu,
-  DropdownItem,
   DataView,
 } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
@@ -109,29 +107,15 @@ export default function ProjectsPage() {
           <h1 className="text-xl font-semibold">Projects</h1>
           {updatesLoading && <Spinner size="sm" />}
         </div>
-        {/* Buttons - visible on sm and up */}
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {projectsWithUpdates.length > 0 && (
             <Button variant="accent" onClick={() => setShowUpdateAllModal(true)}>
               Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
             </Button>
           )}
           <Link href="/projects/new">
-            <Button variant="primary">+ New Project</Button>
+            <Button variant="primary">+ New</Button>
           </Link>
-        </div>
-        {/* Dropdown menu - visible below sm */}
-        <div className="sm:hidden">
-          <DropdownMenu label="Actions">
-            {projectsWithUpdates.length > 0 && (
-              <DropdownItem variant="accent" onClick={() => setShowUpdateAllModal(true)}>
-                Update {projectsWithUpdates.length} Project{projectsWithUpdates.length !== 1 ? "s" : ""}…
-              </DropdownItem>
-            )}
-            <Link href="/projects/new" className="block">
-              <DropdownItem>New Project</DropdownItem>
-            </Link>
-          </DropdownMenu>
         </div>
       </div>
 

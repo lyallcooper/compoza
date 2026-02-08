@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    path {
+      fill: #171717;
+    }
+    @media (prefers-color-scheme: dark) {
+      path { fill: #e5e5e5; }
+    }
+  </style>
+  <!-- Katakana コ (ko) -->
+  <path d="M7 6h18v20H7v-3h15V9H7V6z"/>
+</svg>

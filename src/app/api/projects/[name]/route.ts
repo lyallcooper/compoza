@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getProject, deleteProject } from "@/lib/projects";
-import { success, notFound, error, getErrorMessage } from "@/lib/api";
+import { success, notFound, error, getErrorMessage, createSSEResponse } from "@/lib/api";
+import type { ComposeStreamEvent } from "./up/route";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -27,15 +28,16 @@ export async function DELETE(
   context: RouteContext
 ) {
   const { name } = await context.params;
-  try {
-    const result = await deleteProject(name);
+
+  return createSSEResponse<ComposeStreamEvent>(async (send) => {
+    const result = await deleteProject(name, {}, (data) => {
+      send({ type: "output", data });
+    });
 
     if (!result.success) {
-      return error(result.error || "Failed to delete project");
+      send({ type: "error", message: result.error || "Failed to delete project" });
+    } else {
+      send({ type: "done" });
     }
-
-    return success({ message: result.output });
-  } catch (err) {
-    return error(getErrorMessage(err, "Failed to delete project"));
-  }
+  });
 }

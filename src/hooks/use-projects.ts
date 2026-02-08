@@ -1,16 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiPost, apiDelete } from "@/lib/api";
+import { apiFetch, apiPost } from "@/lib/api";
 import {
   queryKeys,
   invalidateProjectQueries,
-  invalidateContainerQueries,
   invalidateAllQueries,
   clearUpdateCacheAndInvalidate,
 } from "@/lib/query";
-import { withReconnection } from "@/lib/reconnect";
-import { isProjectRunning, type Project } from "@/types";
+import { type Project } from "@/types";
+import { useBackgroundOperation, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
 
 export function useProjects() {
   return useQuery({
@@ -33,29 +33,41 @@ export function useProject(name: string) {
 export function useProjectUp(name: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () =>
-      withReconnection(
-        () => apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/up`),
-        { fallbackValue: { output: "Restarted (reconnected)" } }
-      ),
-    onSuccess: () => {
+  const config = useMemo(() => ({
+    type: "project-up",
+    getLabel: () => `Starting ${name}`,
+    execute: async (_args: void, { appendOutput, signal }: OperationCallbacks) => {
+      await consumeOutputStream(`/api/projects/${encodeURIComponent(name)}/up`, { signal, appendOutput });
+    },
+    onSuccess: async () => {
       invalidateAllQueries(queryClient);
     },
-    onError: () => {
+    onError: async () => {
       invalidateProjectQueries(queryClient, name);
     },
-  });
+  }), [name, queryClient]);
+
+  return useBackgroundOperation(config);
 }
 
 export function useProjectDown(name: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () =>
-      apiPost<{ output: string }>(`/api/projects/${encodeURIComponent(name)}/down`),
-    onSettled: () => invalidateProjectQueries(queryClient, name),
-  });
+  const config = useMemo(() => ({
+    type: "project-down",
+    getLabel: () => `Stopping ${name}`,
+    execute: async (_args: void, { appendOutput, signal }: OperationCallbacks) => {
+      await consumeOutputStream(`/api/projects/${encodeURIComponent(name)}/down`, { signal, appendOutput });
+    },
+    onSuccess: async () => {
+      invalidateProjectQueries(queryClient, name);
+    },
+    onError: async () => {
+      invalidateProjectQueries(queryClient, name);
+    },
+  }), [name, queryClient]);
+
+  return useBackgroundOperation(config);
 }
 
 export function useCreateProject() {
@@ -71,79 +83,53 @@ export function useCreateProject() {
 export function useDeleteProject(name: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () =>
-      apiDelete<{ message: string }>(`/api/projects/${encodeURIComponent(name)}`),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects.all }),
-  });
+  const config = useMemo(() => ({
+    type: "project-delete",
+    getLabel: () => `Deleting ${name}`,
+    execute: async (_args: void, { appendOutput, signal }: OperationCallbacks) => {
+      await consumeOutputStream(`/api/projects/${encodeURIComponent(name)}`, { method: "DELETE", signal, appendOutput });
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+    },
+    onError: async () => {
+      invalidateProjectQueries(queryClient, name);
+    },
+  }), [name, queryClient]);
+
+  return useBackgroundOperation(config);
 }
 
 export function useProjectPull(name: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async () => {
+  const config = useMemo(() => ({
+    type: "project-pull",
+    getLabel: () => `Pulling images for ${name}`,
+    execute: async (_args: void, { appendOutput, signal }: OperationCallbacks) => {
       // Fetch project to get image names for cache clearing
-      const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
+      const project = await apiFetch<Project>(
+        `/api/projects/${encodeURIComponent(name)}`,
+        { signal }
+      );
       const images = project?.services
         .map((s) => s.image)
         .filter((img): img is string => !!img) || [];
 
-      const result = await apiPost<{ output: string }>(
-        `/api/projects/${encodeURIComponent(name)}/pull`
-      );
+      await consumeOutputStream(`/api/projects/${encodeURIComponent(name)}/pull`, { signal, appendOutput });
 
-      return { ...result, images };
+      return { images };
     },
-    onSuccess: async (data) => {
-      await clearUpdateCacheAndInvalidate(queryClient, data?.images);
-    },
-    onSettled: () => invalidateProjectQueries(queryClient, name),
-  });
-}
-
-export function useProjectUpdate(name: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (options?: { rebuild?: boolean }) => {
-      // Check current project status before pulling
-      const project = await apiFetch<Project>(`/api/projects/${encodeURIComponent(name)}`);
-      const wasRunning = isProjectRunning(project);
-
-      // Collect images from project for cache clearing
-      const images = project?.services
-        .map((s) => s.image)
-        .filter((img): img is string => !!img) || [];
-
-      // Pull latest images
-      const pullResult = await apiPost<{ output: string }>(
-        `/api/projects/${encodeURIComponent(name)}/pull`
-      );
-
-      // Only recreate containers if project was running
-      if (wasRunning) {
-        const upResult = await apiPost<{ output: string }>(
-          `/api/projects/${encodeURIComponent(name)}/up`,
-          { build: options?.rebuild }
-        );
-        return {
-          output: (pullResult?.output || "") + "\n" + (upResult?.output || ""),
-          restarted: true,
-          images,
-        };
-      }
-
-      return { output: pullResult?.output, restarted: false, images };
-    },
-    onSuccess: async (data) => {
-      await clearUpdateCacheAndInvalidate(queryClient, data?.images);
-    },
-    onSettled: () => {
+    onSuccess: async (result: { images: string[] } | undefined) => {
+      await clearUpdateCacheAndInvalidate(queryClient, result?.images);
       invalidateProjectQueries(queryClient, name);
-      invalidateContainerQueries(queryClient);
     },
-  });
+    onError: async () => {
+      invalidateProjectQueries(queryClient, name);
+    },
+  }), [name, queryClient]);
+
+  return useBackgroundOperation<void, { images: string[] }>(config);
 }
 
 export function useProjectCompose(name: string) {

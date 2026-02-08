@@ -21,7 +21,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const projectUp = useProjectUp(decodedName);
   const projectDown = useProjectDown(decodedName);
   const deleteProject = useDeleteProject(decodedName);
-  const { updateProject } = useBackgroundProjectUpdate(decodedName);
+  const { updateProject } = useBackgroundProjectUpdate();
 
   // Editing state
   const [editedCompose, setEditedCompose] = useState<string | null>(null);
@@ -123,7 +123,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [rebuildImages, setRebuildImages] = useState(false);
-  const [actionOutput, setActionOutput] = useState<string | null>(null);
 
   // Check if project has any updates available
   const hasUpdates = useMemo(() => {
@@ -159,11 +158,9 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     return images;
   }, [project, imageUpdates, updatesMap]);
 
-  // Derived state for action button disabled states
-  const anyActionPending = projectUp.isPending || projectDown.isPending;
-  const canUp = !anyActionPending && !hasChanges;
-  const canDown = !anyActionPending && !hasChanges && project?.status !== "stopped";
-  const canUpdate = !anyActionPending && !hasChanges;
+  const canUp = !hasChanges;
+  const canDown = !hasChanges && project?.status !== "stopped";
+  const canUpdate = !hasChanges;
   const canDelete = !hasChanges;
 
   // Shared save/discard buttons for editor boxes
@@ -174,36 +171,23 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     </>
   );
 
-  const handleUp = async () => {
+  const handleUp = () => {
     setShowApplyPrompt(false);
-    try {
-      const result = await projectUp.mutateAsync();
-      setActionOutput(result?.output || "Started");
-    } catch (error) {
-      console.error("[Project Up] Error:", error);
-    }
+    projectUp.execute();
   };
 
-  const handleDown = async () => {
-    try {
-      const result = await projectDown.mutateAsync();
-      setActionOutput(result?.output || "Stopped");
-    } catch (error) {
-      console.error("[Project Down] Error:", error);
-    }
+  const handleDown = () => {
+    projectDown.execute();
   };
 
   const handleDelete = async () => {
-    try {
-      await deleteProject.mutateAsync();
-      router.push("/projects");
-    } catch (error) {
-      console.error("[Project Delete] Error:", error);
-    }
+    setShowDeleteModal(false);
+    const success = await deleteProject.execute();
+    if (success) router.push("/projects");
   };
 
   const handleUpdate = () => {
-    updateProject({ rebuild: rebuildImages });
+    updateProject(decodedName, { rebuild: rebuildImages });
     setShowUpdateModal(false);
     setRebuildImages(false);
   };
@@ -254,7 +238,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <div className="hidden md:flex items-center gap-2">
           <Button
             onClick={handleUp}
-            loading={projectUp.isPending}
             disabled={!canUp}
             disabledReason={hasChanges ? "Save or discard changes first" : undefined}
           >
@@ -262,7 +245,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           </Button>
           <Button
             onClick={handleDown}
-            loading={projectDown.isPending}
             disabled={!canDown}
             disabledReason={
               hasChanges ? "Save or discard changes first" :
@@ -297,7 +279,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <DropdownMenu className="md:hidden flex-shrink-0">
           <DropdownItem
             onClick={handleUp}
-            loading={projectUp.isPending}
             disabled={!canUp}
             disabledReason={hasChanges ? "Save or discard changes first" : undefined}
           >
@@ -305,7 +286,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           </DropdownItem>
           <DropdownItem
             onClick={handleDown}
-            loading={projectDown.isPending}
             disabled={!canDown}
             disabledReason={
               hasChanges ? "Save or discard changes first" :
@@ -335,25 +315,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           </DropdownItem>
         </DropdownMenu>
       </div>
-
-      {/* Action Output */}
-      {actionOutput && (
-        <Box title="Output">
-          <pre className="text-sm text-muted whitespace-pre-wrap">{actionOutput}</pre>
-          <Button onClick={() => setActionOutput(null)} className="mt-2">
-            Clear
-          </Button>
-        </Box>
-      )}
-
-      {/* Error Messages */}
-      {(projectUp.error || projectDown.error) && (
-        <Box>
-          <div className="text-error text-sm">
-            {String(projectUp.error || projectDown.error)}
-          </div>
-        </Box>
-      )}
 
       {/* Services */}
       <Box title="Services" padding={false}>
@@ -468,7 +429,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <Toast
           onClose={() => setShowApplyPrompt(false)}
           actions={
-            <Button variant="primary" onClick={handleUp} loading={projectUp.isPending}>
+            <Button variant="primary" onClick={handleUp}>
               Up
             </Button>
           }
@@ -489,7 +450,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               <Button
                 variant="danger"
                 onClick={handleDelete}
-                loading={deleteProject.isPending}
               >
                 Delete
               </Button>
@@ -502,9 +462,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           <p className="text-sm text-muted mt-2">
             This will stop all containers and remove the project directory.
           </p>
-          {deleteProject.error && (
-            <div className="text-error text-sm mt-2">{String(deleteProject.error)}</div>
-          )}
         </Modal>
       )}
 
@@ -561,4 +518,3 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     </div>
   );
 }
-

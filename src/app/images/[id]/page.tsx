@@ -40,21 +40,9 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
   const canDelete = (image?.containers.length ?? 0) === 0;
 
   const handleDelete = async () => {
-    try {
-      await deleteImage.mutateAsync({ id, force: forceDelete });
-      setShowDeleteModal(false);
-      router.push("/images");
-    } catch {
-      // Error handled by mutation - keep modal open to show error or retry with force
-    }
-  };
-
-  const handleCloseDeleteModal = () => {
-    if (!deleteImage.isPending) {
-      setShowDeleteModal(false);
-      setForceDelete(false);
-      deleteImage.reset();
-    }
+    setShowDeleteModal(false);
+    const success = await deleteImage.execute({ id, force: forceDelete });
+    if (success) router.push("/images");
   };
 
   // Find matched tags from the update check cache (tags sharing the same digest on the registry)
@@ -328,18 +316,14 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       {/* Delete confirmation modal */}
       <Modal
         open={showDeleteModal}
-        onClose={handleCloseDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
         title="Delete Image"
         footer={
           <>
-            <Button onClick={handleCloseDeleteModal} disabled={deleteImage.isPending}>
+            <Button onClick={() => setShowDeleteModal(false)}>
               Cancel
             </Button>
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              loading={deleteImage.isPending}
-            >
+            <Button variant="danger" onClick={handleDelete}>
               Delete
             </Button>
           </>
@@ -349,18 +333,12 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
           Are you sure you want to delete <strong>{image.name}</strong>?
         </p>
         {image.containers.length > 0 && (
-          <p className="text-warning text-sm mt-2">
-            This image is used by {image.containers.length} container
-            {image.containers.length !== 1 ? "s" : ""}.
-          </p>
-        )}
-        <p className="text-muted text-sm mt-2">This action cannot be undone.</p>
-        {deleteImage.isError && (
-          <div className="space-y-2 mt-2">
-            <div className="text-sm text-error">
-              {deleteImage.error?.message || "Failed to delete image"}
-            </div>
-            <label className="flex items-center gap-2 text-sm">
+          <>
+            <p className="text-warning text-sm mt-2">
+              This image is used by {image.containers.length} container
+              {image.containers.length !== 1 ? "s" : ""}.
+            </p>
+            <label className="flex items-center gap-2 text-sm mt-2">
               <input
                 type="checkbox"
                 checked={forceDelete}
@@ -369,8 +347,9 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
               />
               Force delete (remove even if in use)
             </label>
-          </div>
+          </>
         )}
+        <p className="text-muted text-sm mt-2">This action cannot be undone.</p>
       </Modal>
     </div>
   );

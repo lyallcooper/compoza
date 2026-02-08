@@ -520,7 +520,8 @@ export async function createProject(
 
 export async function deleteProject(
   name: string,
-  options: { removeVolumes?: boolean } = {}
+  options: { removeVolumes?: boolean } = {},
+  onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(name);
   if (!project) {
@@ -531,7 +532,7 @@ export async function deleteProject(
   const downResult = await composeDown(name, {
     volumes: options.removeVolumes,
     removeOrphans: true,
-  });
+  }, onOutput);
 
   if (!downResult.success) {
     return downResult;

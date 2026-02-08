@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { composeUp } from "@/lib/projects";
-import { success, error, getErrorMessage, applyRateLimit } from "@/lib/api";
+import { applyRateLimit, createSSEResponse } from "@/lib/api";
+
+export type ComposeStreamEvent =
+  | { type: "output"; data: string }
+  | { type: "done" }
+  | { type: "error"; message: string };
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -13,18 +18,18 @@ export async function POST(
   if (rateLimited) return rateLimited;
 
   const { name } = await context.params;
-  try {
-    const body = await request.json().catch(() => ({}));
-    const { build, pull } = body;
+  const body = await request.json().catch(() => ({}));
+  const { build, pull } = body;
 
-    const result = await composeUp(name, { build, pull });
+  return createSSEResponse<ComposeStreamEvent>(async (send) => {
+    const result = await composeUp(name, { build, pull }, (data) => {
+      send({ type: "output", data });
+    });
 
     if (!result.success) {
-      return error(result.error || "Failed to start project");
+      send({ type: "error", message: result.error || "Failed to start project" });
+    } else {
+      send({ type: "done" });
     }
-
-    return success({ output: result.output });
-  } catch (err) {
-    return error(getErrorMessage(err, "Failed to start project"));
-  }
+  });
 }

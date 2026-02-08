@@ -13,7 +13,6 @@ import {
 } from "@/components/ui";
 import { PullImageModal } from "@/components/images";
 import { useImages, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
-import type { PruneResult } from "@/hooks";
 import type { DockerImage } from "@/types";
 import { formatBytes, formatDateTime } from "@/lib/format";
 
@@ -26,7 +25,6 @@ export default function ImagesPage() {
 
   const [pullModalOpen, setPullModalOpen] = useState(false);
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
-  const [pruneResult, setPruneResult] = useState<PruneResult | null>(null);
   const [pruneOnlyUntagged, setPruneOnlyUntagged] = useState(true);
 
   // Create a map of image tags to update status
@@ -71,22 +69,15 @@ export default function ImagesPage() {
     return tags.some((tag) => updateStatusMap.get(tag));
   };
 
-  const handlePrune = async () => {
-    try {
-      const result = await pruneImages.mutateAsync(!pruneOnlyUntagged);
-      setPruneResult(result);
-    } catch {
-      // Error handled by mutation
-    }
+  const handlePrune = () => {
+    pruneImages.execute(!pruneOnlyUntagged);
+    setPruneModalOpen(false);
+    setPruneOnlyUntagged(true);
   };
 
   const handleClosePruneModal = () => {
-    if (!pruneImages.isPending) {
-      setPruneModalOpen(false);
-      setPruneResult(null);
-      setPruneOnlyUntagged(true);
-      pruneImages.reset();
-    }
+    setPruneModalOpen(false);
+    setPruneOnlyUntagged(true);
   };
 
   const columns: ColumnDef<DockerImage>[] = [
@@ -182,49 +173,33 @@ export default function ImagesPage() {
         onClose={handleClosePruneModal}
         title={pruneOnlyUntagged ? "Remove Untagged Images" : "Remove All Unused Images"}
         footer={
-          pruneResult ? (
-            <Button variant="default" onClick={handleClosePruneModal}>
-              Close
-            </Button>
-          ) : (
-            <div className="flex w-full items-center justify-between">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={pruneOnlyUntagged}
-                  onChange={(e) => setPruneOnlyUntagged(e.target.checked)}
-                  className="rounded border-border"
-                  disabled={pruneImages.isPending}
-                />
-                Only untagged
-              </label>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" onClick={handleClosePruneModal} disabled={pruneImages.isPending}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={handlePrune}
-                  loading={pruneImages.isPending}
-                  disabled={imagesToPrune.length === 0}
-                >
-                  Remove
-                </Button>
-              </div>
+          <div className="flex w-full items-center justify-between">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={pruneOnlyUntagged}
+                onChange={(e) => setPruneOnlyUntagged(e.target.checked)}
+                className="rounded border-border"
+              />
+              Only untagged
+            </label>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleClosePruneModal}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handlePrune}
+                disabled={imagesToPrune.length === 0}
+              >
+                Remove
+              </Button>
             </div>
-          )
+          </div>
         }
       >
         <div className="space-y-4">
-          {pruneResult ? (
-            <div className="space-y-2">
-              <p className="text-success">Cleanup complete</p>
-              <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
-                <div>Images removed: <span className="font-semibold">{pruneResult.imagesDeleted}</span></div>
-                <div>Space reclaimed: <span className="font-semibold">{formatBytes(pruneResult.spaceReclaimed)}</span></div>
-              </div>
-            </div>
-          ) : imagesToPrune.length === 0 ? (
+          {imagesToPrune.length === 0 ? (
             <p className="text-muted">No unused images to remove.</p>
           ) : (
             <>
@@ -244,11 +219,6 @@ export default function ImagesPage() {
               <p className="text-sm text-muted">
                 Total space to reclaim: <span className="font-semibold">{formatBytes(pruneTotalSize)}</span>
               </p>
-              {pruneImages.isError && (
-                <div className="text-sm text-error">
-                  {pruneImages.error?.message || "Failed to remove unused images"}
-                </div>
-              )}
             </>
           )}
         </div>

@@ -6,7 +6,6 @@ export {
   useCreateProject,
   useDeleteProject,
   useProjectPull,
-  useProjectUpdate,
   useProjectCompose,
   useProjectEnv,
 } from "./use-projects";
@@ -17,12 +16,10 @@ export {
   useStartContainer,
   useStopContainer,
   useRestartContainer,
-  useContainerUpdate,
   useRemoveContainer,
   usePruneContainers,
 } from "./use-containers";
 export { useImages, useImage, usePullImage, useDeleteImage, usePruneImages } from "./use-images";
-export type { PruneResult } from "./use-images";
 export {
   useNetworks,
   useNetwork,

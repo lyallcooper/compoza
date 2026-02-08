@@ -77,32 +77,3 @@ export async function handleDisconnection(
   return reconnected;
 }
 
-/**
- * Wrap an async function with reconnection handling.
- * If the function fails due to a network error, waits for the server to come back.
- * Useful for mutations that might trigger a self-restart (e.g., compose up on self).
- */
-export async function withReconnection<T>(
-  fn: () => Promise<T>,
-  options?: {
-    onReconnecting?: () => void;
-    fallbackValue?: T;
-  }
-): Promise<T> {
-  try {
-    return await fn();
-  } catch (error) {
-    if (isNetworkError(error)) {
-      options?.onReconnecting?.();
-      const reconnected = await waitForReconnection();
-      if (reconnected && options?.fallbackValue !== undefined) {
-        return options.fallbackValue;
-      }
-      if (reconnected) {
-        // Return a generic success - the operation likely succeeded before we disconnected
-        return { success: true, reconnected: true } as T;
-      }
-    }
-    throw error;
-  }
-}

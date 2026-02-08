@@ -16,7 +16,7 @@ import {
 import { useVolumes, useCreateVolume, usePruneVolumes } from "@/hooks";
 import { formatBytes } from "@/lib/format";
 import type { DockerVolume } from "@/types";
-import type { CreateVolumeOptions, VolumePruneResult } from "@/lib/docker";
+import type { CreateVolumeOptions } from "@/lib/docker";
 
 /** Docker marks anonymous volumes with this label */
 const ANONYMOUS_VOLUME_LABEL = "com.docker.volume.anonymous";
@@ -31,7 +31,6 @@ export default function VolumesPage() {
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
-  const [pruneResult, setPruneResult] = useState<VolumePruneResult | null>(null);
 
   // Create form state
   const [volumeName, setVolumeName] = useState("");
@@ -82,22 +81,15 @@ export default function VolumesPage() {
     }
   };
 
-  const handlePrune = async () => {
-    try {
-      const result = await pruneVolumes.mutateAsync(!pruneOnlyAnonymous);
-      setPruneResult(result);
-    } catch {
-      // Error handled by mutation
-    }
+  const handlePrune = () => {
+    pruneVolumes.execute(!pruneOnlyAnonymous);
+    setPruneModalOpen(false);
+    setPruneOnlyAnonymous(true);
   };
 
   const handleClosePruneModal = () => {
-    if (!pruneVolumes.isPending) {
-      setPruneModalOpen(false);
-      setPruneResult(null);
-      setPruneOnlyAnonymous(true);
-      pruneVolumes.reset();
-    }
+    setPruneModalOpen(false);
+    setPruneOnlyAnonymous(true);
   };
 
   const columns: ColumnDef<DockerVolume>[] = [
@@ -248,64 +240,33 @@ export default function VolumesPage() {
         onClose={handleClosePruneModal}
         title={pruneOnlyAnonymous ? "Remove Anonymous Volumes" : "Remove All Unused Volumes"}
         footer={
-          pruneResult ? (
-            <Button variant="default" onClick={handleClosePruneModal}>
-              Close
-            </Button>
-          ) : (
-            <div className="flex w-full items-center justify-between">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={pruneOnlyAnonymous}
-                  onChange={(e) => setPruneOnlyAnonymous(e.target.checked)}
-                  className="rounded border-border"
-                  disabled={pruneVolumes.isPending}
-                />
-                Only anonymous
-              </label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={handleClosePruneModal}
-                  disabled={pruneVolumes.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={handlePrune}
-                  loading={pruneVolumes.isPending}
-                  disabled={volumesToPrune.length === 0}
-                >
-                  Remove
-                </Button>
-              </div>
+          <div className="flex w-full items-center justify-between">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={pruneOnlyAnonymous}
+                onChange={(e) => setPruneOnlyAnonymous(e.target.checked)}
+                className="rounded border-border"
+              />
+              Only anonymous
+            </label>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleClosePruneModal}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handlePrune}
+                disabled={volumesToPrune.length === 0}
+              >
+                Remove
+              </Button>
             </div>
-          )
+          </div>
         }
       >
         <div className="space-y-4">
-          {pruneResult ? (
-            <div className="space-y-2">
-              <p className="text-success">Cleanup complete</p>
-              <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
-                <div>
-                  Volumes removed:{" "}
-                  <span className="font-semibold">
-                    {pruneResult.volumesDeleted.length}
-                  </span>
-                </div>
-                {pruneResult.volumesDeleted.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto space-y-0.5 text-muted font-mono text-xs">
-                    {pruneResult.volumesDeleted.map((name) => (
-                      <div key={name}>{name}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : volumesToPrune.length === 0 ? (
+          {volumesToPrune.length === 0 ? (
             <p className="text-muted">
               {pruneOnlyAnonymous
                 ? "No anonymous volumes to remove."
@@ -329,11 +290,6 @@ export default function VolumesPage() {
                   ))}
                 </div>
               </div>
-              {pruneVolumes.isError && (
-                <div className="text-sm text-error">
-                  {pruneVolumes.error?.message || "Failed to remove unused volumes"}
-                </div>
-              )}
             </>
           )}
         </div>

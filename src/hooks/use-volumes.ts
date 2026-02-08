@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { queryKeys, invalidateVolumeQueries } from "@/lib/query";
+import { useBackgroundOperation, type OperationCallbacks } from "./use-background-operation";
 import type { DockerVolume } from "@/types";
 import type { CreateVolumeOptions, VolumePruneResult } from "@/lib/docker";
 
@@ -47,9 +49,23 @@ export function useRemoveVolume() {
 export function usePruneVolumes() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (all: boolean = false) =>
-      apiPost<VolumePruneResult>("/api/volumes/prune", { all }),
-    onSettled: () => invalidateVolumeQueries(queryClient),
-  });
+  const config = useMemo(() => ({
+    type: "volume-prune",
+    getLabel: () => "Removing unused volumes",
+    execute: async (all: boolean, { signal }: OperationCallbacks) => {
+      return await apiPost<VolumePruneResult>(
+        "/api/volumes/prune",
+        { all },
+        { signal }
+      );
+    },
+    onSuccess: async () => {
+      invalidateVolumeQueries(queryClient);
+    },
+    onError: async () => {
+      invalidateVolumeQueries(queryClient);
+    },
+  }), [queryClient]);
+
+  return useBackgroundOperation<boolean, VolumePruneResult>(config);
 }

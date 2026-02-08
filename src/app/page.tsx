@@ -13,10 +13,10 @@ import { formatBytes } from "@/lib/format";
 
 function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const [showModal, setShowModal] = useState(false);
-  const { updateProject } = useBackgroundProjectUpdate(project.name);
+  const { updateProject } = useBackgroundProjectUpdate();
 
   const handleUpdate = () => {
-    updateProject();
+    updateProject(project.name);
     setShowModal(false);
   };
 

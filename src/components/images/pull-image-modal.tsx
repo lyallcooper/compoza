@@ -13,25 +13,18 @@ export function PullImageModal({ open, onClose }: PullImageModalProps) {
   const [imageName, setImageName] = useState("");
   const pullImage = usePullImage();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!imageName.trim()) return;
 
-    try {
-      await pullImage.mutateAsync(imageName.trim());
-      setImageName("");
-      onClose();
-    } catch {
-      // Error is handled by the mutation
-    }
+    pullImage.execute(imageName.trim());
+    setImageName("");
+    onClose();
   };
 
   const handleClose = () => {
-    if (!pullImage.isPending) {
-      setImageName("");
-      pullImage.reset();
-      onClose();
-    }
+    setImageName("");
+    onClose();
   };
 
   return (
@@ -41,13 +34,12 @@ export function PullImageModal({ open, onClose }: PullImageModalProps) {
       title="Pull Image"
       footer={
         <>
-          <Button variant="ghost" onClick={handleClose} disabled={pullImage.isPending}>
+          <Button variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
           <Button
             variant="primary"
             onClick={handleSubmit}
-            loading={pullImage.isPending}
             disabled={!imageName.trim()}
           >
             Pull
@@ -61,14 +53,8 @@ export function PullImageModal({ open, onClose }: PullImageModalProps) {
           placeholder="e.g., nginx:latest or alpine"
           value={imageName}
           onChange={(e) => setImageName(e.target.value)}
-          disabled={pullImage.isPending}
           autoFocus
         />
-        {pullImage.isError && (
-          <div className="text-sm text-error">
-            {pullImage.error?.message || "Failed to pull image"}
-          </div>
-        )}
       </form>
     </Modal>
   );

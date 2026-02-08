@@ -1,8 +1,10 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { queryKeys, invalidateImageQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
+import { useBackgroundOperation, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
 import type { DockerImage, DockerImageDetail } from "@/types";
 
 export function useImages() {
@@ -23,36 +25,74 @@ export function useImage(id: string) {
 export function usePullImage() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (name: string) =>
-      apiPost<{ message: string }>("/api/images/pull", { name }),
-    onSuccess: async (_data, name) => {
-      // Clear update cache for this image and optimistically remove from UI
-      await clearUpdateCacheAndInvalidate(queryClient, [name]);
+  const config = useMemo(() => ({
+    type: "image-pull",
+    getLabel: (name: string) => `Pulling ${name}`,
+    execute: async (name: string, { appendOutput, signal }: OperationCallbacks) => {
+      await consumeOutputStream("/api/images/pull", { body: { name }, signal, appendOutput });
+      return { name };
     },
-    onSettled: () => invalidateImageQueries(queryClient),
-  });
+    onSuccess: async (result: { name: string } | undefined) => {
+      if (result) {
+        await clearUpdateCacheAndInvalidate(queryClient, [result.name]);
+      }
+      invalidateImageQueries(queryClient);
+    },
+    onError: async () => {
+      invalidateImageQueries(queryClient);
+    },
+  }), [queryClient]);
+
+  return useBackgroundOperation<string, { name: string }>(config);
 }
 
 export function useDeleteImage() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, force }: { id: string; force?: boolean }) =>
-      apiDelete<{ message: string }>(`/api/images/${encodeURIComponent(id)}`, { force }),
-    onSettled: () => invalidateImageQueries(queryClient),
-  });
-}
+  const config = useMemo(() => ({
+    type: "image-delete",
+    getLabel: ({ id }: { id: string }) => `Deleting ${id}`,
+    execute: async (
+      { id, force }: { id: string; force?: boolean },
+      { signal }: OperationCallbacks
+    ) => {
+      await apiDelete<{ message: string }>(
+        `/api/images/${encodeURIComponent(id)}`,
+        force ? { force } : undefined,
+        { signal }
+      );
+    },
+    onSuccess: async () => {
+      invalidateImageQueries(queryClient);
+    },
+    onError: async () => {
+      invalidateImageQueries(queryClient);
+    },
+  }), [queryClient]);
 
-// Re-export PruneResult from docker lib for convenience
-export type { PruneResult } from "@/lib/docker";
+  return useBackgroundOperation<{ id: string; force?: boolean }>(config);
+}
 
 export function usePruneImages() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (all: boolean = false) =>
-      apiPost<{ imagesDeleted: number; spaceReclaimed: number }>("/api/images/prune", { all }),
-    onSettled: () => invalidateImageQueries(queryClient),
-  });
+  const config = useMemo(() => ({
+    type: "image-prune",
+    getLabel: () => "Removing unused images",
+    execute: async (all: boolean, { signal }: OperationCallbacks) => {
+      return await apiPost<{ imagesDeleted: number; spaceReclaimed: number }>(
+        "/api/images/prune",
+        { all },
+        { signal }
+      );
+    },
+    onSuccess: async () => {
+      invalidateImageQueries(queryClient);
+    },
+    onError: async () => {
+      invalidateImageQueries(queryClient);
+    },
+  }), [queryClient]);
+
+  return useBackgroundOperation<boolean, { imagesDeleted: number; spaceReclaimed: number }>(config);
 }

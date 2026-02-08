@@ -2,7 +2,12 @@ import { NextRequest } from "next/server";
 import { getContainer } from "@/lib/docker";
 import { composePullService, composeUpService } from "@/lib/projects";
 import { clearCachedUpdates } from "@/lib/updates";
-import { success, error, notFound, badRequest, getErrorMessage } from "@/lib/api";
+import { notFound, badRequest, createSSEResponse } from "@/lib/api";
+
+export type ContainerUpdateStreamEvent =
+  | { type: "output"; data: string }
+  | { type: "done"; result: { restarted: boolean; image?: string } }
+  | { type: "error"; message: string };
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -11,33 +16,32 @@ export async function POST(
   context: RouteContext
 ) {
   const { id } = await context.params;
-  try {
-    const container = await getContainer(id);
 
-    if (!container) {
-      return notFound("Container not found");
-    }
+  const container = await getContainer(id);
 
-    // Verify this is a compose-managed container that can be updated
-    // Destructure to narrow types (TypeScript needs explicit presence check)
-    const { projectName, serviceName } = container;
-    if (!projectName || !serviceName || !container.actions.canUpdate) {
-      return badRequest("Container cannot be updated (not compose-managed or in invalid state)");
-    }
+  if (!container) {
+    return notFound("Container not found");
+  }
 
+  const { projectName, serviceName } = container;
+  if (!projectName || !serviceName || !container.actions.canUpdate) {
+    return badRequest("Container cannot be updated (not compose-managed or in invalid state)");
+  }
+
+  return createSSEResponse<ContainerUpdateStreamEvent>(async (send) => {
     const wasRunning = container.state === "running";
-    let output = "";
 
     // Pull the image for this service
-    const pullResult = await composePullService(projectName, serviceName);
-    output += pullResult.output;
+    const pullResult = await composePullService(projectName, serviceName, (data) => {
+      send({ type: "output", data });
+    });
 
     if (!pullResult.success) {
-      return error(pullResult.error || "Failed to pull image");
+      send({ type: "error", message: pullResult.error || "Failed to pull image" });
+      return;
     }
 
-    // Clear update cache after pull so stale cached "no update" is removed
-    // (must happen even if up fails below)
+    // Clear update cache after pull
     if (container.image) {
       clearCachedUpdates([container.image]);
     }
@@ -45,17 +49,17 @@ export async function POST(
     // Recreate the service if it was running
     let restarted = false;
     if (wasRunning) {
-      const upResult = await composeUpService(projectName, serviceName);
-      output += "\n" + upResult.output;
+      const upResult = await composeUpService(projectName, serviceName, (data) => {
+        send({ type: "output", data });
+      });
 
       if (!upResult.success) {
-        return error(upResult.error || "Failed to recreate container");
+        send({ type: "error", message: upResult.error || "Failed to recreate container" });
+        return;
       }
       restarted = true;
     }
 
-    return success({ output, restarted, image: container.image });
-  } catch (err) {
-    return error(getErrorMessage(err, "Failed to update container"));
-  }
+    send({ type: "done", result: { restarted, image: container.image } });
+  });
 }

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui";
 import { useNetworks, useCreateNetwork, usePruneNetworks } from "@/hooks";
 import type { DockerNetwork } from "@/types";
-import type { CreateNetworkOptions, NetworkPruneResult } from "@/lib/docker";
+import type { CreateNetworkOptions } from "@/lib/docker";
 
 export default function NetworksPage() {
   const router = useRouter();
@@ -24,7 +24,6 @@ export default function NetworksPage() {
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
-  const [pruneResult, setPruneResult] = useState<NetworkPruneResult | null>(null);
 
   // Create form state
   const [networkName, setNetworkName] = useState("");
@@ -73,21 +72,9 @@ export default function NetworksPage() {
     }
   };
 
-  const handlePrune = async () => {
-    try {
-      const result = await pruneNetworks.mutateAsync();
-      setPruneResult(result);
-    } catch {
-      // Error handled by mutation
-    }
-  };
-
-  const handleClosePruneModal = () => {
-    if (!pruneNetworks.isPending) {
-      setPruneModalOpen(false);
-      setPruneResult(null);
-      pruneNetworks.reset();
-    }
+  const handlePrune = () => {
+    pruneNetworks.execute();
+    setPruneModalOpen(false);
   };
 
   const columns: ColumnDef<DockerNetwork>[] = [
@@ -240,58 +227,28 @@ export default function NetworksPage() {
       {/* Prune Networks Modal */}
       <Modal
         open={pruneModalOpen}
-        onClose={handleClosePruneModal}
+        onClose={() => setPruneModalOpen(false)}
         title="Remove Unused Networks"
         footer={
-          pruneResult ? (
-            <Button variant="default" onClick={handleClosePruneModal}>
-              Close
+          <>
+            <Button variant="ghost" onClick={() => setPruneModalOpen(false)}>
+              Cancel
             </Button>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                onClick={handleClosePruneModal}
-                disabled={pruneNetworks.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handlePrune}
-                loading={pruneNetworks.isPending}
-                disabled={unusedNetworks.length === 0}
-              >
-                Remove
-              </Button>
-            </>
-          )
+            <Button
+              variant="danger"
+              onClick={handlePrune}
+              disabled={unusedNetworks.length === 0}
+            >
+              Remove
+            </Button>
+          </>
         }
       >
         <div className="space-y-4">
-          {pruneResult ? (
-            <div className="space-y-2">
-              <p className="text-success">Cleanup complete</p>
-              <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
-                <div>
-                  Networks removed:{" "}
-                  <span className="font-semibold">
-                    {pruneResult.networksDeleted.length}
-                  </span>
-                </div>
-                {pruneResult.networksDeleted.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto space-y-0.5 text-muted font-mono text-xs">
-                    {pruneResult.networksDeleted.map((name) => (
-                      <div key={name}>{name}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : unusedNetworks.length === 0 ? (
+          {unusedNetworks.length === 0 ? (
             <p className="text-muted">No unused networks to remove.</p>
           ) : (
-            <>
+            <div>
               <p>
                 The following{" "}
                 {unusedNetworks.length === 1
@@ -299,7 +256,7 @@ export default function NetworksPage() {
                   : `${unusedNetworks.length} networks`}{" "}
                 will be removed:
               </p>
-              <div className="bg-surface border border-border rounded p-3 max-h-48 overflow-y-auto">
+              <div className="bg-surface border border-border rounded p-3 max-h-48 overflow-y-auto mt-4">
                 <div className="space-y-1">
                   {unusedNetworks.map((net) => (
                     <div key={net.id} className="font-mono text-sm">
@@ -308,12 +265,7 @@ export default function NetworksPage() {
                   ))}
                 </div>
               </div>
-              {pruneNetworks.isError && (
-                <div className="text-sm text-error">
-                  {pruneNetworks.error?.message || "Failed to remove unused networks"}
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       </Modal>

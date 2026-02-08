@@ -6,15 +6,6 @@ import type { ColumnDef } from "@/components/ui";
 import { useSystemInfo, useDiskUsage, useSystemPrune } from "@/hooks";
 import { formatBytes } from "@/lib/format";
 import type { SystemPruneOptions } from "@/types";
-import type { SystemPruneStep } from "@/lib/docker";
-
-const stepLabels: Record<SystemPruneStep, string> = {
-  containers: "Removing stopped containers…",
-  networks: "Removing unused networks…",
-  images: "Removing unused images…",
-  volumes: "Removing unused volumes…",
-  buildCache: "Clearing build cache…",
-};
 
 const GITHUB_REPO = "https://github.com/lyallcooper/compoza";
 
@@ -46,19 +37,8 @@ export default function SystemPage() {
   });
 
   const handlePrune = () => {
-    systemPrune.mutateAsync(pruneOptions);
-  };
-
-  const handleClosePruneModal = () => {
-    if (!systemPrune.isPending) {
-      setPruneModalOpen(false);
-      systemPrune.reset();
-    }
-  };
-
-  const handleOpenPruneModal = () => {
-    systemPrune.reset();
-    setPruneModalOpen(true);
+    systemPrune.execute(pruneOptions);
+    setPruneModalOpen(false);
   };
 
   const toggleOption = (key: keyof SystemPruneOptions) => {
@@ -178,7 +158,7 @@ export default function SystemPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold shrink-0">System</h1>
-        <Button variant="default" onClick={handleOpenPruneModal}>
+        <Button variant="default" onClick={() => setPruneModalOpen(true)}>
           System Prune…
         </Button>
       </div>
@@ -280,153 +260,83 @@ export default function SystemPage() {
       {/* System Prune Modal */}
       <Modal
         open={pruneModalOpen}
-        onClose={handleClosePruneModal}
+        onClose={() => setPruneModalOpen(false)}
         title="System Prune"
         footer={
-          systemPrune.result ? (
-            <Button variant="default" onClick={handleClosePruneModal}>
-              Close
+          <>
+            <Button variant="ghost" onClick={() => setPruneModalOpen(false)}>
+              Cancel
             </Button>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                onClick={handleClosePruneModal}
-                disabled={systemPrune.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handlePrune}
-                loading={systemPrune.isPending}
-              >
-                Prune
-              </Button>
-            </>
-          )
+            <Button variant="danger" onClick={handlePrune}>
+              Prune
+            </Button>
+          </>
         }
       >
         <div className="space-y-4">
-          {systemPrune.result ? (
-            <div className="space-y-3">
-              <p className="text-success">Cleanup complete</p>
-              <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
-                <div>
-                  Space reclaimed:{" "}
-                  <span className="font-semibold">{formatBytes(systemPrune.result.spaceReclaimed)}</span>
-                </div>
-                {systemPrune.result.containersDeleted > 0 && (
-                  <div>
-                    Containers removed:{" "}
-                    <span className="font-semibold">{systemPrune.result.containersDeleted}</span>
-                  </div>
-                )}
-                {systemPrune.result.networksDeleted > 0 && (
-                  <div>
-                    Networks removed:{" "}
-                    <span className="font-semibold">{systemPrune.result.networksDeleted}</span>
-                  </div>
-                )}
-                {systemPrune.result.imagesDeleted > 0 && (
-                  <div>
-                    Images removed:{" "}
-                    <span className="font-semibold">{systemPrune.result.imagesDeleted}</span>
-                  </div>
-                )}
-                {systemPrune.result.volumesDeleted > 0 && (
-                  <div>
-                    Volumes removed:{" "}
-                    <span className="font-semibold">{systemPrune.result.volumesDeleted}</span>
-                  </div>
-                )}
-                {systemPrune.result.buildCacheSpaceReclaimed > 0 && (
-                  <div>
-                    Build cache cleared:{" "}
-                    <span className="font-semibold">{formatBytes(systemPrune.result.buildCacheSpaceReclaimed)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : systemPrune.isPending ? (
-            <div className="flex items-center gap-3 py-2">
-              <Spinner />
-              <span className="text-muted text-sm">
-                {systemPrune.currentStep ? stepLabels[systemPrune.currentStep] : "Starting…"}
+          <p className="text-muted text-sm">
+            Remove unused Docker resources to free up disk space.
+          </p>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pruneOptions.containers}
+                onChange={() => toggleOption("containers")}
+                className="rounded border-border"
+              />
+              <span>Stopped containers</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pruneOptions.networks}
+                onChange={() => toggleOption("networks")}
+                className="rounded border-border"
+              />
+              <span>Unused networks</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pruneOptions.images}
+                onChange={() => toggleOption("images")}
+                className="rounded border-border"
+              />
+              <span>Dangling images</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer ml-6">
+              <input
+                type="checkbox"
+                checked={pruneOptions.allImages}
+                onChange={() => toggleOption("allImages")}
+                disabled={!pruneOptions.images}
+                className="rounded border-border"
+              />
+              <span className={!pruneOptions.images ? "text-muted" : ""}>
+                Include all unused images (not just dangling)
               </span>
-            </div>
-          ) : (
-            <>
-              <p className="text-muted text-sm">
-                Remove unused Docker resources to free up disk space.
-              </p>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pruneOptions.containers}
-                    onChange={() => toggleOption("containers")}
-                    className="rounded border-border"
-                  />
-                  <span>Stopped containers</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pruneOptions.networks}
-                    onChange={() => toggleOption("networks")}
-                    className="rounded border-border"
-                  />
-                  <span>Unused networks</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pruneOptions.images}
-                    onChange={() => toggleOption("images")}
-                    className="rounded border-border"
-                  />
-                  <span>Dangling images</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer ml-6">
-                  <input
-                    type="checkbox"
-                    checked={pruneOptions.allImages}
-                    onChange={() => toggleOption("allImages")}
-                    disabled={!pruneOptions.images}
-                    className="rounded border-border"
-                  />
-                  <span className={!pruneOptions.images ? "text-muted" : ""}>
-                    Include all unused images (not just dangling)
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pruneOptions.volumes}
-                    onChange={() => toggleOption("volumes")}
-                    className="rounded border-border"
-                  />
-                  <span>Unused volumes</span>
-                  <span className="text-warning text-xs">(data loss risk)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pruneOptions.buildCache}
-                    onChange={() => toggleOption("buildCache")}
-                    className="rounded border-border"
-                  />
-                  <span>Build cache</span>
-                </label>
-              </div>
-              {systemPrune.error && (
-                <div className="text-sm text-error">
-                  {systemPrune.error}
-                </div>
-              )}
-            </>
-          )}
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pruneOptions.volumes}
+                onChange={() => toggleOption("volumes")}
+                className="rounded border-border"
+              />
+              <span>Unused volumes</span>
+              <span className="text-warning text-xs">(data loss risk)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pruneOptions.buildCache}
+                onChange={() => toggleOption("buildCache")}
+                className="rounded border-border"
+              />
+              <span>Build cache</span>
+            </label>
+          </div>
         </div>
       </Modal>
     </div>

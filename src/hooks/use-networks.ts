@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { queryKeys, invalidateNetworkQueries } from "@/lib/query";
+import { useBackgroundOperation, type OperationCallbacks } from "./use-background-operation";
 import type { DockerNetwork } from "@/types";
 import type { CreateNetworkOptions, NetworkPruneResult } from "@/lib/docker";
 
@@ -47,8 +49,23 @@ export function useRemoveNetwork() {
 export function usePruneNetworks() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () => apiPost<NetworkPruneResult>("/api/networks/prune"),
-    onSettled: () => invalidateNetworkQueries(queryClient),
-  });
+  const config = useMemo(() => ({
+    type: "network-prune",
+    getLabel: () => "Removing unused networks",
+    execute: async (_args: void, { signal }: OperationCallbacks) => {
+      return await apiPost<NetworkPruneResult>(
+        "/api/networks/prune",
+        undefined,
+        { signal }
+      );
+    },
+    onSuccess: async () => {
+      invalidateNetworkQueries(queryClient);
+    },
+    onError: async () => {
+      invalidateNetworkQueries(queryClient);
+    },
+  }), [queryClient]);
+
+  return useBackgroundOperation<void, NetworkPruneResult>(config);
 }

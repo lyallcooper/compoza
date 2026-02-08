@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { composeDown } from "@/lib/projects";
-import { success, error, getErrorMessage, applyRateLimit } from "@/lib/api";
+import { applyRateLimit, createSSEResponse } from "@/lib/api";
+import type { ComposeStreamEvent } from "../up/route";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -13,18 +14,18 @@ export async function POST(
   if (rateLimited) return rateLimited;
 
   const { name } = await context.params;
-  try {
-    const body = await request.json().catch(() => ({}));
-    const { volumes, removeOrphans } = body;
+  const body = await request.json().catch(() => ({}));
+  const { volumes, removeOrphans } = body;
 
-    const result = await composeDown(name, { volumes, removeOrphans });
+  return createSSEResponse<ComposeStreamEvent>(async (send) => {
+    const result = await composeDown(name, { volumes, removeOrphans }, (data) => {
+      send({ type: "output", data });
+    });
 
     if (!result.success) {
-      return error(result.error || "Failed to stop project");
+      send({ type: "error", message: result.error || "Failed to stop project" });
+    } else {
+      send({ type: "done" });
     }
-
-    return success({ output: result.output });
-  } catch (err) {
-    return error(getErrorMessage(err, "Failed to stop project"));
-  }
+  });
 }

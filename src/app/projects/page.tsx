@@ -198,18 +198,16 @@ function ProjectActions({
       <Button
         onClick={(e) => {
           e.stopPropagation();
-          projectUp.mutate();
+          projectUp.execute();
         }}
-        loading={projectUp.isPending}
       >
         Up
       </Button>
       <Button
         onClick={(e) => {
           e.stopPropagation();
-          projectDown.mutate();
+          projectDown.execute();
         }}
-        loading={projectDown.isPending}
         disabled={project.status === "stopped"}
       >
         Down
@@ -238,10 +236,10 @@ function UpdateConfirmModalWrapper({
   updatableImages: ImageUpdate[];
   onClose: () => void;
 }) {
-  const { updateProject } = useBackgroundProjectUpdate(project.name);
+  const { updateProject } = useBackgroundProjectUpdate();
 
   const handleUpdate = () => {
-    updateProject();
+    updateProject(project.name);
     onClose();
   };
 

@@ -82,14 +82,10 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
   };
 
   const handleDelete = async () => {
-    try {
-      const isRunning = container?.state === "running";
-      await removeContainer.mutateAsync({ id: name, force: isRunning });
-      router.push("/containers");
-    } catch {
-      // Error is handled by the mutation
-    }
+    const isRunning = container?.state === "running";
     setShowRemoveModal(false);
+    const success = await removeContainer.execute({ id: name, force: isRunning });
+    if (success) router.push("/containers");
   };
 
   if (isLoading) {
@@ -139,26 +135,17 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-2">
           {container.actions.canStart && (
-            <Button
-              onClick={() => startContainer.mutate(name)}
-              loading={startContainer.isPending}
-            >
+            <Button onClick={() => startContainer.execute(name)}>
               Start
             </Button>
           )}
           {container.actions.canStop && (
-            <Button
-              onClick={() => stopContainer.mutate(name)}
-              loading={stopContainer.isPending}
-            >
+            <Button onClick={() => stopContainer.execute(name)}>
               Stop
             </Button>
           )}
           {container.actions.canRestart && (
-            <Button
-              onClick={() => restartContainer.mutate(name)}
-              loading={restartContainer.isPending}
-            >
+            <Button onClick={() => restartContainer.execute(name)}>
               Restart
             </Button>
           )}
@@ -189,26 +176,17 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         {/* Mobile actions dropdown */}
         <DropdownMenu className="md:hidden">
           {container.actions.canStart && (
-            <DropdownItem
-              onClick={() => startContainer.mutate(name)}
-              loading={startContainer.isPending}
-            >
+            <DropdownItem onClick={() => startContainer.execute(name)}>
               Start
             </DropdownItem>
           )}
           {container.actions.canStop && (
-            <DropdownItem
-              onClick={() => stopContainer.mutate(name)}
-              loading={stopContainer.isPending}
-            >
+            <DropdownItem onClick={() => stopContainer.execute(name)}>
               Stop
             </DropdownItem>
           )}
           {container.actions.canRestart && (
-            <DropdownItem
-              onClick={() => restartContainer.mutate(name)}
-              loading={restartContainer.isPending}
-            >
+            <DropdownItem onClick={() => restartContainer.execute(name)}>
               Restart
             </DropdownItem>
           )}
@@ -576,11 +554,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         footer={
           <>
             <Button onClick={() => setShowRemoveModal(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              loading={removeContainer.isPending}
-            >
+            <Button variant="danger" onClick={handleDelete}>
               Delete
             </Button>
           </>

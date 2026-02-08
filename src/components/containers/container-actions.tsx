@@ -19,24 +19,15 @@ export function ContainerActions({ containerId, state }: ContainerActionsProps) 
     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
       {isRunning ? (
         <>
-          <Button
-            onClick={() => stopContainer.mutate(containerId)}
-            loading={stopContainer.isPending && stopContainer.variables === containerId}
-          >
+          <Button onClick={() => stopContainer.execute(containerId)}>
             Stop
           </Button>
-          <Button
-            onClick={() => restartContainer.mutate(containerId)}
-            loading={restartContainer.isPending && restartContainer.variables === containerId}
-          >
+          <Button onClick={() => restartContainer.execute(containerId)}>
             Restart
           </Button>
         </>
       ) : (
-        <Button
-          onClick={() => startContainer.mutate(containerId)}
-          loading={startContainer.isPending && startContainer.variables === containerId}
-        >
+        <Button onClick={() => startContainer.execute(containerId)}>
           Start
         </Button>
       )}

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { composePull } from "@/lib/projects";
-import { success, error, getErrorMessage } from "@/lib/api";
+import { createSSEResponse } from "@/lib/api";
+import type { ComposeStreamEvent } from "../up/route";
 
 type RouteContext = { params: Promise<{ name: string }> };
 
@@ -9,15 +10,16 @@ export async function POST(
   context: RouteContext
 ) {
   const { name } = await context.params;
-  try {
-    const result = await composePull(name);
+
+  return createSSEResponse<ComposeStreamEvent>(async (send) => {
+    const result = await composePull(name, (data) => {
+      send({ type: "output", data });
+    });
 
     if (!result.success) {
-      return error(result.error || "Failed to pull images");
+      send({ type: "error", message: result.error || "Failed to pull images" });
+    } else {
+      send({ type: "done" });
     }
-
-    return success({ output: result.output });
-  } catch (err) {
-    return error(getErrorMessage(err, "Failed to pull images"));
-  }
+  });
 }

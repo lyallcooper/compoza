@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import { Box, Spinner, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { useContainers, usePruneContainers } from "@/hooks";
-import type { ContainerPruneResult } from "@/lib/docker";
-import { formatBytes } from "@/lib/format";
 import type { Container } from "@/types";
 
 export default function ContainersPage() {
@@ -16,7 +14,6 @@ export default function ContainersPage() {
   const pruneContainers = usePruneContainers();
 
   const [pruneModalOpen, setPruneModalOpen] = useState(false);
-  const [pruneResult, setPruneResult] = useState<ContainerPruneResult | null>(null);
 
   const sortedContainers = useMemo(
     () => [...(containers || [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -28,21 +25,9 @@ export default function ContainersPage() {
     [containers]
   );
 
-  const handlePrune = async () => {
-    try {
-      const result = await pruneContainers.mutateAsync();
-      setPruneResult(result);
-    } catch {
-      // Error handled by mutation
-    }
-  };
-
-  const handleClosePruneModal = () => {
-    if (!pruneContainers.isPending) {
-      setPruneModalOpen(false);
-      setPruneResult(null);
-      pruneContainers.reset();
-    }
+  const handlePrune = () => {
+    pruneContainers.execute();
+    setPruneModalOpen(false);
   };
 
   const columns: ColumnDef<Container>[] = [
@@ -171,59 +156,39 @@ export default function ContainersPage() {
 
       <Modal
         open={pruneModalOpen}
-        onClose={handleClosePruneModal}
+        onClose={() => setPruneModalOpen(false)}
         title="Remove Stopped Containers"
         footer={
-          pruneResult ? (
-            <Button variant="default" onClick={handleClosePruneModal}>
-              Close
+          <>
+            <Button variant="ghost" onClick={() => setPruneModalOpen(false)}>
+              Cancel
             </Button>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={handleClosePruneModal} disabled={pruneContainers.isPending}>
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handlePrune}
-                loading={pruneContainers.isPending}
-                disabled={stoppedContainers.length === 0}
-              >
-                Remove
-              </Button>
-            </>
-          )
+            <Button
+              variant="danger"
+              onClick={handlePrune}
+              disabled={stoppedContainers.length === 0}
+            >
+              Remove
+            </Button>
+          </>
         }
       >
         <div className="space-y-4">
-          {pruneResult ? (
-            <div className="space-y-2">
-              <p className="text-success">Cleanup complete</p>
-              <div className="bg-surface border border-border rounded p-3 space-y-1 text-sm">
-                <div>Containers removed: <span className="font-semibold">{pruneResult.containersDeleted}</span></div>
-                <div>Space reclaimed: <span className="font-semibold">{formatBytes(pruneResult.spaceReclaimed)}</span></div>
-              </div>
-            </div>
-          ) : stoppedContainers.length === 0 ? (
+          {stoppedContainers.length === 0 ? (
             <p className="text-muted">No stopped containers to remove.</p>
           ) : (
-            <>
+            <div>
               <p>
                 The following {stoppedContainers.length === 1 ? "container" : `${stoppedContainers.length} containers`} will be removed:
               </p>
-              <div className="bg-surface border border-border rounded p-3 h-48 overflow-y-auto">
+              <div className="bg-surface border border-border rounded p-3 h-48 overflow-y-auto mt-4">
                 <div className="space-y-2">
                   {stoppedContainers.map((c) => (
                     <div key={c.id} className="text-sm font-mono truncate">{c.name}</div>
                   ))}
                 </div>
               </div>
-              {pruneContainers.isError && (
-                <div className="text-sm text-error">
-                  {pruneContainers.error?.message || "Failed to remove stopped containers"}
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       </Modal>

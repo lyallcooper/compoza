@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiPost } from "@/lib/api";
+import { apiFetch, apiPost, apiPut } from "@/lib/api";
 import {
   queryKeys,
   invalidateProjectQueries,
@@ -130,6 +130,30 @@ export function useProjectPull(name: string) {
   }), [name, queryClient]);
 
   return useBackgroundOperation<void, { images: string[] }>(config);
+}
+
+export function useSaveProjectCompose(name: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (content: string) =>
+      apiPut<{ message: string }>(`/api/projects/${encodeURIComponent(name)}/compose`, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.compose(name) });
+    },
+  });
+}
+
+export function useSaveProjectEnv(name: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (content: string) =>
+      apiPut<{ message: string }>(`/api/projects/${encodeURIComponent(name)}/env`, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.env(name) });
+    },
+  });
 }
 
 export function useProjectCompose(name: string) {

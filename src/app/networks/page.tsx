@@ -4,13 +4,14 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
-  Spinner,
   Button,
   Badge,
   Modal,
   Input,
   ResponsiveTable,
   ColumnDef,
+  DataView,
+  Select,
 } from "@/components/ui";
 import { useNetworks, useCreateNetwork, usePruneNetworks } from "@/hooks";
 import type { DockerNetwork } from "@/types";
@@ -119,30 +120,20 @@ export default function NetworksPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      ) : error ? (
-        <Box>
-          <div className="text-error">Error loading networks: {String(error)}</div>
-        </Box>
-      ) : networks?.length === 0 ? (
-        <Box>
-          <div className="text-center py-8 text-muted">No networks found</div>
-        </Box>
-      ) : (
-        <Box padding={false}>
-          <ResponsiveTable
-            data={sortedNetworks}
-            columns={columns}
-            keyExtractor={(net) => net.id}
-            onRowClick={(net) =>
-              router.push(`/networks/${encodeURIComponent(net.name)}`)
-            }
-          />
-        </Box>
-      )}
+      <DataView data={networks} isLoading={isLoading} error={error} resourceName="networks">
+        {() => (
+          <Box padding={false}>
+            <ResponsiveTable
+              data={sortedNetworks}
+              columns={columns}
+              keyExtractor={(net) => net.id}
+              onRowClick={(net) =>
+                router.push(`/networks/${encodeURIComponent(net.name)}`)
+              }
+            />
+          </Box>
+        )}
+      </DataView>
 
       {/* Create Network Modal */}
       <Modal
@@ -179,21 +170,19 @@ export default function NetworksPage() {
               disabled={createNetwork.isPending}
             />
           </div>
-          <div>
-            <label className="block text-sm text-muted mb-1">Driver</label>
-            <select
-              value={networkDriver}
-              onChange={(e) => setNetworkDriver(e.target.value)}
-              disabled={createNetwork.isPending}
-              className="w-full px-3 py-2 bg-background border border-border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-            >
-              <option value="bridge">bridge</option>
-              <option value="host">host</option>
-              <option value="overlay">overlay</option>
-              <option value="macvlan">macvlan</option>
-              <option value="none">none</option>
-            </select>
-          </div>
+          <Select
+            label="Driver"
+            value={networkDriver}
+            onChange={(e) => setNetworkDriver(e.target.value)}
+            disabled={createNetwork.isPending}
+            options={[
+              { value: "bridge", label: "bridge" },
+              { value: "host", label: "host" },
+              { value: "overlay", label: "overlay" },
+              { value: "macvlan", label: "macvlan" },
+              { value: "none", label: "none" },
+            ]}
+          />
           <div>
             <label className="block text-sm text-muted mb-1">
               Subnet <span className="text-muted/50">(optional)</span>

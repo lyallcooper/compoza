@@ -7,13 +7,17 @@ import {
   Box,
   Button,
   Spinner,
-  Modal,
   GroupedLabels,
   TruncatedText,
   ResponsiveTable,
   ColumnDef,
   EnvironmentVariablesSection,
+  DetailHeader,
+  PropertyTable,
+  ConfirmModal,
+  Checkbox,
 } from "@/components/ui";
+import type { PropertyRow } from "@/components/ui";
 import { useImage, useDeleteImage, useImageUpdates } from "@/hooks";
 import { formatDateTime, formatBytes, extractSourceUrl } from "@/lib/format";
 import type { ImageRouteProps, VolumeContainer } from "@/types";
@@ -85,7 +89,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
     );
   }
 
-  const detailsData = [
+  const detailsData: PropertyRow[] = [
     ...(matchedTags
       ? [{
           label: "Tags",
@@ -107,7 +111,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       : []),
     ...(image.os ? [{ label: "OS", value: image.os }] : []),
     ...(sourceUrl
-      ? [{ label: "Source", value: sourceUrl, link: sourceUrl }]
+      ? [{ label: "Source", value: sourceUrl, link: sourceUrl, external: true }]
       : []),
   ];
 
@@ -120,15 +124,13 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
     (image.config?.exposedPorts && image.config.exposedPorts.length > 0) ||
     (image.config?.volumes && image.config.volumes.length > 0);
 
-  const configData = [
+  const configData: PropertyRow[] = [
     ...(image.config?.entrypoint
-      ? [
-          {
-            label: "Entrypoint",
-            value: image.config.entrypoint.join(" "),
-            mono: true,
-          },
-        ]
+      ? [{
+          label: "Entrypoint",
+          value: image.config.entrypoint.join(" "),
+          mono: true,
+        }]
       : []),
     ...(image.config?.cmd
       ? [{ label: "Cmd", value: image.config.cmd.join(" "), mono: true }]
@@ -176,16 +178,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="min-w-0 relative">
-            <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">
-              Image
-            </p>
-            <h1 className="text-xl font-semibold truncate">{image.name}</h1>
-          </div>
-        </div>
-
+      <DetailHeader resourceType="Image" name={image.name} actions={
         <Button
           variant="danger"
           onClick={() => setShowDeleteModal(true)}
@@ -194,93 +187,19 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
         >
           Delete…
         </Button>
-      </div>
+      } />
 
       {/* Content sections */}
       <div className="columns-1 md:columns-2 gap-6 space-y-6">
         {/* Details */}
         <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
-          <ResponsiveTable
-            data={detailsData}
-            keyExtractor={(row) => row.label}
-            columns={[
-              {
-                key: "label",
-                header: "Property",
-                shrink: true,
-                cardPosition: "body",
-                cardLabel: false,
-                render: (row) => <span className="text-muted">{row.label}</span>,
-                renderCard: (row) => (
-                  <span className="text-muted shrink-0">{row.label}</span>
-                ),
-              },
-              {
-                key: "value",
-                header: "Value",
-                cardPosition: "body",
-                cardLabel: false,
-                render: (row) => {
-                  if (row.link) {
-                    return (
-                      <a href={row.link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                        {row.value}
-                      </a>
-                    );
-                  }
-                  return row.mono ? (
-                    <span className="font-mono text-xs">
-                      {row.truncate ? (
-                        <TruncatedText text={row.value} />
-                      ) : (
-                        row.value
-                      )}
-                    </span>
-                  ) : (
-                    row.value
-                  );
-                },
-              },
-            ]}
-            showHeader={false}
-          />
+          <PropertyTable data={detailsData} />
         </Box>
 
         {/* Configuration */}
         {hasConfig && (
           <Box title="Configuration" padding={false} className="break-inside-avoid" collapsible>
-            <ResponsiveTable
-              data={configData}
-              keyExtractor={(row) => row.label}
-              columns={[
-                {
-                  key: "label",
-                  header: "Property",
-                  shrink: true,
-                  cardPosition: "body",
-                  cardLabel: false,
-                  render: (row) => <span className="text-muted">{row.label}</span>,
-                  renderCard: (row) => (
-                    <span className="text-muted shrink-0">{row.label}</span>
-                  ),
-                },
-                {
-                  key: "value",
-                  header: "Value",
-                  cardPosition: "body",
-                  cardLabel: false,
-                  render: (row) =>
-                    row.mono ? (
-                      <span className="font-mono text-xs">
-                        <TruncatedText text={row.value} />
-                      </span>
-                    ) : (
-                      row.value
-                    ),
-                },
-              ]}
-              showHeader={false}
-            />
+            <PropertyTable data={configData} />
           </Box>
         )}
 
@@ -314,20 +233,11 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       </div>
 
       {/* Delete confirmation modal */}
-      <Modal
+      <ConfirmModal
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
         title="Delete Image"
-        footer={
-          <>
-            <Button onClick={() => setShowDeleteModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              Delete
-            </Button>
-          </>
-        }
       >
         <p>
           Are you sure you want to delete <strong>{image.name}</strong>?
@@ -338,19 +248,16 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
               This image is used by {image.containers.length} container
               {image.containers.length !== 1 ? "s" : ""}.
             </p>
-            <label className="flex items-center gap-2 text-sm mt-2">
-              <input
-                type="checkbox"
-                checked={forceDelete}
-                onChange={(e) => setForceDelete(e.target.checked)}
-                className="rounded border-border"
-              />
-              Force delete (remove even if in use)
-            </label>
+            <Checkbox
+              checked={forceDelete}
+              onChange={(e) => setForceDelete(e.target.checked)}
+              label="Force delete (remove even if in use)"
+              className="mt-2"
+            />
           </>
         )}
         <p className="text-muted text-sm mt-2">This action cannot be undone.</p>
-      </Modal>
+      </ConfirmModal>
     </div>
   );
 }

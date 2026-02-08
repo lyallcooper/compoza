@@ -4,12 +4,13 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
-  Spinner,
   Button,
   Badge,
   Modal,
   ResponsiveTable,
   ColumnDef,
+  DataView,
+  Checkbox,
 } from "@/components/ui";
 import { PullImageModal } from "@/components/images";
 import { useImages, useImageUpdates, usePruneImages, useContainers } from "@/hooks";
@@ -143,28 +144,18 @@ export default function ImagesPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      ) : error ? (
-        <Box>
-          <div className="text-error">Error loading images: {String(error)}</div>
-        </Box>
-      ) : images?.length === 0 ? (
-        <Box>
-          <div className="text-center py-8 text-muted">No images found</div>
-        </Box>
-      ) : (
-        <Box padding={false}>
-          <ResponsiveTable
-            data={sortedImages}
-            columns={columns}
-            keyExtractor={(image) => image.id}
-            onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.tags[0] || image.id)}`)}
-          />
-        </Box>
-      )}
+      <DataView data={images} isLoading={isLoading} error={error} resourceName="images">
+        {() => (
+          <Box padding={false}>
+            <ResponsiveTable
+              data={sortedImages}
+              columns={columns}
+              keyExtractor={(image) => image.id}
+              onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.tags[0] || image.id)}`)}
+            />
+          </Box>
+        )}
+      </DataView>
 
       <PullImageModal open={pullModalOpen} onClose={() => setPullModalOpen(false)} />
 
@@ -174,15 +165,11 @@ export default function ImagesPage() {
         title={pruneOnlyUntagged ? "Remove Untagged Images" : "Remove All Unused Images"}
         footer={
           <div className="flex w-full items-center justify-between">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={pruneOnlyUntagged}
-                onChange={(e) => setPruneOnlyUntagged(e.target.checked)}
-                className="rounded border-border"
-              />
-              Only untagged
-            </label>
+            <Checkbox
+              checked={pruneOnlyUntagged}
+              onChange={(e) => setPruneOnlyUntagged(e.target.checked)}
+              label="Only untagged"
+            />
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={handleClosePruneModal}>
                 Cancel

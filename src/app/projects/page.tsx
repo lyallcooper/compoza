@@ -12,6 +12,7 @@ import {
   ColumnDef,
   DropdownMenu,
   DropdownItem,
+  DataView,
 } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
 import { useProjects, useImageUpdates, useProjectUp, useProjectDown, useBackgroundProjectUpdate, getProjectsWithUpdates } from "@/hooks";
@@ -134,33 +135,28 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      ) : error ? (
-        <Box>
-          <div className="text-error">Error loading projects: {String(error)}</div>
-        </Box>
-      ) : projects?.length === 0 ? (
-        <Box>
-          <div className="text-center py-8">
-            <p className="text-muted mb-4">No projects found</p>
-            <Link href="/projects/new">
-              <Button variant="primary">Create your first project</Button>
-            </Link>
-          </div>
-        </Box>
-      ) : (
-        <Box padding={false}>
-          <ResponsiveTable
-            data={sortedProjects}
-            columns={columns}
-            keyExtractor={(p) => p.name}
-            onRowClick={(p) => router.push(`/projects/${encodeURIComponent(p.name)}`)}
-          />
-        </Box>
-      )}
+      <DataView
+        data={projects}
+        isLoading={isLoading}
+        error={error}
+        resourceName="projects"
+        emptyAction={
+          <Link href="/projects/new">
+            <Button variant="primary">Create your first project</Button>
+          </Link>
+        }
+      >
+        {() => (
+          <Box padding={false}>
+            <ResponsiveTable
+              data={sortedProjects}
+              columns={columns}
+              keyExtractor={(p) => p.name}
+              onRowClick={(p) => router.push(`/projects/${encodeURIComponent(p.name)}`)}
+            />
+          </Box>
+        )}
+      </DataView>
 
       {showUpdateAllModal && (
         <UpdateAllModal

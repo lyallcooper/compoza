@@ -1,8 +1,15 @@
 export { Box } from "./box";
 export { Button } from "./button";
 export { Badge } from "./badge";
+export { Checkbox } from "./checkbox";
+export { ConfirmModal } from "./confirm-modal";
+export { DataView } from "./data-view";
+export { DetailHeader } from "./detail-header";
 export { Input } from "./input";
 export { Modal } from "./modal";
+export { PropertyTable } from "./property-table";
+export type { PropertyRow } from "./property-table";
+export { Select } from "./select";
 export { Spinner } from "./spinner";
 export { ProjectStatusBadge, ContainerStateBadge } from "./status-badge";
 export { TruncatedText } from "./truncated-text";

@@ -1,18 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Box, Spinner, Button, Modal, ResponsiveTable } from "@/components/ui";
-import type { ColumnDef } from "@/components/ui";
+import { Box, Spinner, Button, ResponsiveTable, PropertyTable, ConfirmModal, Checkbox } from "@/components/ui";
+import type { ColumnDef, PropertyRow } from "@/components/ui";
 import { useSystemInfo, useDiskUsage, useSystemPrune } from "@/hooks";
 import { formatBytes } from "@/lib/format";
 import type { SystemPruneOptions } from "@/types";
 
 const GITHUB_REPO = "https://github.com/lyallcooper/compoza";
-
-interface InfoItem {
-  label: string;
-  value: string;
-}
 
 interface DiskUsageItem {
   category: string;
@@ -45,7 +40,7 @@ export default function SystemPage() {
     setPruneOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const infoItems: InfoItem[] = useMemo(() => {
+  const infoItems: PropertyRow[] = useMemo(() => {
     if (!systemInfo) return [];
     return [
       { label: "Version", value: systemInfo.version },
@@ -61,9 +56,9 @@ export default function SystemPage() {
     ];
   }, [systemInfo]);
 
-  const compozaItems: InfoItem[] = useMemo(() => {
+  const compozaItems: PropertyRow[] = useMemo(() => {
     if (!systemInfo) return [];
-    const items: InfoItem[] = [
+    const items: PropertyRow[] = [
       { label: "Version", value: systemInfo.compoza.version },
       { label: "Projects Directory", value: systemInfo.compoza.projectsDir },
     ];
@@ -79,25 +74,6 @@ export default function SystemPage() {
     items.push({ label: "Registry Auth", value: registries.length > 0 ? registries.join(", ") : "None" });
     return items;
   }, [systemInfo]);
-
-  const infoColumns: ColumnDef<InfoItem>[] = useMemo(() => [
-    {
-      key: "label",
-      header: "Property",
-      shrink: true,
-      cardPosition: "body",
-      cardLabel: false,
-      render: (item) => <span className="text-muted">{item.label}</span>,
-      renderCard: (item) => <span className="text-muted shrink-0">{item.label}</span>,
-    },
-    {
-      key: "value",
-      header: "Value",
-      cardPosition: "body",
-      cardLabel: false,
-      render: (item) => <span className="font-mono">{item.value}</span>,
-    },
-  ], []);
 
   const diskUsageItems: DiskUsageItem[] = useMemo(() => {
     if (!diskUsage) return [];
@@ -174,12 +150,7 @@ export default function SystemPage() {
             <div className="p-4 text-error">Failed to load system info</div>
           ) : systemInfo ? (
             <>
-              <ResponsiveTable
-                data={infoItems}
-                columns={infoColumns}
-                keyExtractor={(item) => item.label}
-                showHeader={false}
-              />
+              <PropertyTable data={infoItems} />
               {systemInfo.warnings.length > 0 && (
                 <div className="p-3 border-t border-border">
                   <div className="text-warning text-sm font-medium mb-1">Warnings</div>
@@ -224,12 +195,7 @@ export default function SystemPage() {
           ) : infoError ? (
             <div className="p-4 text-error">Docker connection failed</div>
           ) : systemInfo ? (
-            <ResponsiveTable
-              data={compozaItems}
-              columns={infoColumns}
-              keyExtractor={(item) => item.label}
-              showHeader={false}
-            />
+            <PropertyTable data={compozaItems} />
           ) : null}
         </Box>
 
@@ -258,87 +224,63 @@ export default function SystemPage() {
       </div>
 
       {/* System Prune Modal */}
-      <Modal
+      <ConfirmModal
         open={pruneModalOpen}
         onClose={() => setPruneModalOpen(false)}
+        onConfirm={handlePrune}
         title="System Prune"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setPruneModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handlePrune}>
-              Prune
-            </Button>
-          </>
-        }
+        confirmLabel="Prune"
+        confirmVariant="danger"
       >
         <div className="space-y-4">
           <p className="text-muted text-sm">
             Remove unused Docker resources to free up disk space.
           </p>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pruneOptions.containers}
-                onChange={() => toggleOption("containers")}
-                className="rounded border-border"
-              />
-              <span>Stopped containers</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pruneOptions.networks}
-                onChange={() => toggleOption("networks")}
-                className="rounded border-border"
-              />
-              <span>Unused networks</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pruneOptions.images}
-                onChange={() => toggleOption("images")}
-                className="rounded border-border"
-              />
-              <span>Dangling images</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer ml-6">
-              <input
-                type="checkbox"
-                checked={pruneOptions.allImages}
-                onChange={() => toggleOption("allImages")}
-                disabled={!pruneOptions.images}
-                className="rounded border-border"
-              />
-              <span className={!pruneOptions.images ? "text-muted" : ""}>
-                Include all unused images (not just dangling)
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pruneOptions.volumes}
-                onChange={() => toggleOption("volumes")}
-                className="rounded border-border"
-              />
-              <span>Unused volumes</span>
-              <span className="text-warning text-xs">(data loss risk)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pruneOptions.buildCache}
-                onChange={() => toggleOption("buildCache")}
-                className="rounded border-border"
-              />
-              <span>Build cache</span>
-            </label>
+            <Checkbox
+              checked={pruneOptions.containers}
+              onChange={() => toggleOption("containers")}
+              label="Stopped containers"
+            />
+            <Checkbox
+              checked={pruneOptions.networks}
+              onChange={() => toggleOption("networks")}
+              label="Unused networks"
+            />
+            <Checkbox
+              checked={pruneOptions.images}
+              onChange={() => toggleOption("images")}
+              label="Dangling images"
+            />
+            <Checkbox
+              checked={pruneOptions.allImages}
+              onChange={() => toggleOption("allImages")}
+              disabled={!pruneOptions.images}
+              className="ml-6"
+              label={
+                <span className={!pruneOptions.images ? "text-muted" : ""}>
+                  Include all unused images (not just dangling)
+                </span>
+              }
+            />
+            <Checkbox
+              checked={pruneOptions.volumes}
+              onChange={() => toggleOption("volumes")}
+              label={
+                <>
+                  <span>Unused volumes</span>
+                  <span className="text-warning text-xs ml-1">(data loss risk)</span>
+                </>
+              }
+            />
+            <Checkbox
+              checked={pruneOptions.buildCache}
+              onChange={() => toggleOption("buildCache")}
+              label="Build cache"
+            />
           </div>
         </div>
-      </Modal>
+      </ConfirmModal>
     </div>
   );
 }

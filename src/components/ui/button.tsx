@@ -3,7 +3,7 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import { Tooltip } from "./tooltip";
 
-type ButtonVariant = "default" | "primary" | "danger" | "ghost" | "accent";
+export type ButtonVariant = "default" | "primary" | "danger" | "ghost" | "accent";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

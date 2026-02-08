@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
-  Spinner,
   Button,
   Badge,
   Modal,
@@ -12,6 +11,9 @@ import {
   ResponsiveTable,
   ColumnDef,
   TruncatedText,
+  DataView,
+  Select,
+  Checkbox,
 } from "@/components/ui";
 import { useVolumes, useCreateVolume, usePruneVolumes } from "@/hooks";
 import { formatBytes } from "@/lib/format";
@@ -155,30 +157,20 @@ export default function VolumesPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      ) : error ? (
-        <Box>
-          <div className="text-error">Error loading volumes: {String(error)}</div>
-        </Box>
-      ) : volumes?.length === 0 ? (
-        <Box>
-          <div className="text-center py-8 text-muted">No volumes found</div>
-        </Box>
-      ) : (
-        <Box padding={false}>
-          <ResponsiveTable
-            data={sortedVolumes}
-            columns={columns}
-            keyExtractor={(vol) => vol.name}
-            onRowClick={(vol) =>
-              router.push(`/volumes/${encodeURIComponent(vol.name)}`)
-            }
-          />
-        </Box>
-      )}
+      <DataView data={volumes} isLoading={isLoading} error={error} resourceName="volumes">
+        {() => (
+          <Box padding={false}>
+            <ResponsiveTable
+              data={sortedVolumes}
+              columns={columns}
+              keyExtractor={(vol) => vol.name}
+              onRowClick={(vol) =>
+                router.push(`/volumes/${encodeURIComponent(vol.name)}`)
+              }
+            />
+          </Box>
+        )}
+      </DataView>
 
       {/* Create Volume Modal */}
       <Modal
@@ -215,17 +207,15 @@ export default function VolumesPage() {
               disabled={createVolume.isPending}
             />
           </div>
-          <div>
-            <label className="block text-sm text-muted mb-1">Driver</label>
-            <select
-              value={volumeDriver}
-              onChange={(e) => setVolumeDriver(e.target.value)}
-              disabled={createVolume.isPending}
-              className="w-full px-3 py-2 bg-background border border-border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-            >
-              <option value="local">local</option>
-            </select>
-          </div>
+          <Select
+            label="Driver"
+            value={volumeDriver}
+            onChange={(e) => setVolumeDriver(e.target.value)}
+            disabled={createVolume.isPending}
+            options={[
+              { value: "local", label: "local" },
+            ]}
+          />
           {createVolume.isError && (
             <div className="text-sm text-error">
               {createVolume.error?.message || "Failed to create volume"}
@@ -241,15 +231,11 @@ export default function VolumesPage() {
         title={pruneOnlyAnonymous ? "Remove Anonymous Volumes" : "Remove All Unused Volumes"}
         footer={
           <div className="flex w-full items-center justify-between">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={pruneOnlyAnonymous}
-                onChange={(e) => setPruneOnlyAnonymous(e.target.checked)}
-                className="rounded border-border"
-              />
-              Only anonymous
-            </label>
+            <Checkbox
+              checked={pruneOnlyAnonymous}
+              onChange={(e) => setPruneOnlyAnonymous(e.target.checked)}
+              label="Only anonymous"
+            />
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={handleClosePruneModal}>
                 Cancel

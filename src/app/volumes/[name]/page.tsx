@@ -7,12 +7,15 @@ import {
   Box,
   Button,
   Spinner,
-  Modal,
   GroupedLabels,
   TruncatedText,
   ResponsiveTable,
   ColumnDef,
+  DetailHeader,
+  PropertyTable,
+  ConfirmModal,
 } from "@/components/ui";
+import type { PropertyRow } from "@/components/ui";
 import { useVolume, useRemoveVolume } from "@/hooks";
 import { formatDateTime, formatBytes } from "@/lib/format";
 import type { VolumeRouteProps, VolumeContainer } from "@/types";
@@ -70,7 +73,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
     );
   }
 
-  const detailsData = [
+  const detailsData: PropertyRow[] = [
     { label: "Driver", value: volume.driver },
     { label: "Scope", value: volume.scope },
     { label: "Mount Point", value: volume.mountpoint, mono: true, truncate: true },
@@ -102,16 +105,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="min-w-0 relative">
-            <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">
-              Volume
-            </p>
-            <h1 className="text-xl font-semibold truncate">{volume.name}</h1>
-          </div>
-        </div>
-
+      <DetailHeader resourceType="Volume" name={volume.name} actions={
         <Button
           variant="danger"
           onClick={() => setShowDeleteModal(true)}
@@ -120,48 +114,13 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
         >
           Delete…
         </Button>
-      </div>
+      } />
 
       {/* Content sections */}
       <div className="columns-1 md:columns-2 gap-6 space-y-6">
         {/* Details */}
         <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
-          <ResponsiveTable
-            data={detailsData}
-            keyExtractor={(row) => row.label}
-            columns={[
-              {
-                key: "label",
-                header: "Property",
-                shrink: true,
-                cardPosition: "body",
-                cardLabel: false,
-                render: (row) => <span className="text-muted">{row.label}</span>,
-                renderCard: (row) => (
-                  <span className="text-muted shrink-0">{row.label}</span>
-                ),
-              },
-              {
-                key: "value",
-                header: "Value",
-                cardPosition: "body",
-                cardLabel: false,
-                render: (row) =>
-                  row.mono ? (
-                    <span className="font-mono text-xs">
-                      {row.truncate ? (
-                        <TruncatedText text={row.value} />
-                      ) : (
-                        row.value
-                      )}
-                    </span>
-                  ) : (
-                    row.value
-                  ),
-              },
-            ]}
-            showHeader={false}
-          />
+          <PropertyTable data={detailsData} />
         </Box>
 
         {/* Connected Containers */}
@@ -196,22 +155,12 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
       </div>
 
       {/* Delete confirmation modal */}
-      <Modal
+      <ConfirmModal
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
         title="Delete Volume"
-        footer={
-          <>
-            <Button onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              loading={removeVolume.isPending}
-            >
-              Delete
-            </Button>
-          </>
-        }
+        loading={removeVolume.isPending}
       >
         <p>
           Are you sure you want to delete <strong>{volume.name}</strong>?
@@ -228,7 +177,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
             {removeVolume.error?.message || "Failed to delete volume"}
           </p>
         )}
-      </Modal>
+      </ConfirmModal>
     </div>
   );
 }

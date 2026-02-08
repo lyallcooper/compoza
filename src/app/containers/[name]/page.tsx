@@ -3,7 +3,8 @@
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal, EnvironmentVariablesSection } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal, EnvironmentVariablesSection, DetailHeader, PropertyTable, ConfirmModal } from "@/components/ui";
+import type { PropertyRow } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
@@ -111,109 +112,157 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
     );
   }
 
+  const detailsData: PropertyRow[] = [
+    ...(container.projectName
+      ? [{
+          label: "Project",
+          value: container.projectName,
+          link: `/projects/${encodeURIComponent(container.projectName)}`,
+        }]
+      : []),
+    {
+      label: "Image",
+      value: container.image,
+      mono: true,
+      link: `/images/${encodeURIComponent(container.image)}`,
+    },
+    { label: "Status", value: container.status },
+    {
+      label: "Container ID",
+      value: container.id,
+      mono: true,
+      maxLength: 36,
+    },
+    {
+      label: "Image ID",
+      value: container.imageId,
+      mono: true,
+      maxLength: 36,
+    },
+    ...(imageInfo?.currentDigest
+      ? [{
+          label: "Digest",
+          value: imageInfo.currentDigest,
+          mono: true,
+          maxLength: 36,
+        }]
+      : []),
+    ...(imageInfo?.currentVersion
+      ? [{ label: "Version", value: imageInfo.currentVersion }]
+      : []),
+    ...(sourceUrl
+      ? [{
+          label: "Source",
+          value: sourceUrl,
+          link: sourceUrl,
+          external: true,
+        }]
+      : []),
+    {
+      label: "Created",
+      value: formatDateTime(new Date(container.created * 1000)),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="min-w-0 relative">
-            <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">Container</p>
-            <h1 className="text-xl font-semibold truncate">{container.name}</h1>
-          </div>
-          <span className="flex-shrink-0">
-            <ContainerStateBadge state={container.state} compact="responsive" />
-          </span>
-          {hasUpdate && (
-            <Badge variant="accent" className="flex-shrink-0">
-              {updateInfo?.currentVersion && updateInfo?.latestVersion && updateInfo.currentVersion !== updateInfo.latestVersion
-                ? `${updateInfo.currentVersion} → ${updateInfo.latestVersion}`
-                : "update available"}
-            </Badge>
-          )}
-        </div>
-
-        {/* Desktop actions */}
-        <div className="hidden md:flex items-center gap-2">
-          {container.actions.canStart && (
-            <Button onClick={() => startContainer.execute(name)}>
-              Start
-            </Button>
-          )}
-          {container.actions.canStop && (
-            <Button onClick={() => stopContainer.execute(name)}>
-              Stop
-            </Button>
-          )}
-          {container.actions.canRestart && (
-            <Button onClick={() => restartContainer.execute(name)}>
-              Restart
-            </Button>
-          )}
-          {canUpdate && (
+      <DetailHeader resourceType="Container" name={container.name} actions={
+        <>
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-2">
+            {container.actions.canStart && (
+              <Button onClick={() => startContainer.execute(name)}>
+                Start
+              </Button>
+            )}
+            {container.actions.canStop && (
+              <Button onClick={() => stopContainer.execute(name)}>
+                Stop
+              </Button>
+            )}
+            {container.actions.canRestart && (
+              <Button onClick={() => restartContainer.execute(name)}>
+                Restart
+              </Button>
+            )}
+            {canUpdate && (
+              <Button
+                variant={hasUpdate ? "accent" : "default"}
+                onClick={() => setShowUpdateModal(true)}
+              >
+                Update…
+              </Button>
+            )}
+            <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="ml-2">
+              <Button>Logs</Button>
+            </Link>
+            {container.actions.canExec && (
+              <Link href={`/containers/${encodeURIComponent(name)}/exec`}>
+                <Button>Terminal</Button>
+              </Link>
+            )}
             <Button
-              variant={hasUpdate ? "accent" : "default"}
-              onClick={() => setShowUpdateModal(true)}
+              variant="danger"
+              onClick={() => setShowRemoveModal(true)}
             >
-              Update…
+              Delete…
             </Button>
-          )}
-          <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="ml-2">
-            <Button>Logs</Button>
-          </Link>
-          {container.actions.canExec && (
-            <Link href={`/containers/${encodeURIComponent(name)}/exec`}>
-              <Button>Terminal</Button>
-            </Link>
-          )}
-          <Button
-            variant="danger"
-            onClick={() => setShowRemoveModal(true)}
-          >
-            Delete…
-          </Button>
-        </div>
+          </div>
 
-        {/* Mobile actions dropdown */}
-        <DropdownMenu className="md:hidden">
-          {container.actions.canStart && (
-            <DropdownItem onClick={() => startContainer.execute(name)} loading={startContainer.isPending}>
-              Start
-            </DropdownItem>
-          )}
-          {container.actions.canStop && (
-            <DropdownItem onClick={() => stopContainer.execute(name)} loading={stopContainer.isPending}>
-              Stop
-            </DropdownItem>
-          )}
-          {container.actions.canRestart && (
-            <DropdownItem onClick={() => restartContainer.execute(name)} loading={restartContainer.isPending}>
-              Restart
-            </DropdownItem>
-          )}
-          {canUpdate && (
-            <DropdownItem
-              variant={hasUpdate ? "accent" : "default"}
-              onClick={() => setShowUpdateModal(true)}
-            >
-              Update…
-            </DropdownItem>
-          )}
-          <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="block">
-            <DropdownItem>Logs</DropdownItem>
-          </Link>
-          {container.actions.canExec && (
-            <Link href={`/containers/${encodeURIComponent(name)}/exec`} className="block">
-              <DropdownItem>Terminal</DropdownItem>
+          {/* Mobile actions dropdown */}
+          <DropdownMenu className="md:hidden">
+            {container.actions.canStart && (
+              <DropdownItem onClick={() => startContainer.execute(name)} loading={startContainer.isPending}>
+                Start
+              </DropdownItem>
+            )}
+            {container.actions.canStop && (
+              <DropdownItem onClick={() => stopContainer.execute(name)} loading={stopContainer.isPending}>
+                Stop
+              </DropdownItem>
+            )}
+            {container.actions.canRestart && (
+              <DropdownItem onClick={() => restartContainer.execute(name)} loading={restartContainer.isPending}>
+                Restart
+              </DropdownItem>
+            )}
+            {canUpdate && (
+              <DropdownItem
+                variant={hasUpdate ? "accent" : "default"}
+                onClick={() => setShowUpdateModal(true)}
+              >
+                Update…
+              </DropdownItem>
+            )}
+            <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="block">
+              <DropdownItem>Logs</DropdownItem>
             </Link>
-          )}
-          <DropdownItem
-            variant="danger"
-            onClick={() => setShowRemoveModal(true)}
-          >
-            Delete…
-          </DropdownItem>
-        </DropdownMenu>
-      </div>
+            {container.actions.canExec && (
+              <Link href={`/containers/${encodeURIComponent(name)}/exec`} className="block">
+                <DropdownItem>Terminal</DropdownItem>
+              </Link>
+            )}
+            <DropdownItem
+              variant="danger"
+              onClick={() => setShowRemoveModal(true)}
+            >
+              Delete…
+            </DropdownItem>
+          </DropdownMenu>
+        </>
+      }>
+        <span className="flex-shrink-0">
+          <ContainerStateBadge state={container.state} compact="responsive" />
+        </span>
+        {hasUpdate && (
+          <Badge variant="accent" className="flex-shrink-0">
+            {updateInfo?.currentVersion && updateInfo?.latestVersion && updateInfo.currentVersion !== updateInfo.latestVersion
+              ? `${updateInfo.currentVersion} → ${updateInfo.latestVersion}`
+              : "update available"}
+          </Badge>
+        )}
+      </DetailHeader>
 
       {/* Content sections - columns layout for masonry-like flow */}
       <div className="columns-1 md:columns-2 gap-6 space-y-6">
@@ -226,109 +275,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Details */}
         <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
-          <ResponsiveTable
-            data={[
-              ...(container.projectName
-                ? [{
-                    label: "Project",
-                    value: container.projectName,
-                    link: `/projects/${encodeURIComponent(container.projectName)}`,
-                  }]
-                : []),
-              {
-                label: "Image",
-                value: container.image,
-                mono: true,
-                link: `/images/${encodeURIComponent(container.image)}`,
-              },
-              { label: "Status", value: container.status },
-              {
-                label: "Container ID",
-                value: container.id,
-                mono: true,
-                maxLength: 36,
-              },
-              {
-                label: "Image ID",
-                value: container.imageId,
-                mono: true,
-                maxLength: 36,
-              },
-              ...(imageInfo?.currentDigest
-                ? [{
-                    label: "Digest",
-                    value: imageInfo.currentDigest,
-                    mono: true,
-                    maxLength: 36,
-                  }]
-                : []),
-              ...(imageInfo?.currentVersion
-                ? [{ label: "Version", value: imageInfo.currentVersion }]
-                : []),
-              ...(sourceUrl
-                ? [{
-                    label: "Source",
-                    value: sourceUrl,
-                    link: sourceUrl,
-                    external: true,
-                  }]
-                : []),
-              {
-                label: "Created",
-                value: formatDateTime(new Date(container.created * 1000)),
-              },
-            ]}
-            keyExtractor={(row) => row.label}
-            columns={[
-              {
-                key: "label",
-                header: "Property",
-                shrink: true,
-                cardPosition: "body",
-                cardLabel: false,
-                render: (row) => <span className="text-muted">{row.label}</span>,
-                renderCard: (row) => <span className="text-muted shrink-0">{row.label}</span>,
-              },
-              {
-                key: "value",
-                header: "Value",
-                cardPosition: "body",
-                cardLabel: false,
-                render: (row) => {
-                  if (row.link) {
-                    const content = row.mono ? (
-                      <span className="font-mono">
-                        <TruncatedText text={row.value} maxLength={row.maxLength} />
-                      </span>
-                    ) : (
-                      row.value
-                    );
-                    if (row.external) {
-                      return (
-                        <a href={row.link} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                          {content}
-                        </a>
-                      );
-                    }
-                    return (
-                      <Link href={row.link} className="text-accent hover:underline">
-                        {content}
-                      </Link>
-                    );
-                  }
-                  if (row.mono) {
-                    return (
-                      <span className="font-mono">
-                        <TruncatedText text={row.value} maxLength={row.maxLength} />
-                      </span>
-                    );
-                  }
-                  return row.value;
-                },
-              },
-            ]}
-            showHeader={false}
-          />
+          <PropertyTable data={detailsData} />
         </Box>
 
         {/* Ports */}
@@ -547,18 +494,11 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       )}
 
       {/* Delete confirmation modal */}
-      <Modal
+      <ConfirmModal
         open={showRemoveModal}
         onClose={() => setShowRemoveModal(false)}
+        onConfirm={handleDelete}
         title="Delete Container"
-        footer={
-          <>
-            <Button onClick={() => setShowRemoveModal(false)}>Cancel</Button>
-            <Button variant="danger" onClick={handleDelete}>
-              Delete
-            </Button>
-          </>
-        }
       >
         <p>
           Are you sure you want to delete <strong>{container.name}</strong>?
@@ -571,7 +511,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         <p className="text-muted text-sm mt-2">
           This action cannot be undone.
         </p>
-      </Modal>
+      </ConfirmModal>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Spinner, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef } from "@/components/ui";
+import { Box, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, ResponsiveTable, ColumnDef, DataView } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { useContainers, usePruneContainers } from "@/hooks";
 import type { Container } from "@/types";
@@ -131,28 +131,18 @@ export default function ContainersPage() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      ) : error ? (
-        <Box>
-          <div className="text-error">Error loading containers: {String(error)}</div>
-        </Box>
-      ) : containers?.length === 0 ? (
-        <Box>
-          <div className="text-center py-8 text-muted">No containers found</div>
-        </Box>
-      ) : (
-        <Box padding={false}>
-          <ResponsiveTable
-            data={sortedContainers}
-            columns={columns}
-            keyExtractor={(c) => c.id}
-            onRowClick={(c) => router.push(`/containers/${encodeURIComponent(c.name)}`)}
-          />
-        </Box>
-      )}
+      <DataView data={containers} isLoading={isLoading} error={error} resourceName="containers">
+        {() => (
+          <Box padding={false}>
+            <ResponsiveTable
+              data={sortedContainers}
+              columns={columns}
+              keyExtractor={(c) => c.id}
+              onRowClick={(c) => router.push(`/containers/${encodeURIComponent(c.name)}`)}
+            />
+          </Box>
+        )}
+      </DataView>
 
       <Modal
         open={pruneModalOpen}

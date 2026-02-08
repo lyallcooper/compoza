@@ -3,18 +3,16 @@
 import { useState, useEffect, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { Box, Button, Badge, Spinner, Modal, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast, ResponsiveTable, ColumnDef } from "@/components/ui";
+import { Box, Button, Badge, Spinner, Modal, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast, ResponsiveTable, ColumnDef, DetailHeader, ConfirmModal, Checkbox } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { YamlEditor, EnvEditor, UpdateConfirmModal } from "@/components/projects";
-import { useProject, useProjectUp, useProjectDown, useDeleteProject, useImageUpdates, useProjectCompose, useProjectEnv, useBackgroundProjectUpdate } from "@/hooks";
+import { useProject, useProjectUp, useProjectDown, useDeleteProject, useImageUpdates, useProjectCompose, useProjectEnv, useSaveProjectCompose, useSaveProjectEnv, useBackgroundProjectUpdate } from "@/hooks";
 import { isProjectRunning, type ProjectRouteProps } from "@/types";
 
 export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const { name } = use(params);
   const decodedName = decodeURIComponent(name);
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { data: project, isLoading, error } = useProject(decodedName);
   const { data: composeContent } = useProjectCompose(decodedName);
   const { data: envContent } = useProjectEnv(decodedName);
@@ -22,6 +20,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const projectDown = useProjectDown(decodedName);
   const deleteProject = useDeleteProject(decodedName);
   const { updateProject } = useBackgroundProjectUpdate();
+  const saveCompose = useSaveProjectCompose(decodedName);
+  const saveEnv = useSaveProjectEnv(decodedName);
 
   // Editing state
   const [editedCompose, setEditedCompose] = useState<string | null>(null);
@@ -53,31 +53,12 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     setSaveError(null);
 
     try {
-      // Save compose file
-      if (hasComposeChanges) {
-        const composeRes = await fetch(`/api/projects/${encodeURIComponent(decodedName)}/compose`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: editedCompose }),
-        });
-        const composeData = await composeRes.json();
-        if (composeData.error) throw new Error(composeData.error);
+      if (hasComposeChanges && editedCompose !== null) {
+        await saveCompose.mutateAsync(editedCompose);
       }
-
-      // Save env file
-      if (hasEnvChanges) {
-        const envRes = await fetch(`/api/projects/${encodeURIComponent(decodedName)}/env`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: editedEnv }),
-        });
-        const envData = await envRes.json();
-        if (envData.error) throw new Error(envData.error);
+      if (hasEnvChanges && editedEnv !== null) {
+        await saveEnv.mutateAsync(editedEnv);
       }
-
-      // Invalidate cache to refetch fresh data
-      await queryClient.invalidateQueries({ queryKey: ["projects", decodedName, "compose"] });
-      await queryClient.invalidateQueries({ queryKey: ["projects", decodedName, "env"] });
 
       // Show prompt to apply changes
       setShowApplyPrompt(true);
@@ -86,7 +67,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     } finally {
       setSaving(false);
     }
-  }, [decodedName, editedCompose, editedEnv, hasComposeChanges, hasEnvChanges, queryClient]);
+  }, [editedCompose, editedEnv, hasComposeChanges, hasEnvChanges, saveCompose, saveEnv]);
 
   const handleDiscard = useCallback(() => {
     setEditedCompose(composeContent ?? "");
@@ -223,102 +204,98 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="min-w-0 relative">
-            <p className="absolute -top-3.5 left-0 text-[0.6rem] text-muted/50 uppercase tracking-wide leading-none">Project</p>
-            <h1 className="text-xl font-semibold truncate">{project.name}</h1>
+      <DetailHeader resourceType="Project" name={project.name} actions={
+        <>
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-2">
+            <Button
+              onClick={handleUp}
+              disabled={!canUp}
+              disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+              loading={projectUp.isPending}
+            >
+              Up
+            </Button>
+            <Button
+              onClick={handleDown}
+              disabled={!canDown}
+              disabledReason={
+                hasChanges ? "Save or discard changes first" :
+                project?.status === "stopped" ? "Project is already stopped" : undefined
+              }
+              loading={projectDown.isPending}
+            >
+              Down
+            </Button>
+            <Button
+              variant={hasUpdates ? "accent" : "default"}
+              onClick={() => setShowUpdateModal(true)}
+              disabled={!canUpdate}
+              disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+            >
+              Update…
+            </Button>
+            <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">
+              <Button>Logs</Button>
+            </Link>
+            <Button
+              variant="danger"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={!canDelete}
+              disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+              className="ml-2"
+            >
+              Delete…
+            </Button>
           </div>
-          <span className="flex-shrink-0">
-            <ProjectStatusBadge status={project.status} compact="responsive" />
-          </span>
-        </div>
 
-        {/* Desktop actions */}
-        <div className="hidden md:flex items-center gap-2">
-          <Button
-            onClick={handleUp}
-            disabled={!canUp}
-            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
-            loading={projectUp.isPending}
-          >
-            Up
-          </Button>
-          <Button
-            onClick={handleDown}
-            disabled={!canDown}
-            disabledReason={
-              hasChanges ? "Save or discard changes first" :
-              project?.status === "stopped" ? "Project is already stopped" : undefined
-            }
-            loading={projectDown.isPending}
-          >
-            Down
-          </Button>
-          <Button
-            variant={hasUpdates ? "accent" : "default"}
-            onClick={() => setShowUpdateModal(true)}
-            disabled={!canUpdate}
-            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
-          >
-            Update…
-          </Button>
-          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="ml-2">
-            <Button>Logs</Button>
-          </Link>
-          <Button
-            variant="danger"
-            onClick={() => setShowDeleteModal(true)}
-            disabled={!canDelete}
-            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
-            className="ml-2"
-          >
-            Delete…
-          </Button>
-        </div>
-
-        {/* Mobile actions dropdown */}
-        <DropdownMenu className="md:hidden flex-shrink-0">
-          <DropdownItem
-            onClick={handleUp}
-            disabled={!canUp}
-            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
-            loading={projectUp.isPending}
-          >
-            Up
-          </DropdownItem>
-          <DropdownItem
-            onClick={handleDown}
-            disabled={!canDown}
-            disabledReason={
-              hasChanges ? "Save or discard changes first" :
-              project?.status === "stopped" ? "Project is already stopped" : undefined
-            }
-            loading={projectDown.isPending}
-          >
-            Down
-          </DropdownItem>
-          <DropdownItem
-            variant={hasUpdates ? "accent" : "default"}
-            onClick={() => setShowUpdateModal(true)}
-            disabled={!canUpdate}
-            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
-          >
-            Update…
-          </DropdownItem>
-          <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
-            <DropdownItem>Logs</DropdownItem>
-          </Link>
-          <DropdownItem
-            variant="danger"
-            onClick={() => setShowDeleteModal(true)}
-            disabled={!canDelete}
-            disabledReason={hasChanges ? "Save or discard changes first" : undefined}
-          >
-            Delete…
-          </DropdownItem>
-        </DropdownMenu>
-      </div>
+          {/* Mobile actions dropdown */}
+          <DropdownMenu className="md:hidden flex-shrink-0">
+            <DropdownItem
+              onClick={handleUp}
+              disabled={!canUp}
+              disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+              loading={projectUp.isPending}
+            >
+              Up
+            </DropdownItem>
+            <DropdownItem
+              onClick={handleDown}
+              disabled={!canDown}
+              disabledReason={
+                hasChanges ? "Save or discard changes first" :
+                project?.status === "stopped" ? "Project is already stopped" : undefined
+              }
+              loading={projectDown.isPending}
+            >
+              Down
+            </DropdownItem>
+            <DropdownItem
+              variant={hasUpdates ? "accent" : "default"}
+              onClick={() => setShowUpdateModal(true)}
+              disabled={!canUpdate}
+              disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+            >
+              Update…
+            </DropdownItem>
+            <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
+              <DropdownItem>Logs</DropdownItem>
+            </Link>
+            <DropdownItem
+              variant="danger"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={!canDelete}
+              disabledReason={hasChanges ? "Save or discard changes first" : undefined}
+            >
+              Delete…
+            </DropdownItem>
+          </DropdownMenu>
+        </>
+      }>
+        <span className="flex-shrink-0">
+          <ProjectStatusBadge status={project.status} compact="responsive" />
+        </span>
+      </DetailHeader>
 
       {/* Services */}
       <Box title="Services" padding={false}>
@@ -443,31 +420,19 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       )}
 
       {/* Delete Modal */}
-      {showDeleteModal && (
-        <Modal
-          open
-          onClose={() => setShowDeleteModal(false)}
-          title="Delete Project"
-          footer={
-            <>
-              <Button onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-              <Button
-                variant="danger"
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-            </>
-          }
-        >
-          <p>
-            Are you sure you want to delete <strong>{project.name}</strong>?
-          </p>
-          <p className="text-sm text-muted mt-2">
-            This will stop all containers and remove the project directory.
-          </p>
-        </Modal>
-      )}
+      <ConfirmModal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="Delete Project"
+      >
+        <p>
+          Are you sure you want to delete <strong>{project.name}</strong>?
+        </p>
+        <p className="text-sm text-muted mt-2">
+          This will stop all containers and remove the project directory.
+        </p>
+      </ConfirmModal>
 
       {/* Update Modal */}
       {showUpdateModal && hasUpdates && (
@@ -506,15 +471,11 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               No updates detected. Do you want to pull images anyway?
             </p>
             {hasBuildServices && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={rebuildImages}
-                  onChange={(e) => setRebuildImages(e.target.checked)}
-                  className="accent-accent"
-                />
-                <span>Rebuild images from Dockerfile</span>
-              </label>
+              <Checkbox
+                checked={rebuildImages}
+                onChange={(e) => setRebuildImages(e.target.checked)}
+                label="Rebuild images from Dockerfile"
+              />
             )}
           </div>
         </Modal>

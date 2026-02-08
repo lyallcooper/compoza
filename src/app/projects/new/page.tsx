@@ -70,6 +70,7 @@ export default function NewProjectPage() {
           onChange={(e) => setName(e.target.value)}
           placeholder="my-project"
           pattern="[a-zA-Z0-9_-]+"
+          maxLength={255}
           autoFocus
         />
         <p className="text-xs text-muted mt-1">

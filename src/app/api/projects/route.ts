@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { scanProjects, createProject } from "@/lib/projects";
+import { scanProjects, createProject, isValidProjectName } from "@/lib/projects";
 import { success, error, badRequest, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
 export async function GET() {
@@ -19,19 +19,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, composeContent, envContent } = body;
 
-    if (!name || !composeContent) {
+    if (
+      typeof name !== "string"
+      || typeof composeContent !== "string"
+      || !name.trim()
+      || !composeContent.trim()
+    ) {
       return badRequest("Name and compose content are required");
     }
 
-    // Validate project name
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    if (envContent !== undefined && typeof envContent !== "string") {
+      return badRequest("Env content must be a string when provided");
+    }
+
+    const projectName = name.trim();
+
+    if (!isValidProjectName(projectName)) {
       return badRequest("Project name can only contain letters, numbers, hyphens, and underscores");
     }
 
-    const result = await createProject(name, composeContent, envContent);
+    const result = await createProject(projectName, composeContent, envContent);
 
     if (!result.success) {
-      return error(result.error || "Failed to create project");
+      return error(result.error || "Failed to create project", result.status || 500);
     }
 
     return success({ message: result.output }, 201);

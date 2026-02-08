@@ -235,13 +235,13 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                 Update…
               </DropdownItem>
             )}
-            <Link href={`/containers/${encodeURIComponent(name)}/logs`} className="block">
-              <DropdownItem>Logs</DropdownItem>
-            </Link>
+            <DropdownItem href={`/containers/${encodeURIComponent(name)}/logs`}>
+              Logs
+            </DropdownItem>
             {container.actions.canExec && (
-              <Link href={`/containers/${encodeURIComponent(name)}/exec`} className="block">
-                <DropdownItem>Terminal</DropdownItem>
-              </Link>
+              <DropdownItem href={`/containers/${encodeURIComponent(name)}/exec`}>
+                Terminal
+              </DropdownItem>
             )}
             <DropdownItem
               variant="danger"

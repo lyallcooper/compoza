@@ -16,6 +16,7 @@ export function useProjects() {
   return useQuery({
     queryKey: queryKeys.projects.all,
     queryFn: () => apiFetch<Project[]>("/api/projects"),
+    refetchInterval: 15000,
   });
 }
 
@@ -27,6 +28,7 @@ export function useProject(name: string) {
         nullOn404: true,
       }),
     enabled: !!name,
+    refetchInterval: 10000,
   });
 }
 

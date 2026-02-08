@@ -19,6 +19,7 @@ export function useContainers(options: UseContainersOptions = {}) {
     queryFn: () => apiFetch<Container[]>(
       includeHealth ? "/api/containers?includeHealth=true" : "/api/containers"
     ),
+    refetchInterval: includeHealth ? 15000 : 10000,
   });
 }
 
@@ -30,6 +31,7 @@ export function useContainer(id: string) {
         nullOn404: true,
       }),
     enabled: !!id,
+    refetchInterval: 10000,
   });
 }
 

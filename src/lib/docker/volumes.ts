@@ -18,14 +18,14 @@ export async function listVolumes(): Promise<DockerVolume[]> {
   const [volumeData, containers, dfData] = await Promise.all([
     docker.listVolumes(),
     docker.listContainers({ all: true }),
-    docker.df(),
+    docker.df().catch(() => null), // df may not be available
   ]);
 
   const volumes = volumeData.Volumes || [];
 
   // Build size map from df data
   const sizeMap = new Map<string, number>();
-  if (dfData.Volumes) {
+  if (dfData?.Volumes) {
     for (const vol of dfData.Volumes) {
       if (vol.Name && vol.UsageData?.Size !== undefined) {
         sizeMap.set(vol.Name, vol.UsageData.Size);

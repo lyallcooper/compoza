@@ -59,6 +59,25 @@ describe("listVolumes", () => {
     expect(result[0].size).toBeNull();
   });
 
+  it("still lists volumes when df is unavailable", async () => {
+    const { dockerState } = setup(
+      [{ name: "data-vol" }],
+      [{ name: "app", mounts: [createMount("data-vol")] }],
+      { Volumes: [{ Name: "data-vol", UsageData: { Size: 5000, RefCount: 1 } }] }
+    );
+
+    const docker = createMockDocker(dockerState) as unknown as Dockerode & { df: () => Promise<never> };
+    docker.df = async () => {
+      throw new Error("df unavailable");
+    };
+    setDockerClient(docker);
+
+    const result = await listVolumes();
+    expect(result[0].name).toBe("data-vol");
+    expect(result[0].size).toBeNull();
+    expect(result[0].containerCount).toBe(1);
+  });
+
   it("counts containers per volume from container Mounts", async () => {
     setup(
       [{ name: "shared-vol" }],

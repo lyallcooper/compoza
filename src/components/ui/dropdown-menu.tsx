@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
+import Link from "next/link";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 
@@ -13,6 +14,7 @@ interface DropdownMenuProps {
 interface DropdownItemProps {
   children: ReactNode;
   onClick?: () => void;
+  href?: string;
   disabled?: boolean;
   /** Tooltip shown when item is disabled - explains why it's disabled */
   disabledReason?: string;
@@ -72,20 +74,42 @@ export function DropdownMenu({ label = "Actions", children, className = "" }: Dr
   );
 }
 
-export function DropdownItem({ children, onClick, disabled, disabledReason, variant = "default", loading }: DropdownItemProps) {
+export function DropdownItem({
+  children,
+  onClick,
+  href,
+  disabled,
+  disabledReason,
+  variant = "default",
+  loading,
+}: DropdownItemProps) {
   const isDisabled = disabled || loading;
   const variantClasses = {
     default: "hover:bg-surface",
     danger: "text-error hover:bg-error-muted",
     accent: "text-accent hover:bg-accent-muted",
   }[variant];
+  const itemClassName = `block w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed ${disabledReason ? "disabled:pointer-events-none" : ""} focus:outline-none focus:bg-surface`;
+
+  if (href && !isDisabled) {
+    return (
+      <Link
+        role="menuitem"
+        href={href}
+        onClick={onClick}
+        className={itemClassName}
+      >
+        {children}
+      </Link>
+    );
+  }
 
   const button = (
     <button
       role="menuitem"
       onClick={onClick}
       disabled={isDisabled}
-      className={`w-full text-left px-3 py-2 text-sm ${variantClasses} disabled:opacity-50 disabled:cursor-not-allowed ${disabledReason ? "disabled:pointer-events-none" : ""} focus:outline-none focus:bg-surface`}
+      className={itemClassName}
     >
       {loading ? "..." : children}
     </button>

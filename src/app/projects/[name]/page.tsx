@@ -278,9 +278,9 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
             >
               Update…
             </DropdownItem>
-            <Link href={`/projects/${encodeURIComponent(project.name)}/logs`} className="block">
-              <DropdownItem>Logs</DropdownItem>
-            </Link>
+            <DropdownItem href={`/projects/${encodeURIComponent(project.name)}/logs`}>
+              Logs
+            </DropdownItem>
             <DropdownItem
               variant="danger"
               onClick={() => setShowDeleteModal(true)}

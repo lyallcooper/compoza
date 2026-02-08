@@ -33,7 +33,6 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 5000,
-            refetchInterval: 10000,
           },
         },
       })

@@ -1,11 +1,7 @@
 import { NextRequest } from "next/server";
 import { composeUp } from "@/lib/projects";
 import { applyRateLimit, createSSEResponse } from "@/lib/api";
-
-export type ComposeStreamEvent =
-  | { type: "output"; data: string }
-  | { type: "done" }
-  | { type: "error"; message: string };
+import type { ComposeStreamEvent } from "../stream-events";
 
 type RouteContext = { params: Promise<{ name: string }> };
 

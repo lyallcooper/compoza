@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getProject, deleteProject } from "@/lib/projects";
 import { success, notFound, error, getErrorMessage, createSSEResponse } from "@/lib/api";
-import type { ComposeStreamEvent } from "./up/route";
+import type { ComposeStreamEvent } from "./stream-events";
 
 type RouteContext = { params: Promise<{ name: string }> };
 

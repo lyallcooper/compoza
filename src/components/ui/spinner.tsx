@@ -15,7 +15,7 @@ export function Spinner({ size = "md", className = "" }: SpinnerProps) {
   return (
     <span
       className={`
-        inline-block animate-spin border-2 border-current border-t-transparent rounded-full
+        inline-block shrink-0 animate-spin border-2 border-current border-t-transparent rounded-full
         ${sizeStyles[size]}
         ${className}
       `}

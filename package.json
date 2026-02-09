@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "dev:next": "next dev",
@@ -35,6 +36,7 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.16.3",
     "@tailwindcss/postcss": "^4",
     "@types/dockerode": "^4.0.1",
     "@types/node": "^20",
@@ -46,7 +48,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "wrangler": "^4.63.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

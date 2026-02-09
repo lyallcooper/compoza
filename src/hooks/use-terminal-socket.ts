@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import { isDemoMode } from "@/lib/demo";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
@@ -35,8 +36,9 @@ export function useTerminalSocket({
   onStarted,
   onEnd,
 }: UseTerminalSocketOptions): [TerminalSocketState, TerminalSocketActions] {
-  const [status, setStatus] = useState<ConnectionStatus>("connecting");
-  const [error, setError] = useState<string | null>(null);
+  const demo = isDemoMode();
+  const [status, setStatus] = useState<ConnectionStatus>(demo ? "error" : "connecting");
+  const [error, setError] = useState<string | null>(demo ? "Terminal is not available in demo mode" : null);
   const [shell, setShell] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -101,6 +103,8 @@ export function useTerminalSocket({
   }, [containerId]);
 
   useEffect(() => {
+    if (demo) return;
+
     const socket = connect();
 
     // Send keepalive ping every 5 minutes to prevent session timeout
@@ -116,7 +120,7 @@ export function useTerminalSocket({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [connect]);
+  }, [demo, connect]);
 
   const sendInput = useCallback((data: string) => {
     if (socketRef.current?.connected) {

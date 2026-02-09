@@ -23,7 +23,8 @@ import { formatDateTime, formatBytes, extractSourceUrl } from "@/lib/format";
 import type { ImageRouteProps, VolumeContainer } from "@/types";
 
 export default function ImageDetailPage({ params }: ImageRouteProps) {
-  const { id } = use(params);
+  const { id: rawId } = use(params);
+  const id = decodeURIComponent(rawId);
   const router = useRouter();
   const { data: image, isLoading, error } = useImage(id);
   const { data: imageUpdates } = useImageUpdates();

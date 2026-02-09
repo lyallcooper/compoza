@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { invalidateAllQueries } from "@/lib/query";
+import { isDemoMode } from "@/lib/demo";
 
 /**
  * Check if an error is a network/connection error (fetch failed, server down, etc.)
@@ -27,6 +28,8 @@ export async function waitForReconnection(
   maxAttempts = 30,
   interval = 1000
 ): Promise<boolean> {
+  if (isDemoMode()) return true; // Always "connected" in demo mode
+
   for (let i = 0; i < maxAttempts; i++) {
     onProgress?.(i + 1);
     try {

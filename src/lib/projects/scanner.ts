@@ -5,8 +5,6 @@ import type { Project, ProjectStatus, ProjectService, ComposeConfig, Container }
 import { listContainers } from "@/lib/docker";
 import { log } from "@/lib/logger";
 import { normalizeImageName } from "@/lib/format";
-import { isMockMode } from "@/lib/mock-mode";
-import { scanMockProjects, getMockProject, readMockComposeFile, readMockEnvFile } from "@/lib/mock-mode/demo-projects";
 
 const COMPOSE_FILENAMES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 const PROJECT_SCAN_CACHE_TTL_MS = 2000;
@@ -83,8 +81,6 @@ export function toHostPath(localPath: string): string {
 }
 
 export async function scanProjects(): Promise<Project[]> {
-  if (isMockMode()) return scanMockProjects();
-
   const projectsDir = getProjectsDir();
 
   if (process.env.NODE_ENV !== "test") {
@@ -247,8 +243,6 @@ async function buildProject(
 }
 
 export async function getProject(name: string): Promise<Project | null> {
-  if (isMockMode()) return getMockProject(name);
-
   if (!isValidProjectName(name)) {
     log.projects.warn(`Invalid project name rejected: ${name}`);
     return null;
@@ -273,8 +267,6 @@ export async function getProject(name: string): Promise<Project | null> {
 }
 
 export async function readComposeFile(projectName: string): Promise<string | null> {
-  if (isMockMode()) return readMockComposeFile(projectName);
-
   const project = await getProject(projectName);
   if (!project) return null;
 
@@ -287,8 +279,6 @@ export async function readComposeFile(projectName: string): Promise<string | nul
 }
 
 export async function readEnvFile(projectName: string): Promise<string | null> {
-  if (isMockMode()) return readMockEnvFile(projectName);
-
   if (!isValidProjectName(projectName)) {
     log.projects.warn(`Invalid project name rejected: ${projectName}`);
     return null;

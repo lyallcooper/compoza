@@ -1,4 +1,6 @@
 import type { ApiResponse } from "./response";
+import { isDemoMode } from "@/lib/demo";
+import { demoFetch } from "@/lib/demo/router";
 
 interface FetchOptions extends RequestInit {
   /** If true, return null instead of throwing on 404 */
@@ -22,6 +24,15 @@ export async function apiFetch<T>(
   options?: FetchOptions
 ): Promise<T> {
   const { nullOn404, ...fetchOptions } = options || {};
+
+  if (isDemoMode()) {
+    try {
+      return await demoFetch<T>(url, fetchOptions);
+    } catch (err) {
+      if (nullOn404 && (err as Error).message?.includes("not found")) return null as T;
+      throw err;
+    }
+  }
 
   let res: Response;
   try {

@@ -11,8 +11,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "DOCKER_HOST=mock pnpm dev",
-    "demo:no-banner": "DOCKER_HOST=mock+no-banner pnpm dev"
+    "demo": "NEXT_PUBLIC_DEMO=true next dev",
+    "build:demo": "NEXT_PUBLIC_DEMO=true next build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",

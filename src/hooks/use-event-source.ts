@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { isDemoMode } from "@/lib/demo";
+import { demoFetchRaw } from "@/lib/demo/router";
 
 export interface EventSourceState {
   connected: boolean;
@@ -56,6 +58,52 @@ export function useEventSource<T = unknown>({
 
     const isNewUrl = currentUrlRef.current !== url;
     currentUrlRef.current = url;
+
+    if (isDemoMode()) {
+      // In demo mode, use a ReadableStream instead of EventSource
+      let cancelled = false;
+
+      demoFetchRaw(url, { method: "GET" }).then(async (response) => {
+        if (cancelled) return;
+        setConnected(true);
+        onOpenRef.current?.();
+        const reader = response.body?.getReader();
+        if (!reader || cancelled) return;
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (!cancelled) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6)) as T;
+                onMessageRef.current(data);
+              } catch { /* ignore */ }
+            }
+          }
+        }
+        if (buffer.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(buffer.slice(6)) as T;
+            onMessageRef.current(data);
+          } catch { /* ignore */ }
+        }
+        setConnected(false);
+      }).catch(() => {
+        setConnected(false);
+        setError("Demo stream error");
+        onErrorRef.current?.("Demo stream error");
+      });
+
+      return () => {
+        cancelled = true;
+        setConnected(false);
+      };
+    }
 
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
@@ -117,12 +165,22 @@ export function useStreamingFetch() {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: abortControllerRef.current.signal,
-      });
+      let response: Response;
+      if (isDemoMode()) {
+        response = await demoFetchRaw(url, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: abortControllerRef.current.signal,
+        });
+      } else {
+        response = await fetch(url, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: abortControllerRef.current.signal,
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);

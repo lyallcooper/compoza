@@ -1,5 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "./keys";
+import { isDemoMode } from "@/lib/demo";
+import { demoFetchRaw } from "@/lib/demo/router";
 
 /**
  * Invalidate container-related queries after a container action.
@@ -119,7 +121,8 @@ export async function clearUpdateCacheAndInvalidate(
   }
 
   // Clear server-side cache
-  await fetch("/api/images/check-updates", {
+  const fetchFn = isDemoMode() ? demoFetchRaw : fetch;
+  await fetchFn("/api/images/check-updates", {
     method: "DELETE",
     headers: images ? { "Content-Type": "application/json" } : undefined,
     body: images ? JSON.stringify({ images }) : undefined,

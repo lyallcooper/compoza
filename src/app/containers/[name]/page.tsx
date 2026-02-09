@@ -12,7 +12,8 @@ import { formatDateTime, extractSourceUrl } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
-  const { name } = use(params);
+  const { name: rawName } = use(params);
+  const name = decodeURIComponent(rawName);
   const router = useRouter();
   const { data: container, isLoading, error } = useContainer(name);
   const { data: stats } = useContainerStats(name, container?.state === "running");

@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBackgroundTasks } from "@/contexts";
 import { handleDisconnection, isNetworkError } from "@/lib/reconnect";
+import { isDemoMode } from "@/lib/demo";
+import { demoFetchRaw } from "@/lib/demo/router";
 
 /**
  * Parse an SSE stream from a fetch Response, calling onEvent for each parsed event.
@@ -19,12 +21,22 @@ export async function consumeSSEStream<TEvent extends { type: string }>(
 ): Promise<void> {
   const { method = "POST", body, signal, onEvent } = options;
 
-  const response = await fetch(url, {
-    method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal,
-  });
+  let response: Response;
+  if (isDemoMode()) {
+    response = await demoFetchRaw(url, {
+      method,
+      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  } else {
+    response = await fetch(url, {
+      method,
+      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

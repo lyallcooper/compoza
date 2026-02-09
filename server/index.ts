@@ -1,10 +1,8 @@
 import { createServer } from "http";
-import { randomUUID } from "crypto";
 import { config } from "dotenv";
 import next from "next";
 import { Server as SocketServer } from "socket.io";
 import Docker from "dockerode";
-import { runWithSession } from "../src/lib/mock-mode/context";
 
 // Load .env files (Next.js does this automatically, but our custom server doesn't)
 const dev = process.env.NODE_ENV === "development";
@@ -12,7 +10,6 @@ config({ path: ".env.local", debug: dev, quiet: !dev });
 config({ path: ".env", debug: dev, quiet: !dev });
 const hostname = "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
-const mockMode = process.env.DOCKER_HOST?.startsWith("mock") ?? false;
 
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
 // Timeout for update check - half the interval, minimum 2 minutes
@@ -42,42 +39,7 @@ function createDockerClient(): Docker {
   return new Docker({ socketPath: dockerHost });
 }
 
-const docker = mockMode ? null! as Docker : createDockerClient();
-
-if (mockMode) {
-  console.log("[Mock Mode] Running with mock Docker backend — no real Docker needed");
-}
-
-// --- Mock mode rate limiting (inline, uses globalThis for cross-module sharing) ---
-const RATE_LIMIT_KEY = Symbol.for("compoza:demo-rate-limits");
-interface RateLimitEntry { timestamps: number[] }
-
-function getDemoRateLimits(): Map<string, RateLimitEntry> {
-  const g = globalThis as Record<symbol, unknown>;
-  if (!g[RATE_LIMIT_KEY]) g[RATE_LIMIT_KEY] = new Map<string, RateLimitEntry>();
-  return g[RATE_LIMIT_KEY] as Map<string, RateLimitEntry>;
-}
-
-function checkDemoRateLimit(sessionId: string): boolean {
-  const limits = getDemoRateLimits();
-  let entry = limits.get(sessionId);
-  if (!entry) {
-    entry = { timestamps: [] };
-    limits.set(sessionId, entry);
-  }
-  const now = Date.now();
-  const cutoff = now - 60_000; // 1 minute window
-  entry.timestamps = entry.timestamps.filter(t => t > cutoff);
-  if (entry.timestamps.length >= 120) return false; // exceeded
-  entry.timestamps.push(now);
-  return true;
-}
-
-function parseCookie(header: string | undefined, name: string): string | undefined {
-  if (!header) return undefined;
-  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match?.[1];
-}
+const docker = createDockerClient();
 
 // Track active exec sessions for cleanup
 const activeSessions = new Map<string, { exec: Docker.Exec; stream: NodeJS.ReadWriteStream }>();
@@ -157,28 +119,6 @@ app.prepare().then(() => {
       search: url.search || null,
       path: req.url!,
     } as Parameters<typeof handle>[2];
-
-    if (mockMode) {
-      // Parse or generate demo-session cookie
-      let sessionId = parseCookie(req.headers.cookie, "demo-session");
-      if (!sessionId) {
-        sessionId = randomUUID();
-        res.setHeader("Set-Cookie", `demo-session=${sessionId}; Path=/; HttpOnly; SameSite=Lax`);
-      }
-
-      // Rate limit check
-      if (!checkDemoRateLimit(sessionId)) {
-        res.writeHead(429, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Rate limit exceeded" }));
-        return;
-      }
-
-      // Wrap Next.js handler in session context
-      runWithSession(sessionId, () => {
-        handle(req, res, parsedUrl);
-      });
-      return;
-    }
 
     handle(req, res, parsedUrl);
   });
@@ -300,12 +240,6 @@ app.prepare().then(() => {
 
     // Handle terminal exec request
     socket.on("exec:start", async (data: { containerId: string; cmd?: string[] }) => {
-      // Terminal is not available in mock/demo mode
-      if (mockMode) {
-        socket.emit("exec:error", { message: "Terminal is not available in demo mode" });
-        return;
-      }
-
       // Prevent overlapping exec:start calls
       if (isStarting) {
         socket.emit("exec:error", { message: "Session already starting" });
@@ -443,10 +377,7 @@ app.prepare().then(() => {
   httpServer.listen(port, () => {
     console.log(`> Ready on http://${hostname}:${port}`);
 
-    // Start background update checker (skip in mock mode — no real registry to query)
-    if (!mockMode) {
-      startUpdateChecker();
-    }
+    startUpdateChecker();
   });
 
   // Graceful shutdown

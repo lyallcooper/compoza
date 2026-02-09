@@ -21,7 +21,8 @@ import { formatDateTime, formatBytes } from "@/lib/format";
 import type { VolumeRouteProps, VolumeContainer } from "@/types";
 
 export default function VolumeDetailPage({ params }: VolumeRouteProps) {
-  const { name } = use(params);
+  const { name: rawName } = use(params);
+  const name = decodeURIComponent(rawName);
   const router = useRouter();
   const { data: volume, isLoading, error } = useVolume(name);
   const removeVolume = useRemoveVolume();

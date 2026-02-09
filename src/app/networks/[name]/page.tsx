@@ -20,7 +20,8 @@ import { useNetwork, useRemoveNetwork } from "@/hooks";
 import type { NetworkRouteProps, NetworkContainer } from "@/types";
 
 export default function NetworkDetailPage({ params }: NetworkRouteProps) {
-  const { name } = use(params);
+  const { name: rawName } = use(params);
+  const name = decodeURIComponent(rawName);
   const router = useRouter();
   const { data: network, isLoading, error } = useNetwork(name);
   const removeNetwork = useRemoveNetwork();

@@ -8,7 +8,8 @@ import { useContainer } from "@/hooks";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerLogsPage({ params }: ContainerRouteProps) {
-  const { name } = use(params);
+  const { name: rawName } = use(params);
+  const name = decodeURIComponent(rawName);
   const { data: container, isLoading } = useContainer(name);
 
   if (isLoading) {

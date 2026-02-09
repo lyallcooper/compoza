@@ -6,7 +6,6 @@ import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
 import { log } from "@/lib/logger";
 import { getDocker, getSelfProjectName } from "@/lib/docker";
 import { spawnUpdaterContainer } from "@/lib/updates";
-import { isMockMode } from "@/lib/mock-mode";
 import type { ProjectService } from "@/types";
 
 /**
@@ -149,11 +148,6 @@ async function runComposeCommand(
   args: string[],
   options: RunComposeOptions = {}
 ): Promise<ComposeResult> {
-  if (isMockMode()) {
-    options.onOutput?.(`[demo] docker compose ${args.join(" ")}\n`);
-    return { success: true, output: "[demo] Operation completed" };
-  }
-
   const { onOutput, composeFile, signal } = options;
   const { args: composeArgs, cleanup } = await prepareComposeCommand(projectPath, composeFile);
   composeArgs.push(...args);
@@ -550,8 +544,6 @@ async function* streamProjectLogs(
 }
 
 export async function saveComposeFile(projectName: string, content: string): Promise<ComposeResult> {
-  if (isMockMode()) return { success: true, output: "Compose file saved" };
-
   const project = await getProject(projectName);
   if (!project) {
     return { success: false, output: "", error: "Project not found" };
@@ -567,8 +559,6 @@ export async function saveComposeFile(projectName: string, content: string): Pro
 }
 
 export async function saveEnvFile(projectName: string, content: string): Promise<ComposeResult> {
-  if (isMockMode()) return { success: true, output: "Env file saved" };
-
   if (!isValidProjectName(projectName)) {
     return { success: false, output: "", error: "Invalid project name" };
   }
@@ -589,8 +579,6 @@ export async function createProject(
   composeContent: string,
   envContent?: string
 ): Promise<ComposeResult> {
-  if (isMockMode()) return { success: true, output: `Project "${name}" created` };
-
   if (!isValidProjectName(name)) {
     return { success: false, output: "", error: "Invalid project name", status: 400 };
   }
@@ -629,8 +617,6 @@ export async function deleteProject(
   options: { removeVolumes?: boolean; signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
-  if (isMockMode()) return { success: true, output: `Project "${name}" deleted` };
-
   const project = await getProject(name);
   if (!project) {
     return { success: false, output: "", error: "Project not found" };

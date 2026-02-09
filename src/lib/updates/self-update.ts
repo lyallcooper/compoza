@@ -2,7 +2,6 @@ import { pullLatestImage } from "./pull";
 import { getDocker, getSelfProjectName, getSelfImageName, getOwnContainerId } from "@/lib/docker";
 import { getProject, getHostProjectsDir, toHostPath } from "@/lib/projects/scanner";
 import { log } from "@/lib/logger";
-import { isMockMode } from "@/lib/mock-mode";
 
 export interface SelfUpdateResult {
   success: boolean;
@@ -23,10 +22,6 @@ const DOCKER_CLI_IMAGE = "docker:cli";
  * when Compoza's container is recreated during the update.
  */
 export async function selfUpdate(): Promise<SelfUpdateResult> {
-  if (isMockMode()) {
-    return { success: true, message: "Self-update is not available in demo mode" };
-  }
-
   try {
     // Step 1: Check if auto-restart is possible (also detects our image name)
     const canAutoRestart = await checkAutoRestartPossible();

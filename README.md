@@ -4,6 +4,17 @@ Docker management for the discerning individual.
 
 Compoza's thoughtfully designed and polished interface has just the features you need to quickly and simply do everything docker on your personal server.
 
+<h3 align="center">
+  <a href="https://demo.compoza.lyall.co">Try the demo</a>
+</h3>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/9c86c3de-c884-4deb-87bb-9a5c1ab32349">
+    <img src="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
+</p>
+
 Create and manage:
 - Compose projects
 - Containers
@@ -50,7 +61,7 @@ docker compose up -d
 You **must** restrict access to compoza by deploying it behind an authentication service (e.g. tinyauth, Cloudflare Access, Authelia) or by restricting network access to trusted clients only (e.g. VPN, tailscale).
 
 > [!CAUTION]
-> Never expose compoza directly to the internet without authentication.
+> **Never** expose compoza directly to the internet without authentication.
 
 For additional security, consider using a [Docker socket proxy](https://github.com/Tecnativa/docker-socket-proxy) to limit Docker API access instead of the raw docker socket. For full feature support, the required permissions are: `CONTAINERS`, `IMAGES`, `NETWORKS`, `VOLUMES`, `INFO`, `DISTRIBUTION`, `POST`, `DELETE`, `EXEC`, `BUILD`.
 

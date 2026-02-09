@@ -2,32 +2,45 @@
 
 Docker management for the discerning individual.
 
-Compoza's thoughtfully designed and polished interface has just the features you need to quickly and simply do everything docker on your personal server.
+Compoza's thoughtfully designed interface has just the features you need to easily do everything docker on your server.
 
 <h3 align="center">
   <a href="https://demo.compoza.lyall.co">Try the demo</a>
 </h3>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/9c86c3de-c884-4deb-87bb-9a5c1ab32349">
-    <img src="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
+  <a href="https://demo.compoza.lyall.co">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
+      <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/9c86c3de-c884-4deb-87bb-9a5c1ab32349">
+      <img src="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
+    </picture>
+  </a>
 </p>
 
-Create and manage:
-- Compose projects
-- Containers
-- Images
-- Networks
-- Volumes
-
-Easily:
-- Update images with one click
-- View logs
-- Exec into containers
-- Clean up anything unused
-- Update compoza itself like any other project from the web interface
+<table>
+  <tr>
+    <td valign="top" width="50%">
+      <strong>Create and manage:</strong>
+      <ul>
+        <li>Compose projects</li>
+        <li>Containers</li>
+        <li>Images</li>
+        <li>Networks</li>
+        <li>Volumes</li>
+      </ul>
+    </td>
+    <td valign="top" width="50%">
+      <strong>Easily:</strong>
+      <ul>
+        <li>Update images with one click—including compoza itself</li>
+        <li>View logs</li>
+        <li>Exec into containers</li>
+        <li>Clean up unused resources</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 ## Quick Start
 
@@ -41,7 +54,7 @@ services:
       - 3000:3000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /path/to/your/projects:/path/to/your/projects:rw
+      - /path/to/your/projects:/path/to/your/projects
     environment:
       - PROJECTS_DIR=/path/to/your/projects
     restart: unless-stopped
@@ -52,7 +65,7 @@ docker compose up -d
 # Open http://localhost:3000
 ```
 
-`PROJECTS_DIR` should point to a directory containing your Docker Compose projects (each in its own subdirectory with a `compose.yaml` or `docker-compose.yaml`). The volume mount path must match `PROJECTS_DIR` so compose file paths resolve correctly unless you are using the path mapping feature via setting `HOST_PROJECTS_DIR` (see below).
+`PROJECTS_DIR` should point to a directory containing your Docker Compose projects (each in its own subdirectory with a `compose.yaml` or `docker-compose.yaml`). The volume mount path must match `PROJECTS_DIR` so compose file paths resolve correctly unless you are using the path mapping feature via setting `HOST_PROJECTS_DIR` (see [below](#host-path-mapping)).
 
 ## Security
 

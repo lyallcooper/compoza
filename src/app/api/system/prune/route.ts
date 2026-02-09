@@ -1,13 +1,7 @@
 import { NextRequest } from "next/server";
 import { systemPrune } from "@/lib/docker";
 import { createSSEResponse } from "@/lib/api";
-import type { SystemPruneOptions } from "@/types";
-import type { SystemPruneStep } from "@/lib/docker";
-
-export type SystemPruneEvent =
-  | { type: "step"; step: SystemPruneStep }
-  | { type: "done"; result: import("@/types").SystemPruneResult }
-  | { type: "error"; message: string };
+import type { SystemPruneOptions, SystemPruneEvent } from "@/types";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));

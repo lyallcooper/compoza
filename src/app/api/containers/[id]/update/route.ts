@@ -3,11 +3,7 @@ import { getContainer } from "@/lib/docker";
 import { composePullService, composeUpService } from "@/lib/projects";
 import { clearCachedUpdates } from "@/lib/updates";
 import { notFound, badRequest, createSSEResponse } from "@/lib/api";
-
-export type ContainerUpdateStreamEvent =
-  | { type: "output"; data: string }
-  | { type: "done"; result: { restarted: boolean; image?: string } }
-  | { type: "error"; message: string };
+import type { ContainerUpdateStreamEvent } from "@/types";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

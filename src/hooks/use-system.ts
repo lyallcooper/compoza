@@ -11,9 +11,7 @@ import {
   invalidateImageQueries,
 } from "@/lib/query";
 import { useBackgroundOperation, consumeSSEStream, type OperationCallbacks } from "./use-background-operation";
-import type { DockerSystemInfo, DiskUsage, SystemPruneOptions, SystemPruneResult } from "@/types";
-import type { SystemPruneEvent } from "@/app/api/system/prune/route";
-import type { SystemPruneStep } from "@/lib/docker";
+import type { DockerSystemInfo, DiskUsage, SystemPruneOptions, SystemPruneResult, SystemPruneEvent, SystemPruneStep } from "@/types";
 
 const stepLabels: Record<SystemPruneStep, string> = {
   containers: "Removing stopped containers...",

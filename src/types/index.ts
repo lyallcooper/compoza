@@ -310,3 +310,17 @@ export interface SystemPruneResult {
   buildCacheSpaceReclaimed: number;
   spaceReclaimed: number;
 }
+
+// SSE event types shared between API routes and client hooks
+
+export type ContainerUpdateStreamEvent =
+  | { type: "output"; data: string }
+  | { type: "done"; result: { restarted: boolean; image?: string } }
+  | { type: "error"; message: string };
+
+export type SystemPruneStep = "containers" | "networks" | "images" | "volumes" | "buildCache";
+
+export type SystemPruneEvent =
+  | { type: "step"; step: SystemPruneStep }
+  | { type: "done"; result: SystemPruneResult }
+  | { type: "error"; message: string };

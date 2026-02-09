@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { setDockerClient, resetDockerClient } from "@/lib/docker/client";
 import { getDiskUsage, systemPrune } from "@/lib/docker/system";
-import type { SystemPruneStep } from "@/lib/docker/system";
+import type { SystemPruneStep } from "@/types";
 import {
   createContainerState,
   createDockerState,

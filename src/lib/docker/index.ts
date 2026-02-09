@@ -35,4 +35,3 @@ export {
   getDiskUsage,
   systemPrune,
 } from "./system";
-export type { SystemPruneStep } from "./system";

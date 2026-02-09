@@ -1,6 +1,6 @@
 import { getDocker, getDockerLongRunning } from "./client";
 import { getProjectsDir, getHostProjectsDir } from "@/lib/projects/scanner";
-import type { DockerSystemInfo, DiskUsage, SystemPruneOptions, SystemPruneResult } from "@/types";
+import type { DockerSystemInfo, DiskUsage, SystemPruneOptions, SystemPruneResult, SystemPruneStep } from "@/types";
 
 export async function getSystemInfo(): Promise<DockerSystemInfo> {
   const docker = getDocker();
@@ -160,8 +160,6 @@ async function getDiskUsageFromLists(): Promise<DiskUsage> {
     totalReclaimable: null, // Can't accurately calculate without all data
   };
 }
-
-export type SystemPruneStep = "containers" | "networks" | "images" | "volumes" | "buildCache";
 
 export async function systemPrune(
   options: SystemPruneOptions,

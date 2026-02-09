@@ -10,7 +10,7 @@ import {
 } from "@/lib/query";
 import { isProjectRunning, type Project } from "@/types";
 import { useBackgroundOperation, consumeSSEStream, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
-import type { ContainerUpdateStreamEvent } from "@/app/api/containers/[id]/update/route";
+import type { ContainerUpdateStreamEvent } from "@/types";
 
 interface UpdateProjectArgs {
   projectName: string;

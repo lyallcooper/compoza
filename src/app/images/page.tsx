@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
@@ -19,7 +18,6 @@ import type { DockerImage } from "@/types";
 import { formatBytes, formatDateTime } from "@/lib/format";
 
 export default function ImagesPage() {
-  const router = useRouter();
   const { data: images, isLoading, error } = useImages();
   const { data: containers } = useContainers();
   const { data: imageUpdates } = useImageUpdates();
@@ -163,7 +161,7 @@ export default function ImagesPage() {
                 data={processedData}
                 columns={columns}
                 keyExtractor={(image) => image.id}
-                onRowClick={(image) => router.push(`/images/${encodeURIComponent(image.tags[0] || image.id)}`)}
+                rowHref={(image) => `/images/${encodeURIComponent(image.tags[0] || image.id)}`}
                 sortState={sortState}
                 onSortChange={onSortChange}
                 emptyState={query ? <div className="text-center py-8 text-muted">No images matching &quot;{query}&quot;</div> : undefined}

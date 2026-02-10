@@ -302,7 +302,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <ResponsiveTable
           data={project.services}
           keyExtractor={(s) => s.name}
-          onRowClick={(s) => s.containerName ? router.push(`/containers/${encodeURIComponent(s.containerName)}`) : undefined}
+          rowHref={(s) => s.containerName ? `/containers/${encodeURIComponent(s.containerName)}` : undefined}
           columns={[
             {
               key: "service",

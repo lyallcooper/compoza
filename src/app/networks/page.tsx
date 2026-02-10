@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
@@ -19,7 +18,6 @@ import type { DockerNetwork } from "@/types";
 import type { CreateNetworkOptions } from "@/lib/docker";
 
 export default function NetworksPage() {
-  const router = useRouter();
   const { data: networks, isLoading, error } = useNetworks();
   const createNetwork = useCreateNetwork();
   const pruneNetworks = usePruneNetworks();
@@ -138,9 +136,7 @@ export default function NetworksPage() {
                 data={processedData}
                 columns={columns}
                 keyExtractor={(net) => net.id}
-                onRowClick={(net) =>
-                  router.push(`/networks/${encodeURIComponent(net.name)}`)
-                }
+                rowHref={(net) => `/networks/${encodeURIComponent(net.name)}`}
                 sortState={sortState}
                 onSortChange={onSortChange}
                 emptyState={query ? <div className="text-center py-8 text-muted">No networks matching &quot;{query}&quot;</div> : undefined}

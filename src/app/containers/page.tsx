@@ -2,14 +2,12 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Box, Button, Modal, ContainerStateBadge, TruncatedText, PortsList, SearchInput, ResponsiveTable, ColumnDef, DataView } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
 import { useContainers, usePruneContainers, useTableSort, useTableSearch } from "@/hooks";
 import type { Container } from "@/types";
 
 export default function ContainersPage() {
-  const router = useRouter();
   const { data: containers, isLoading, error } = useContainers();
   const pruneContainers = usePruneContainers();
 
@@ -51,7 +49,6 @@ export default function ContainersPage() {
             <Link
               href={`/projects/${encodeURIComponent(c.projectName)}`}
               className="hover:text-foreground hover:underline"
-              onClick={(e) => e.stopPropagation()}
             >
               {c.projectName}
             </Link>
@@ -65,7 +62,6 @@ export default function ContainersPage() {
           <Link
             href={`/projects/${encodeURIComponent(c.projectName)}`}
             className="text-accent hover:underline"
-            onClick={(e) => e.stopPropagation()}
           >
             {c.projectName}
           </Link>
@@ -82,7 +78,6 @@ export default function ContainersPage() {
           <Link
             href={`/images/${encodeURIComponent(c.image)}`}
             className="group/link hover:text-foreground [&_span]:group-hover/link:underline"
-            onClick={(e) => e.stopPropagation()}
           >
             <TruncatedText text={c.image} maxLength={60} />
           </Link>
@@ -92,7 +87,6 @@ export default function ContainersPage() {
         <Link
           href={`/images/${encodeURIComponent(c.image)}`}
           className="group/link font-mono text-accent [&_span]:group-hover/link:underline"
-          onClick={(e) => e.stopPropagation()}
         >
           <TruncatedText text={c.image} maxLength={40} />
         </Link>
@@ -151,7 +145,7 @@ export default function ContainersPage() {
                 data={processedData}
                 columns={columns}
                 keyExtractor={(c) => c.id}
-                onRowClick={(c) => router.push(`/containers/${encodeURIComponent(c.name)}`)}
+                rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
                 sortState={sortState}
                 onSortChange={onSortChange}
                 emptyState={query ? <div className="text-center py-8 text-muted">No containers matching &quot;{query}&quot;</div> : undefined}

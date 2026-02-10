@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
@@ -27,7 +26,6 @@ const isAnonymousVolume = (labels: Record<string, string>) =>
   ANONYMOUS_VOLUME_LABEL in labels;
 
 export default function VolumesPage() {
-  const router = useRouter();
   const { data: volumes, isLoading, error } = useVolumes();
   const createVolume = useCreateVolume();
   const pruneVolumes = usePruneVolumes();
@@ -179,9 +177,7 @@ export default function VolumesPage() {
                 data={processedData}
                 columns={columns}
                 keyExtractor={(vol) => vol.name}
-                onRowClick={(vol) =>
-                  router.push(`/volumes/${encodeURIComponent(vol.name)}`)
-                }
+                rowHref={(vol) => `/volumes/${encodeURIComponent(vol.name)}`}
                 sortState={sortState}
                 onSortChange={onSortChange}
                 emptyState={query ? <div className="text-center py-8 text-muted">No volumes matching &quot;{query}&quot;</div> : undefined}

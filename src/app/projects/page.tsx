@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
@@ -30,7 +29,6 @@ interface ProjectWithUpdates {
 }
 
 export default function ProjectsPage() {
-  const router = useRouter();
   const { data: projects, isLoading, error } = useProjects();
   const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
   const [updateModalProject, setUpdateModalProject] = useState<ProjectWithUpdates | null>(null);
@@ -148,7 +146,7 @@ export default function ProjectsPage() {
                 data={processedData}
                 columns={columns}
                 keyExtractor={(p) => p.name}
-                onRowClick={(p) => router.push(`/projects/${encodeURIComponent(p.name)}`)}
+                rowHref={(p) => `/projects/${encodeURIComponent(p.name)}`}
                 sortState={sortState}
                 onSortChange={onSortChange}
                 emptyState={query ? <div className="text-center py-8 text-muted">No projects matching &quot;{query}&quot;</div> : undefined}
@@ -192,19 +190,13 @@ function ProjectActions({
   return (
     <div className="flex gap-1">
       <Button
-        onClick={(e) => {
-          e.stopPropagation();
-          projectUp.execute();
-        }}
+        onClick={() => projectUp.execute()}
         loading={projectUp.isPending}
       >
         Up
       </Button>
       <Button
-        onClick={(e) => {
-          e.stopPropagation();
-          projectDown.execute();
-        }}
+        onClick={() => projectDown.execute()}
         disabled={project.status === "stopped"}
         loading={projectDown.isPending}
       >
@@ -213,10 +205,7 @@ function ProjectActions({
       {hasUpdates && (
         <Button
           variant="accent"
-          onClick={(e) => {
-            e.stopPropagation();
-            onUpdateClick();
-          }}
+          onClick={onUpdateClick}
         >
           Update…
         </Button>

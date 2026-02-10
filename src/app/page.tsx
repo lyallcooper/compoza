@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Box, Spinner, ProjectStatusBadge, TruncatedText, Badge, Button, ResponsiveTable } from "@/components/ui";
 import type { ColumnDef } from "@/components/ui";
 import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
@@ -103,7 +102,6 @@ function getContainersNeedingAttention(containers: Container[] | undefined): Con
 }
 
 export default function Dashboard() {
-  const router = useRouter();
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: containers, isLoading: containersLoading } = useContainers({ includeHealth: true });
   const { data: imageUpdates, isLoading: updatesLoading } = useImageUpdates();
@@ -346,7 +344,7 @@ export default function Dashboard() {
             data={containersNeedingAttention}
             columns={attentionColumns}
             keyExtractor={({ container }) => container.id}
-            onRowClick={({ container }) => router.push(`/containers/${encodeURIComponent(container.name)}`)}
+            rowHref={({ container }) => `/containers/${encodeURIComponent(container.name)}`}
             showHeader={false}
           />
         </Box>
@@ -386,7 +384,7 @@ export default function Dashboard() {
             data={topProjects}
             columns={projectColumns}
             keyExtractor={(project) => project.name}
-            onRowClick={(project) => router.push(`/projects/${encodeURIComponent(project.name)}`)}
+            rowHref={(project) => `/projects/${encodeURIComponent(project.name)}`}
             showHeader={false}
             emptyState={
               <div className="p-4 text-muted">
@@ -437,7 +435,7 @@ export default function Dashboard() {
             data={topRunningContainers}
             columns={containerColumns}
             keyExtractor={(container) => container.id}
-            onRowClick={(container) => router.push(`/containers/${encodeURIComponent(container.name)}`)}
+            rowHref={(container) => `/containers/${encodeURIComponent(container.name)}`}
             showHeader={false}
             emptyState={<div className="p-4 text-muted">No running containers</div>}
           />

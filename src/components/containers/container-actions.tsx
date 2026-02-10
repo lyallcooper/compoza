@@ -16,7 +16,7 @@ export function ContainerActions({ containerId, state }: ContainerActionsProps) 
   const isRunning = state === "running";
 
   return (
-    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+    <div className="flex gap-1">
       {isRunning ? (
         <>
           <Button onClick={() => stopContainer.execute(containerId)} loading={stopContainer.isPending}>

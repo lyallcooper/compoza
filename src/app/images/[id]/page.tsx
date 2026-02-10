@@ -164,15 +164,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       key: "name",
       header: "Name",
       cardPosition: "header",
-      render: (c) => (
-        <Link
-          href={`/containers/${encodeURIComponent(c.name)}`}
-          className="text-accent hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <TruncatedText text={c.name} />
-        </Link>
-      ),
+      render: (c) => <TruncatedText text={c.name} />,
     },
   ];
 
@@ -216,6 +208,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
               data={sortedContainers}
               columns={containerColumns}
               keyExtractor={(c) => c.id}
+              rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
             />
           </Box>
         )}

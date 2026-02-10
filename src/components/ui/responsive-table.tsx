@@ -221,7 +221,7 @@ export function ResponsiveTable<T>({
                   {isClickable && (
                     <Link
                       href={href}
-                      className="absolute inset-0 z-0"
+                      className="absolute inset-0 z-[1]"
                       tabIndex={-1}
                       aria-hidden="true"
                       onClick={handleRowLinkClick}
@@ -233,7 +233,7 @@ export function ResponsiveTable<T>({
                       key={col.key}
                       role="cell"
                       className={`px-2 py-1.5 flex items-center border-b border-border group-last:border-b-0 group-hover:bg-surface ${
-                        isClickable ? "relative z-[1] group-focus:bg-surface" : ""
+                        isClickable ? "group-focus:bg-surface" : ""
                       } ${col.shrink ? "whitespace-nowrap" : "min-w-0 overflow-hidden"}`}
                       data-truncate-container={col.shrink ? undefined : "true"}
                     >
@@ -252,7 +252,6 @@ export function ResponsiveTable<T>({
         {data.map((row, index) => {
           const href = rowHref?.(row, index);
           const isClickable = !!href;
-          const aboveOverlay = isClickable ? "relative z-[1]" : "";
 
           return (
             <div
@@ -263,13 +262,13 @@ export function ResponsiveTable<T>({
               data-row-clickable={isClickable ? "true" : undefined}
               className={`
                 p-2 rounded-lg border border-border bg-surface-subtle overflow-hidden
-                ${isClickable ? "relative cursor-pointer transition-transform active:not-[:has(button:active,a:active)]:scale-[0.98] hover:bg-surface focus:outline-none focus-visible:bg-surface focus-visible:ring-1 focus-visible:ring-primary" : ""}
+                ${isClickable ? "relative cursor-pointer transition-transform active:not-[:has(button:active,a:not([data-row-link]):active)]:scale-[0.98] hover:bg-surface focus:outline-none focus-visible:bg-surface focus-visible:ring-1 focus-visible:ring-primary" : ""}
               `}
             >
               {isClickable && (
                 <Link
                   href={href}
-                  className="absolute inset-0 z-0"
+                  className="absolute inset-0 z-[1]"
                   tabIndex={-1}
                   aria-hidden="true"
                   onClick={handleRowLinkClick}
@@ -279,7 +278,7 @@ export function ResponsiveTable<T>({
 
               {/* Header section */}
               {headerColumns.length > 0 && (
-                <div className={`${aboveOverlay} font-medium text-foreground`}>
+                <div className="font-medium text-foreground">
                   {headerColumns.map((col) => (
                     <div key={col.key} className="min-w-0">
                       {col.renderCard ? col.renderCard(row, index) : col.render(row, index)}
@@ -290,7 +289,7 @@ export function ResponsiveTable<T>({
 
               {/* Body section */}
               {bodyColumns.length > 0 && (
-                <div className={`${aboveOverlay} space-y-1 text-sm ${headerColumns.length > 0 ? "mt-1.5" : ""}`}>
+                <div className={`space-y-1 text-sm ${headerColumns.length > 0 ? "mt-1.5" : ""}`}>
                   {bodyColumns.map((col) => {
                     const label = col.cardLabel === false ? null : col.cardLabel || col.header;
                     const content = col.renderCard ? col.renderCard(row, index) : col.render(row, index);
@@ -313,7 +312,7 @@ export function ResponsiveTable<T>({
               {/* Footer section (actions) */}
               {footerColumns.length > 0 && (
                 <div
-                  className={`${aboveOverlay} flex items-center justify-end gap-2 ${
+                  className={`flex items-center justify-end gap-2 ${
                     headerColumns.length > 0 || bodyColumns.length > 0
                       ? "mt-2 pt-2 border-t border-border"
                       : ""

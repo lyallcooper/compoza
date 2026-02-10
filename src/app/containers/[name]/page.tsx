@@ -346,7 +346,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                         <Link
                           href={`/volumes/${encodeURIComponent(m.name)}`}
                           className="text-accent hover:underline"
-                          onClick={(e) => e.stopPropagation()}
                         >
                           <TruncatedText text={m.name} />
                         </Link>
@@ -399,7 +398,6 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                     <Link
                       href={`/networks/${encodeURIComponent(n.name)}`}
                       className="text-accent hover:underline font-medium"
-                      onClick={(e) => e.stopPropagation()}
                     >
                       {n.name}
                     </Link>

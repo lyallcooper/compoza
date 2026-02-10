@@ -138,3 +138,10 @@ code, pre {
   animation: popup-in 0.15s ease-out;
 }
 
+/* Stretched row link: interactive elements sit above the link overlay */
+[data-row-clickable] a:not([data-row-link]),
+[data-row-clickable] button {
+  position: relative;
+  z-index: 2;
+}
+

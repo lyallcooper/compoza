@@ -91,15 +91,7 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
       key: "name",
       header: "Name",
       cardPosition: "header",
-      render: (c) => (
-        <Link
-          href={`/containers/${encodeURIComponent(c.name)}`}
-          className="text-accent hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <TruncatedText text={c.name} />
-        </Link>
-      ),
+      render: (c) => <TruncatedText text={c.name} />,
     },
     {
       key: "ipv4Address",
@@ -156,6 +148,7 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
               data={sortedContainers}
               columns={containerColumns}
               keyExtractor={(c) => c.id}
+              rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
             />
           </Box>
         )}

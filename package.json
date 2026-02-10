@@ -2,7 +2,18 @@
   "name": "compoza",
   "version": "0.1.0",
   "private": true,
+  "description": "A TUI-inspired web interface for managing Docker Compose projects",
   "license": "MIT",
+  "author": "Lyall Cooper",
+  "homepage": "https://github.com/lyallcooper/compoza",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lyallcooper/compoza"
+  },
+  "bugs": {
+    "url": "https://github.com/lyallcooper/compoza/issues"
+  },
+  "keywords": ["docker", "compose", "management", "web-ui", "self-hosted"],
   "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
@@ -13,6 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "demo": "NEXT_PUBLIC_DEMO=true next dev",
+    "demo:no-banner": "NEXT_PUBLIC_DEMO=true NEXT_PUBLIC_DEMO_BANNER=false next dev",
     "build:demo": "NEXT_PUBLIC_DEMO=true next build"
   },
   "dependencies": {
@@ -53,7 +65,13 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "cpu-features",
+      "esbuild",
+      "ssh2"
+    ],
+    "ignoredBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
     ]
   }
 }

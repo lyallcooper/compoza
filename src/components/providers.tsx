@@ -57,7 +57,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <TruncatedTextCopyHandler />
         <KeyboardShortcutsProvider>{children}</KeyboardShortcutsProvider>
         <BackgroundTaskToast />
-        {isDemoMode() && <DemoBanner />}
+        {isDemoMode() && process.env.NEXT_PUBLIC_DEMO_BANNER !== "false" && <DemoBanner />}
       </BackgroundTasksProvider>
     </QueryClientProvider>
   );

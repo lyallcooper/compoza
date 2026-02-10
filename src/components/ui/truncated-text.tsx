@@ -112,10 +112,15 @@ export function TruncatedText({
       const expandButtonWidth = showPopup ? 16 : 0;
       const sensitiveButtonWidth = sensitive ? 32 : 0;
 
-      // Get available width from constraining parent
+      // Get available width: from the text element's left edge to the
+      // constraining parent's right content edge. This accounts for any
+      // siblings (e.g. labels) positioned to the left of the text.
       const parentStyles = window.getComputedStyle(constrainingParent);
-      const parentPadding = parseFloat(parentStyles.paddingLeft || "0") + parseFloat(parentStyles.paddingRight || "0");
-      const availableWidth = constrainingParent.clientWidth - parentPadding;
+      const paddingRight = parseFloat(parentStyles.paddingRight || "0");
+      const parentRect = constrainingParent.getBoundingClientRect();
+      // Right edge of parent's content area (excludes right border and padding)
+      const parentContentRight = parentRect.left + constrainingParent.clientLeft + constrainingParent.clientWidth - paddingRight;
+      const availableWidth = parentContentRight - container.getBoundingClientRect().left;
 
       if (availableWidth <= 0) {
         setDisplayText(displaySourceText);

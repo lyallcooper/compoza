@@ -171,7 +171,7 @@ export default function Dashboard() {
       key: "services",
       header: "Services",
       shrink: true,
-      cardLabel: "Services",
+      cardLabel: false,
       render: (project) => (
         <span className="text-muted">
           {project.services.length}
@@ -189,7 +189,7 @@ export default function Dashboard() {
       key: "status",
       header: "Status",
       shrink: true,
-      cardLabel: "Status",
+      cardLabel: false,
       render: (project) => <ProjectStatusBadge status={project.status} />,
     },
   ], []);
@@ -205,7 +205,7 @@ export default function Dashboard() {
     {
       key: "image",
       header: "Image",
-      cardLabel: "Image",
+      cardLabel: false,
       getValue: (container) => container.image.split("/").pop() ?? "",
       render: (container) => (
         <TruncatedText
@@ -214,7 +214,7 @@ export default function Dashboard() {
         />
       ),
       renderCard: (container) => (
-        <span className="font-mono text-xs truncate">
+        <span className="font-mono text-xs text-muted truncate">
           {container.image.split("/").pop() ?? ""}
         </span>
       ),
@@ -232,7 +232,7 @@ export default function Dashboard() {
     {
       key: "image",
       header: "Image",
-      cardLabel: "Image",
+      cardLabel: false,
       getValue: ({ container }) => container.image.split("/").pop() ?? "",
       render: ({ container }) => (
         <TruncatedText

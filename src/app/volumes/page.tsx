@@ -103,6 +103,8 @@ export default function VolumesPage() {
       key: "status",
       header: "Status",
       cardPosition: "body",
+      cardLabel: false,
+      cardFullWidth: true,
       sortValue: (vol) => (isAnonymousVolume(vol.labels) ? 2 : 0) + (vol.containerCount === 0 ? 1 : 0),
       defaultSortDirection: "desc",
       render: (vol) => (
@@ -130,6 +132,7 @@ export default function VolumesPage() {
       header: "Size",
       shrink: true,
       cardPosition: "body",
+      cardLabel: false,
       sortValue: (vol) => vol.size ?? -1,
       defaultSortDirection: "desc",
       render: (vol) => (

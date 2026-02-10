@@ -76,7 +76,7 @@ export default function ProjectsPage() {
       },
       renderCard: (p) => {
         const runningCount = p.services.filter((s) => s.status === "running").length;
-        return <span>{runningCount}/{p.services.length} services</span>;
+        return <span>{runningCount}/{p.services.length}</span>;
       },
     },
     {
@@ -84,6 +84,7 @@ export default function ProjectsPage() {
       header: "Status",
       shrink: true,
       cardPosition: "body",
+      cardLabel: false,
       sortValue: (p) => p.status,
       searchValue: (p) => p.status,
       render: (p) => <ProjectStatusBadge status={p.status} />,

@@ -71,6 +71,7 @@ export default function ContainersPage() {
       key: "image",
       header: "Image",
       cardPosition: "body",
+      cardLabel: false,
       sortValue: (c) => c.image,
       searchValue: (c) => c.image,
       render: (c) => (
@@ -93,15 +94,6 @@ export default function ContainersPage() {
       ),
     },
     {
-      key: "status",
-      header: "Status",
-      shrink: true,
-      cardPosition: "body",
-      sortValue: (c) => c.state,
-      searchValue: (c) => c.state,
-      render: (c) => <ContainerStateBadge state={c.state} />,
-    },
-    {
       key: "ports",
       header: "Ports",
       shrink: true,
@@ -112,6 +104,16 @@ export default function ContainersPage() {
         </span>
       ),
       renderCard: (c) => c.ports.length > 0 ? <PortsList ports={c.ports} /> : null,
+    },
+    {
+      key: "status",
+      header: "Status",
+      shrink: true,
+      cardPosition: "body",
+      cardLabel: false,
+      sortValue: (c) => c.state,
+      searchValue: (c) => c.state,
+      render: (c) => <ContainerStateBadge state={c.state} />,
     },
     {
       key: "actions",

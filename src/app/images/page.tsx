@@ -11,6 +11,7 @@ import {
   ColumnDef,
   DataView,
   Checkbox,
+  TruncatedText,
 } from "@/components/ui";
 import { PullImageModal } from "@/components/images";
 import { useImages, useImageUpdates, usePruneImages, useContainers, useTableSort, useTableSearch } from "@/hooks";
@@ -74,6 +75,19 @@ export default function ImagesPage() {
 
   const columns = useMemo((): ColumnDef<DockerImage>[] => {
     const checkUpdate = (tags: string[]) => tags.some((tag) => updateStatusMap.get(tag));
+    const statusBadges = (image: DockerImage) => {
+      const hasUpdate = checkUpdate(image.tags);
+      const isUnused = !usedImageIds.has(image.id);
+      const isUntagged = image.tags.length === 0;
+      if (!hasUpdate && !isUnused && !isUntagged) return null;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {hasUpdate && <Badge variant="accent">Update</Badge>}
+          {isUntagged && <Badge variant="default">Untagged</Badge>}
+          {isUnused && <Badge variant="warning">Unused</Badge>}
+        </div>
+      );
+    };
     return [
       {
         key: "name",
@@ -82,17 +96,29 @@ export default function ImagesPage() {
         sortValue: (image) => image.name,
         searchValue: (image) => image.name,
         render: (image) => (
-          <div className="flex items-center gap-2">
-            <span className="font-mono">{image.name}</span>
-            {image.tags.length === 0 && <Badge variant="default">untagged</Badge>}
-          </div>
+          <span className="font-mono">
+            <TruncatedText text={image.name} />
+          </span>
         ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        shrink: true,
+        cardPosition: "body",
+        cardLabel: false,
+        cardFullWidth: true,
+        sortValue: (image) => (checkUpdate(image.tags) ? 4 : 0) + (image.tags.length === 0 ? 2 : 0) + (usedImageIds.has(image.id) ? 0 : 1),
+        defaultSortDirection: "desc",
+        render: (image) => statusBadges(image) ?? <span className="text-muted">-</span>,
+        renderCard: (image) => statusBadges(image),
       },
       {
         key: "size",
         header: "Size",
         shrink: true,
         cardPosition: "body",
+        cardLabel: false,
         sortValue: (image) => image.size,
         defaultSortDirection: "desc",
         render: (image) => <span className="text-muted">{formatBytes(image.size)}</span>,
@@ -102,31 +128,11 @@ export default function ImagesPage() {
         header: "Created",
         shrink: true,
         cardPosition: "body",
+        cardLabel: false,
         sortValue: (image) => image.created,
         defaultSortDirection: "desc",
         render: (image) => (
           <span className="text-muted">{formatDateTime(new Date(image.created * 1000))}</span>
-        ),
-      },
-      {
-        key: "status",
-        header: "Status",
-        shrink: true,
-        cardPosition: "body",
-        sortValue: (image) => (checkUpdate(image.tags) ? 2 : 0) + (usedImageIds.has(image.id) ? 0 : 1),
-        defaultSortDirection: "desc",
-        render: (image) => (
-          <div className="flex flex-wrap gap-1">
-            {checkUpdate(image.tags) && (
-              <Badge variant="accent">Update</Badge>
-            )}
-            {!usedImageIds.has(image.id) && (
-              <Badge variant="warning">Unused</Badge>
-            )}
-            {!checkUpdate(image.tags) && usedImageIds.has(image.id) && (
-              <span className="text-muted">-</span>
-            )}
-          </div>
         ),
       },
     ];

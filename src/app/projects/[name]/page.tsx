@@ -330,16 +330,27 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               key: "image",
               header: "Image",
               cardPosition: "body",
+              cardLabel: false,
               getValue: (s) => s.image || "",
               render: (s) => (
                 <span className="text-muted font-mono">
-                  <TruncatedText text={s.image || "-"} maxLength={50} />
+                  {s.image ? (
+                    <Link
+                      href={`/images/${encodeURIComponent(s.image)}`}
+                      className="group/link hover:text-foreground [&_span]:group-hover/link:underline"
+                    >
+                      <TruncatedText text={s.image} maxLength={50} />
+                    </Link>
+                  ) : "-"}
                 </span>
               ),
               renderCard: (s) => s.image ? (
-                <span className="font-mono">
+                <Link
+                  href={`/images/${encodeURIComponent(s.image)}`}
+                  className="group/link font-mono text-accent [&_span]:group-hover/link:underline"
+                >
                   <TruncatedText text={s.image} maxLength={40} />
-                </span>
+                </Link>
               ) : null,
             },
             {
@@ -347,6 +358,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               header: "Status",
               shrink: true,
               cardPosition: "body",
+              cardLabel: false,
+              cardFullWidth: true,
               render: (s) => <ContainerStateBadge state={s.status} />,
             },
             {

@@ -38,6 +38,8 @@ export interface ColumnDef<T> {
   cardLabel?: string | false;
   /** Position in card view layout */
   cardPosition?: "header" | "body" | "footer" | "hidden";
+  /** Force item to take a full line in card body */
+  cardFullWidth?: boolean;
 }
 
 export interface ResponsiveTableProps<T> {
@@ -157,7 +159,9 @@ export function ResponsiveTable<T>({
   const bodyColumns = columns.filter(
     (col) => !col.cardPosition || col.cardPosition === "body"
   );
-  const footerColumns = columns.filter((col) => col.cardPosition === "footer");
+  const sortableColumns = sortState && onSortChange
+    ? columns.filter((col) => col.sortValue)
+    : [];
 
   return (
     <div className={className}>
@@ -249,6 +253,27 @@ export function ResponsiveTable<T>({
 
       {/* Card view (narrow screens) */}
       <div className={`${hide} space-y-1.5 p-1.5`}>
+        {/* Sort bar */}
+        {sortableColumns.length > 0 && (
+          <div className="flex items-center px-0.5 pb-1 text-xs">
+            {sortableColumns.map((col) => {
+              const isActive = sortState!.columnKey === col.key;
+              return (
+                <button
+                  key={col.key}
+                  type="button"
+                  className={`group/sort flex-1 flex items-center justify-center px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                    isActive ? "text-foreground bg-surface" : "text-muted hover:text-foreground"
+                  }`}
+                  onClick={() => onSortChange!(col.key, col.defaultSortDirection)}
+                >
+                  {col.header}
+                  <SortArrow direction={isActive ? sortState!.direction : (col.defaultSortDirection ?? "asc")} className={isActive ? "text-muted" : "invisible"} />
+                </button>
+              );
+            })}
+          </div>
+        )}
         {data.map((row, index) => {
           const href = rowHref?.(row, index);
           const isClickable = !!href;
@@ -289,18 +314,16 @@ export function ResponsiveTable<T>({
 
               {/* Body section */}
               {bodyColumns.length > 0 && (
-                <div className={`space-y-1 text-sm ${headerColumns.length > 0 ? "mt-1.5" : ""}`}>
+                <div className={`flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-sm ${headerColumns.length > 0 ? "mt-1.5" : ""}`}>
                   {bodyColumns.map((col) => {
                     const label = col.cardLabel === false ? null : col.cardLabel || col.header;
                     const content = col.renderCard ? col.renderCard(row, index) : col.render(row, index);
+                    if (content == null) return null;
 
                     return (
-                      <div key={col.key} className="flex items-center gap-3">
-                        {label && <span className="text-muted shrink-0">{label}</span>}
-                        <span
-                          className={`text-foreground min-w-0 overflow-hidden flex-1 ${label ? "text-right" : ""}`}
-                          data-truncate-container="true"
-                        >
+                      <div key={col.key} className={`inline-flex items-center shrink-0 max-w-full overflow-hidden ${col.cardFullWidth ? "basis-full" : ""}`}>
+                        {label && <span className="text-muted/60 shrink-0">{label}{"\u00a0"}</span>}
+                        <span className="text-foreground min-w-0">
                           {content}
                         </span>
                       </div>
@@ -309,22 +332,6 @@ export function ResponsiveTable<T>({
                 </div>
               )}
 
-              {/* Footer section (actions) */}
-              {footerColumns.length > 0 && (
-                <div
-                  className={`flex items-center justify-end gap-2 ${
-                    headerColumns.length > 0 || bodyColumns.length > 0
-                      ? "mt-2 pt-2 border-t border-border"
-                      : ""
-                  }`}
-                >
-                  {footerColumns.map((col) => (
-                    <div key={col.key}>
-                      {col.renderCard ? col.renderCard(row, index) : col.render(row, index)}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           );
         })}

@@ -28,7 +28,10 @@ export function Box({ title, actions, children, className = "", padding = true, 
     <>
       {/* Clickable toggle - mobile only or always based on mode */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget && (e.target as HTMLElement).closest("a")) return;
+          setExpanded(!expanded);
+        }}
         className={`flex items-center gap-2 hover:text-accent transition-colors ${isMobileOnly ? "md:hidden" : ""}`}
       >
         <span className={`transition-transform text-xs ${expanded ? "rotate-90" : ""}`}>

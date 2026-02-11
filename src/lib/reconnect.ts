@@ -17,7 +17,8 @@ export function isNetworkError(error: unknown): boolean {
       msg.includes("network") ||
       msg.includes("connection") ||
       msg.includes("econnrefused") ||
-      msg.includes("econnreset")
+      msg.includes("econnreset") ||
+      msg.includes("http error: 5") // 502/503/504 during server restart
     );
   }
   return false;

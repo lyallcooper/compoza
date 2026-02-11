@@ -120,13 +120,17 @@ export async function clearUpdateCacheAndInvalidate(
     queryClient.setQueryData(queryKeys.images.updates, []);
   }
 
-  // Clear server-side cache
-  const fetchFn = isDemoMode() ? demoFetchRaw : fetch;
-  await fetchFn("/api/images/check-updates", {
-    method: "DELETE",
-    headers: images ? { "Content-Type": "application/json" } : undefined,
-    body: images ? JSON.stringify({ images }) : undefined,
-  });
+  // Clear server-side cache (best-effort — may fail during restart)
+  try {
+    const fetchFn = isDemoMode() ? demoFetchRaw : fetch;
+    await fetchFn("/api/images/check-updates", {
+      method: "DELETE",
+      headers: images ? { "Content-Type": "application/json" } : undefined,
+      body: images ? JSON.stringify({ images }) : undefined,
+    });
+  } catch {
+    // Ignore — cache will be stale but queries will refresh on reconnection
+  }
 
   // Trigger background refresh
   invalidateImageQueries(queryClient);

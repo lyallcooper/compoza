@@ -33,7 +33,7 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
             <div key={img.image} className="text-xs text-muted">
               <div className="font-mono truncate">{img.image}</div>
               {change && (
-                <div className="italic">{change}</div>
+                <div className="text-accent">{change}</div>
               )}
             </div>
             );

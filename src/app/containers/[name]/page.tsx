@@ -3,12 +3,12 @@
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal, EnvironmentVariablesSection, DetailHeader, PropertyTable, ConfirmModal } from "@/components/ui";
+import { Box, Button, Spinner, ContainerStateBadge, TruncatedText, GroupedLabels, DropdownMenu, DropdownItem, Badge, ResponsiveTable, ColumnDef, Modal, EnvironmentVariablesSection, DetailHeader, PropertyTable, ConfirmModal, Tooltip } from "@/components/ui";
 import type { PropertyRow } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
-import { formatDateTime, extractSourceUrl } from "@/lib/format";
+import { formatDateTime, extractSourceUrl, formatVersion, formatVersionChange } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
@@ -148,8 +148,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           maxLength: 36,
         }]
       : []),
-    ...(imageInfo?.currentVersion
-      ? [{ label: "Version", value: imageInfo.currentVersion }]
+    ...(imageInfo && formatVersion(imageInfo)
+      ? [{ label: "Version", value: formatVersion(imageInfo)!, mono: !imageInfo.currentVersion }]
       : []),
     ...(sourceUrl
       ? [{
@@ -257,11 +257,20 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
           <ContainerStateBadge state={container.state} compact="responsive" />
         </span>
         {hasUpdate && (
-          <Badge variant="accent" className="flex-shrink-0">
-            {updateInfo?.currentVersion && updateInfo?.latestVersion && updateInfo.currentVersion !== updateInfo.latestVersion
-              ? `${updateInfo.currentVersion} → ${updateInfo.latestVersion}`
-              : "update available"}
-          </Badge>
+          <span className="flex-shrink-0">
+            <span className="sm:hidden">
+              <Tooltip content={(updateInfo && formatVersionChange(updateInfo)) || "update available"}>
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full bg-accent"
+                />
+              </Tooltip>
+            </span>
+            <span className="hidden sm:inline">
+              <Badge variant="accent" uppercase={false}>
+                {(updateInfo && formatVersionChange(updateInfo)) || "update available"}
+              </Badge>
+            </span>
+          </span>
         )}
       </DetailHeader>
 

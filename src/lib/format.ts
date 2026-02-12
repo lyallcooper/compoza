@@ -204,3 +204,38 @@ export function getReleasesUrl(sourceUrl: string): string {
   }
   return sourceUrl;
 }
+
+/**
+ * Return the best display string for a single image version.
+ * Prefers semantic version, falls back to 8-char digest prefix.
+ */
+export function formatVersion(info: {
+  currentVersion?: string;
+  currentDigest?: string;
+}): string | undefined {
+  if (info.currentVersion) return info.currentVersion;
+  if (info.currentDigest) return info.currentDigest.replace("sha256:", "").slice(0, 8);
+  return undefined;
+}
+
+/**
+ * Return a transition string like "1.2.3 → 1.2.4" or "abc12345 → def67890".
+ * Prefers version change, falls back to digest prefix change.
+ * Returns null if no meaningful change to show.
+ */
+export function formatVersionChange(info: {
+  currentVersion?: string;
+  latestVersion?: string;
+  currentDigest?: string;
+  latestDigest?: string;
+}): string | null {
+  if (info.currentVersion && info.latestVersion && info.currentVersion !== info.latestVersion) {
+    return `${info.currentVersion} → ${info.latestVersion}`;
+  }
+  if (info.currentDigest && info.latestDigest && info.currentDigest !== info.latestDigest) {
+    const current = info.currentDigest.replace("sha256:", "").slice(0, 8);
+    const latest = info.latestDigest.replace("sha256:", "").slice(0, 8);
+    return `${current} → ${latest}`;
+  }
+  return null;
+}

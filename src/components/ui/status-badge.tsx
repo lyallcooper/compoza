@@ -1,4 +1,5 @@
 import { Badge } from "./badge";
+import { Tooltip } from "./tooltip";
 
 type BadgeVariant = "success" | "warning" | "error" | "default";
 
@@ -35,10 +36,11 @@ interface StatusBadgeProps {
 function StatusBadge({ label, variant, compact }: StatusBadgeProps) {
   if (compact === true) {
     return (
-      <span
-        className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
-        title={label}
-      />
+      <Tooltip content={label}>
+        <span
+          className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
+        />
+      </Tooltip>
     );
   }
 
@@ -46,10 +48,11 @@ function StatusBadge({ label, variant, compact }: StatusBadgeProps) {
     return (
       <>
         <span className="sm:hidden">
-          <span
-            className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
-            title={label}
-          />
+          <Tooltip content={label}>
+            <span
+              className={`inline-block w-2.5 h-2.5 rounded-full ${DOT_COLORS[variant]}`}
+            />
+          </Tooltip>
         </span>
         <span className="hidden sm:inline">
           <Badge variant={variant}>{label}</Badge>

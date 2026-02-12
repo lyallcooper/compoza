@@ -8,7 +8,7 @@ import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
 import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useBackgroundProjectUpdate, useDiskUsage } from "@/hooks";
 import type { ProjectWithUpdates } from "@/hooks/use-image-updates";
 import type { Container, Project } from "@/types";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, formatVersionChange } from "@/lib/format";
 
 function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const [showModal, setShowModal] = useState(false);
@@ -27,16 +27,17 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
           className="flex flex-col gap-0.5 min-w-0 flex-1"
         >
           <span className="font-medium">{project.name}</span>
-          {project.images.map((img) => (
+          {project.images.map((img) => {
+            const change = formatVersionChange(img);
+            return (
             <div key={img.image} className="text-xs text-muted">
               <div className="font-mono truncate">{img.image}</div>
-              {img.currentVersion && img.latestVersion && img.currentVersion !== img.latestVersion && (
-                <div className="text-accent">
-                  {img.currentVersion} → {img.latestVersion}
-                </div>
+              {change && (
+                <div className="italic">{change}</div>
               )}
             </div>
-          ))}
+            );
+          })}
         </Link>
         <Button
           variant="accent"

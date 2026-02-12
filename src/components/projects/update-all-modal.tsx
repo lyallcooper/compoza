@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { useUpdateAllProjects } from "@/hooks";
-import { getReleasesUrl } from "@/lib/format";
+import { getReleasesUrl, formatVersionChange } from "@/lib/format";
 
 interface ImageWithVersion {
   image: string;
   currentVersion?: string;
   latestVersion?: string;
+  currentDigest?: string;
+  latestDigest?: string;
   sourceUrl?: string;
 }
 
@@ -101,19 +103,17 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{project.name}</div>
                 <div className="text-muted text-xs space-y-0.5">
-                  {project.images.map(({ image, currentVersion, latestVersion, sourceUrl }, idx) => (
-                    <div key={`${image}-${idx}`}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono truncate">{image}</span>
-                        {currentVersion && latestVersion && currentVersion !== latestVersion && (
-                          <span className="text-accent whitespace-nowrap">
-                            {currentVersion} → {latestVersion}
-                          </span>
-                        )}
-                      </div>
-                      {sourceUrl && (
+                  {project.images.map((img, idx) => {
+                    const change = formatVersionChange(img);
+                    return (
+                    <div key={`${img.image}-${idx}`}>
+                      <div className="font-mono truncate">{img.image}</div>
+                      {change && (
+                        <div className="italic">{change}</div>
+                      )}
+                      {img.sourceUrl && (
                         <a
-                          href={getReleasesUrl(sourceUrl)}
+                          href={getReleasesUrl(img.sourceUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-accent hover:underline"
@@ -123,7 +123,8 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
                         </a>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </label>

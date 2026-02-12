@@ -26,6 +26,8 @@ export interface ProjectWithUpdates {
     image: string;
     currentVersion?: string;
     latestVersion?: string;
+    currentDigest?: string;
+    latestDigest?: string;
     sourceUrl?: string;
   }[];
 }
@@ -68,6 +70,8 @@ export function getProjectsWithUpdates(
           image: service.image,
           currentVersion: update.currentVersion,
           latestVersion: update.latestVersion,
+          currentDigest: update.currentDigest,
+          latestDigest: update.latestDigest,
           sourceUrl: update.sourceUrl,
         });
       }

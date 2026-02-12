@@ -309,22 +309,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               header: "Service",
               cardPosition: "header",
               getValue: (s) => s.name,
-              render: (s) => (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{s.name}</span>
-                  {s.image && updatesMap.get(s.image) && (
-                    <Badge variant="accent">update</Badge>
-                  )}
-                </div>
-              ),
-              renderCard: (s) => (
-                <div className="flex items-center gap-2">
-                  <span>{s.name}</span>
-                  {s.image && updatesMap.get(s.image) && (
-                    <Badge variant="accent">update</Badge>
-                  )}
-                </div>
-              ),
+              render: (s) => <span className="font-medium">{s.name}</span>,
+              renderCard: (s) => s.name,
             },
             {
               key: "image",
@@ -360,7 +346,17 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               cardPosition: "body",
               cardLabel: false,
               cardFullWidth: true,
-              render: (s) => <ContainerStateBadge state={s.status} />,
+              render: (s) => {
+                const hasImageUpdate = s.image && updatesMap.get(s.image);
+                return hasImageUpdate ? (
+                  <div className="flex items-center gap-1.5">
+                    <ContainerStateBadge state={s.status} />
+                    <Badge variant="accent">update</Badge>
+                  </div>
+                ) : (
+                  <ContainerStateBadge state={s.status} />
+                );
+              },
             },
             {
               key: "ports",

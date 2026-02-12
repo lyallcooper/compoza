@@ -4,6 +4,8 @@
  * Can be replaced with a proper logging library (Pino, Winston) if needed.
  */
 
+import pc from "picocolors";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogContext {
@@ -24,10 +26,19 @@ function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= currentLevel;
 }
 
+const LEVEL_COLORS: Record<LogLevel, (s: string) => string> = {
+  debug: pc.dim,
+  info: pc.blue,
+  warn: pc.yellow,
+  error: pc.red,
+};
+
 function formatMessage(level: LogLevel, module: string, message: string, context?: LogContext): string {
-  const timestamp = new Date().toISOString();
-  const contextStr = context ? ` ${JSON.stringify(context)}` : "";
-  return `${timestamp} [${level.toUpperCase()}] [${module}] ${message}${contextStr}`;
+  const timestamp = pc.dim(new Date().toISOString());
+  const tag = LEVEL_COLORS[level](`[${level.toUpperCase()}]`);
+  const mod = pc.cyan(`[${module}]`);
+  const contextStr = context ? pc.dim(` ${JSON.stringify(context)}`) : "";
+  return `${timestamp} ${tag} ${mod} ${message}${contextStr}`;
 }
 
 /**

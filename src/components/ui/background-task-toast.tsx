@@ -5,6 +5,7 @@ import { useBackgroundTasks, type BackgroundTask } from "@/contexts";
 import { Button } from "./button";
 import { Spinner } from "./spinner";
 import { formatBytes } from "@/lib/format";
+import { AnsiText } from "./ansi-text";
 
 const AUTO_DISMISS_DELAY = 5000;
 const MAX_VISIBLE_TASKS = 5;
@@ -70,7 +71,7 @@ function TaskOutput({ lines }: { lines: string[] }) {
       className="mt-1.5 max-h-32 overflow-y-auto bg-background/50 border border-border rounded p-2 font-mono text-[0.7rem] leading-relaxed text-muted whitespace-pre-wrap break-all"
     >
       {lines.map((line, i) => (
-        <div key={i}>{line}</div>
+        <div key={i}><AnsiText text={line} /></div>
       ))}
     </div>
   );

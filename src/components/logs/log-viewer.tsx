@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui";
+import { AnsiText } from "@/components/ui/ansi-text";
 import { useEventSource } from "@/hooks";
 import { formatTime } from "@/lib/format";
 
@@ -138,17 +139,16 @@ function formatLogLine(line: string): React.ReactNode {
     const timestamp = timestampMatch[1];
     const rest = line.slice(timestampMatch[0].length);
 
-    // Format timestamp as ISO 8601 time
     const date = new Date(timestamp);
     const formatted = formatTime(date);
 
     return (
       <>
         <span className="text-muted">{formatted}</span>
-        <span> {rest}</span>
+        <span> <AnsiText text={rest} /></span>
       </>
     );
   }
 
-  return line;
+  return <AnsiText text={line} />;
 }

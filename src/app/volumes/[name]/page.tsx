@@ -135,16 +135,12 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
 
         {/* Labels */}
         {Object.keys(volume.labels).length > 0 && (
-          <Box title="Labels" padding={false} className="break-inside-avoid" collapsible>
-            <GroupedLabels labels={volume.labels} />
-          </Box>
+          <GroupedLabels labels={volume.labels} />
         )}
 
         {/* Options */}
         {volume.options && Object.keys(volume.options).length > 0 && (
-          <Box title="Options" padding={false} className="break-inside-avoid" collapsible>
-            <GroupedLabels labels={volume.options} />
-          </Box>
+          <GroupedLabels labels={volume.options} title="Options" />
         )}
       </div>
 

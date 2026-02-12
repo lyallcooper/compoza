@@ -454,9 +454,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
         {/* Labels - last to avoid column reflow when expanding */}
         {Object.keys(container.labels).length > 0 && (
-          <Box title="Labels" padding={false} className="break-inside-avoid" collapsible>
-            <GroupedLabels labels={container.labels} />
-          </Box>
+          <GroupedLabels labels={container.labels} />
         )}
       </div>
 

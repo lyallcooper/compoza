@@ -220,9 +220,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
 
         {/* Labels */}
         {image.config?.labels && Object.keys(image.config.labels).length > 0 && (
-          <Box title="Labels" padding={false} className="break-inside-avoid" collapsible>
-            <GroupedLabels labels={image.config.labels} />
-          </Box>
+          <GroupedLabels labels={image.config.labels} />
         )}
       </div>
 

@@ -26,7 +26,9 @@ export function EnvironmentVariablesSection({ env }: EnvironmentVariablesSection
       shrink: true,
       cardPosition: "header",
       render: ([key]) => (
-        <span className="font-mono text-xs font-medium">{key}</span>
+        <span className="font-mono text-xs font-medium">
+          <TruncatedText text={key} showPopup={false} />
+        </span>
       ),
     },
     {

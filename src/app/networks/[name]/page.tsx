@@ -155,9 +155,7 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
 
         {/* Labels */}
         {Object.keys(network.labels).length > 0 && (
-          <Box title="Labels" padding={false} className="break-inside-avoid" collapsible>
-            <GroupedLabels labels={network.labels} />
-          </Box>
+          <GroupedLabels labels={network.labels} />
         )}
       </div>
 

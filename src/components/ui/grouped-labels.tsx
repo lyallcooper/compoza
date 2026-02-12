@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Box } from "./box";
+import { Button } from "./button";
 import { TruncatedText } from "./truncated-text";
+import { ResponsiveTable } from "./responsive-table";
+import type { ColumnDef } from "./responsive-table";
 import { isSensitiveKey } from "@/lib/format";
 
 interface GroupedLabelsProps {
   labels: Record<string, string>;
+  title?: string;
 }
 
 interface LabelNode {
@@ -67,6 +72,10 @@ function isInfrastructureLabel(key: string): boolean {
 }
 
 // Flatten nodes that only have one child and no value (compress paths)
+const GUIDE_LEFT = 8;
+const INDENT_PX = 24;
+const HORIZ_ARM = INDENT_PX / 2 - 2;
+
 function compressTree(nodes: LabelNode[]): LabelNode[] {
   return nodes.map((node) => {
     // First compress children recursively
@@ -90,7 +99,9 @@ function compressTree(nodes: LabelNode[]): LabelNode[] {
   });
 }
 
-export function GroupedLabels({ labels }: GroupedLabelsProps) {
+export function GroupedLabels({ labels, title = "Labels" }: GroupedLabelsProps) {
+  const [viewMode, setViewMode] = useState<"tree" | "table">("tree");
+
   const tree = useMemo(() => {
     const rawTree = buildLabelTree(labels);
     const compressed = compressTree(rawTree);
@@ -103,6 +114,11 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
       return a.key.localeCompare(b.key);
     });
   }, [labels]);
+
+  const sortedEntries = useMemo(
+    () => Object.entries(labels).sort(([a], [b]) => a.localeCompare(b)),
+    [labels]
+  );
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     // Collapse common infrastructure label groups by default
@@ -145,30 +161,64 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
     });
   };
 
-  const renderNode = (node: LabelNode, depth: number, isFirst: boolean) => {
+  const renderNode = (node: LabelNode, isLast: boolean, ancestorIsLast: boolean[]) => {
     const hasChildren = node.children.length > 0;
     const isCollapsed = collapsed.has(node.key);
-    const showBorder = depth > 0 || !isFirst;
+    const depth = ancestorIsLast.length;
 
     return (
       <div key={node.key} className="break-inside-avoid">
         {/* Node row */}
         <div
           className={`
-            flex items-center px-2 py-1.5 text-xs overflow-hidden
-            ${showBorder ? "border-t border-border" : ""}
+            relative flex items-baseline pr-2 py-0.5 text-xs overflow-hidden
             ${hasChildren ? "cursor-pointer hover:bg-surface" : ""}
           `}
-          onClick={hasChildren ? () => toggleCollapse(node.key) : undefined}
+          style={{ paddingLeft: GUIDE_LEFT + (depth + 1) * INDENT_PX }}
+          onClick={hasChildren ? () => {
+            const selection = window.getSelection();
+            if (selection && selection.toString().length > 0) return;
+            toggleCollapse(node.key);
+          } : undefined}
         >
-          {/* Expand/collapse toggle - 2ch wide, arrow left-aligned with trailing space */}
-          <span className="inline-block shrink-0 text-muted" style={{ width: '2ch' }}>
-            {hasChildren ? (isCollapsed ? "▸" : "▾") : ""}
-          </span>
+          {/* Ancestor vertical continuation lines */}
+          {ancestorIsLast.map((wasLast, i) =>
+            !wasLast ? (
+              <div
+                key={i}
+                className="absolute top-0 bottom-0 border-l-[1.5px] border-muted"
+                style={{ left: GUIDE_LEFT + i * INDENT_PX + INDENT_PX / 2 }}
+              />
+            ) : null
+          )}
 
-          {/* Key */}
-          <span className="font-mono text-muted shrink-0">
-            {depth > 0 ? `.${node.suffix}` : node.suffix}
+          {/* Current node connector: vertical */}
+          <div
+            className="absolute border-l-[1.5px] border-muted"
+            style={{
+              left: GUIDE_LEFT + depth * INDENT_PX + INDENT_PX / 2,
+              top: 0,
+              height: isLast ? "50%" : "100%",
+            }}
+          />
+          {/* Current node connector: horizontal */}
+          <div
+            className="absolute border-t-[1.5px] border-muted"
+            style={{
+              left: GUIDE_LEFT + depth * INDENT_PX + INDENT_PX / 2,
+              top: "50%",
+              width: HORIZ_ARM,
+            }}
+          />
+
+          {/* Key + collapse indicator */}
+          <span className="relative font-mono text-muted shrink-0">
+            {node.suffix}
+            {hasChildren && (
+              <span className="absolute text-muted select-none ml-1">
+                {isCollapsed ? "▸" : "▾"}
+              </span>
+            )}
           </span>
 
           {/* Value */}
@@ -190,17 +240,76 @@ export function GroupedLabels({ labels }: GroupedLabelsProps) {
 
         {/* Children */}
         {hasChildren && !isCollapsed && (
-          <div className="border-l border-border" style={{ marginLeft: 12 }}>
-            {node.children.map((child, index) => renderNode(child, depth + 1, index === 0))}
+          <div>
+            {node.children.map((child, index) =>
+              renderNode(child, index === node.children.length - 1, [...ancestorIsLast, isLast])
+            )}
           </div>
         )}
       </div>
     );
   };
 
+  const tableColumns: ColumnDef<[string, string]>[] = [
+    {
+      key: "key",
+      header: "Key",
+      shrink: true,
+      cardPosition: "header",
+      render: ([key]) => (
+        <span className="font-mono text-xs font-medium">
+          <TruncatedText text={key} showPopup={false} />
+        </span>
+      ),
+    },
+    {
+      key: "value",
+      header: "Value",
+      cardPosition: "body",
+      cardLabel: false,
+      render: ([key, value]) => {
+        const isSensitive = isSensitiveKey(key);
+        const isRevealed = revealedKeys.has(key);
+
+        return (
+          <span className="font-mono text-xs">
+            <TruncatedText
+              text={value}
+              maxLength={50}
+              sensitive={isSensitive}
+              revealed={isRevealed}
+              onRevealChange={(revealed) => handleRevealChange(key, revealed)}
+            />
+          </span>
+        );
+      },
+    },
+  ];
+
+  const toggleButton = (
+    <Button
+      variant="default"
+      onClick={() => setViewMode(viewMode === "tree" ? "table" : "tree")}
+    >
+      Toggle view
+    </Button>
+  );
+
   return (
-    <div>
-      {tree.map((node, index) => renderNode(node, 0, index === 0))}
-    </div>
+    <Box title={title} padding={false} collapsible className="break-inside-avoid" actions={toggleButton}>
+      {viewMode === "tree" ? (
+        <div>
+          {tree.map((node, index) =>
+            renderNode(node, index === tree.length - 1, [])
+          )}
+        </div>
+      ) : (
+        <ResponsiveTable
+          data={sortedEntries}
+          columns={tableColumns}
+          keyExtractor={([key]) => key}
+        />
+      )}
+    </Box>
   );
 }

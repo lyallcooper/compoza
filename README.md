@@ -18,10 +18,11 @@ Compoza's thoughtfully designed interface has just the features you need to easi
   </a>
 </p>
 
-<table>
+<table align="center">
+  <th>Manage</th>
+  <th>Do</th>
   <tr>
     <td valign="top" width="50%">
-      <strong>Create and manage:</strong>
       <ul>
         <li>Compose projects</li>
         <li>Containers</li>
@@ -31,7 +32,6 @@ Compoza's thoughtfully designed interface has just the features you need to easi
       </ul>
     </td>
     <td valign="top" width="50%">
-      <strong>Easily:</strong>
       <ul>
         <li>Update images with one click—including compoza itself</li>
         <li>View logs</li>
@@ -71,7 +71,7 @@ docker compose up -d
 
 **Compoza has no built-in authentication.** Any client that can reach the application has full access to manage your Docker environment.
 
-You **must** restrict access to compoza by deploying it behind an authentication service (e.g. tinyauth, Cloudflare Access, Authelia) or by restricting network access to trusted clients only (e.g. VPN, tailscale).
+You **must restrict access** to compoza by deploying it behind an authentication service (e.g. tinyauth, Cloudflare Access, Authelia) or by restricting network access to trusted clients only (e.g. VPN, tailscale).
 
 > [!CAUTION]
 > **Never** expose compoza directly to the internet without authentication.

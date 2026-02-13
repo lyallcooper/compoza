@@ -130,33 +130,39 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
       } />
 
       {/* Content sections */}
-      <div className="columns-1 md:columns-2 gap-6 space-y-6">
-        {/* Details */}
-        <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
-          <PropertyTable data={detailsData} />
-        </Box>
-
-        {/* Connected Containers */}
-        {sortedContainers.length > 0 && (
-          <Box
-            title="Connected Containers"
-            padding={false}
-            className="break-inside-avoid"
-            collapsible
-          >
-            <ResponsiveTable
-              data={sortedContainers}
-              columns={containerColumns}
-              keyExtractor={(c) => c.id}
-              rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
-            />
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+          {/* Details */}
+          <Box title="Details" padding={false} className="order-1 md:order-none" collapsible>
+            <PropertyTable data={detailsData} />
           </Box>
-        )}
 
-        {/* Labels */}
-        {Object.keys(network.labels).length > 0 && (
-          <GroupedLabels labels={network.labels} />
-        )}
+          {/* Labels */}
+          {Object.keys(network.labels).length > 0 && (
+            <div className="order-3 md:order-none">
+              <GroupedLabels labels={network.labels} />
+            </div>
+          )}
+        </div>
+
+        <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+          {/* Connected Containers */}
+          {sortedContainers.length > 0 && (
+            <Box
+              title="Connected Containers"
+              padding={false}
+              className="order-2 md:order-none"
+              collapsible
+            >
+              <ResponsiveTable
+                data={sortedContainers}
+                columns={containerColumns}
+                keyExtractor={(c) => c.id}
+                rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
+              />
+            </Box>
+          )}
+        </div>
       </div>
 
       {/* Delete confirmation modal */}

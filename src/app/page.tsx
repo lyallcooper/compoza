@@ -299,192 +299,196 @@ export default function Dashboard() {
   ], []);
 
   return (
-    <div className="columns-1 md:columns-2 gap-6 space-y-6">
-      {/* Updates Available */}
-      {!updatesLoading && !projectsLoading && projectsWithUpdates.length > 0 && (
-        <Box
-          title={<>Updates <Badge variant="accent">{projectsWithUpdates.length}</Badge></>}
-          padding={false}
-          collapsible
-          defaultExpanded={projectsWithUpdates.length <= 5}
-          className="break-inside-avoid"
-          actions={
-            <Button
-              variant="accent"
-              onClick={() => setShowUpdateAllModal(true)}
-            >
-              Update All…
-            </Button>
-          }
-        >
-          <div className="divide-y divide-border">
-            {projectsWithUpdates.map((project) => (
-              <ProjectUpdateRow key={project.name} project={project} />
-            ))}
-          </div>
-        </Box>
-      )}
-
-      {showUpdateAllModal && (
-        <UpdateAllModal
-          onClose={() => setShowUpdateAllModal(false)}
-          projects={projectsWithUpdates}
-        />
-      )}
-
-      {/* Needs Attention */}
-      {!containersLoading && containersNeedingAttention.length > 0 && (
-        <Box
-          title={<>Needs Attention <Badge variant="warning">{containersNeedingAttention.length}</Badge></>}
-          padding={false}
-          collapsible
-          defaultExpanded={containersNeedingAttention.length <= 5}
-          className="break-inside-avoid"
-        >
-          <ResponsiveTable
-            data={containersNeedingAttention}
-            columns={attentionColumns}
-            keyExtractor={({ container }) => container.id}
-            rowHref={({ container }) => `/containers/${encodeURIComponent(container.name)}`}
-            showHeader={false}
-          />
-        </Box>
-      )}
-
-      {/* Projects */}
-      <Box
-        title={
-          <Link href="/projects" className="hover:text-accent transition-colors">
-            Projects
-          </Link>
-        }
-        actions={
-          !projectsLoading && (
-            <span className="text-muted font-normal text-xs">
-              {runningProjects}/{totalProjects} running
-            </span>
-          )
-        }
-        padding={false}
-        className="break-inside-avoid"
-        collapsible
-      >
-        {projectsLoading ? (
-          <div className="p-4">
-            <Spinner />
-          </div>
-        ) : topProjects.length === 0 ? (
-          <div className="p-4 text-muted">
-            No projects found.{" "}
-            <Link href="/projects" className="text-accent hover:underline">
-              Create one
-            </Link>
-          </div>
-        ) : (
-          <ResponsiveTable
-            data={topProjects}
-            columns={projectColumns}
-            keyExtractor={(project) => project.name}
-            rowHref={(project) => `/projects/${encodeURIComponent(project.name)}`}
-            showHeader={false}
-            emptyState={
-              <div className="p-4 text-muted">
-                No projects found.{" "}
-                <Link href="/projects" className="text-accent hover:underline">
-                  Create one
-                </Link>
-              </div>
+    <div className="flex flex-col md:flex-row gap-6">
+      <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+        {/* Updates Available */}
+        {!updatesLoading && !projectsLoading && projectsWithUpdates.length > 0 && (
+          <Box
+            title={<>Updates <Badge variant="accent">{projectsWithUpdates.length}</Badge></>}
+            padding={false}
+            collapsible
+            defaultExpanded={projectsWithUpdates.length <= 5}
+            className="order-1 md:order-none"
+            actions={
+              <Button
+                variant="accent"
+                onClick={() => setShowUpdateAllModal(true)}
+              >
+                Update All…
+              </Button>
             }
+          >
+            <div className="divide-y divide-border">
+              {projectsWithUpdates.map((project) => (
+                <ProjectUpdateRow key={project.name} project={project} />
+              ))}
+            </div>
+          </Box>
+        )}
+
+        {showUpdateAllModal && (
+          <UpdateAllModal
+            onClose={() => setShowUpdateAllModal(false)}
+            projects={projectsWithUpdates}
           />
         )}
-        {hasMoreProjects && (
-          <Link
-            href="/projects"
-            className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
-          >
-            View all {totalProjects} projects →
-          </Link>
-        )}
-      </Box>
 
-      {/* Running Containers */}
-      <Box
-        title={
-          <Link href="/containers" className="hover:text-accent transition-colors">
-            Containers
-          </Link>
-        }
-        actions={
-          !containersLoading && (
-            <span className="text-muted font-normal text-xs">
-              {runningContainers}/{totalContainers} running
-            </span>
-          )
-        }
-        padding={false}
-        className="break-inside-avoid"
-        collapsible
-      >
-        {containersLoading ? (
-          <div className="p-4">
-            <Spinner />
-          </div>
-        ) : topRunningContainers.length === 0 ? (
-          <div className="p-4 text-muted">No running containers</div>
-        ) : (
-          <ResponsiveTable
-            data={topRunningContainers}
-            columns={containerColumns}
-            keyExtractor={(container) => container.id}
-            rowHref={(container) => `/containers/${encodeURIComponent(container.name)}`}
-            showHeader={false}
-            emptyState={<div className="p-4 text-muted">No running containers</div>}
-          />
-        )}
-        {hasMoreRunning && (
-          <Link
-            href="/containers"
-            className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
-          >
-            View all {runningContainers} containers →
-          </Link>
-        )}
-      </Box>
-
-      {/* Storage */}
-      <Box
-        title={
-          <Link href="/system" className="hover:text-accent transition-colors">
-            Storage
-          </Link>
-        }
-        padding={false}
-        className="break-inside-avoid"
-        collapsible
-      >
-        {diskLoading ? (
-          <div className="p-4">
-            <Spinner />
-          </div>
-        ) : diskUsage ? (
-          <>
+        {/* Running Containers */}
+        <Box
+          title={
+            <Link href="/containers" className="hover:text-accent transition-colors">
+              Containers
+            </Link>
+          }
+          actions={
+            !containersLoading && (
+              <span className="text-muted font-normal text-xs">
+                {runningContainers}/{totalContainers} running
+              </span>
+            )
+          }
+          padding={false}
+          className="order-3 md:order-none"
+          collapsible
+        >
+          {containersLoading ? (
+            <div className="p-4">
+              <Spinner />
+            </div>
+          ) : topRunningContainers.length === 0 ? (
+            <div className="p-4 text-muted">No running containers</div>
+          ) : (
             <ResponsiveTable
-              data={storageItems}
-              columns={storageColumns}
-              keyExtractor={(item) => item.category}
+              data={topRunningContainers}
+              columns={containerColumns}
+              keyExtractor={(container) => container.id}
+              rowHref={(container) => `/containers/${encodeURIComponent(container.name)}`}
               showHeader={false}
+              emptyState={<div className="p-4 text-muted">No running containers</div>}
             />
+          )}
+          {hasMoreRunning && (
             <Link
-              href="/system"
+              href="/containers"
               className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
             >
-              View more system info →
+              View all {runningContainers} containers →
             </Link>
-          </>
-        ) : (
-          <div className="p-4 text-muted">Unable to load storage info</div>
+          )}
+        </Box>
+      </div>
+
+      <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+        {/* Needs Attention */}
+        {!containersLoading && containersNeedingAttention.length > 0 && (
+          <Box
+            title={<>Needs Attention <Badge variant="warning">{containersNeedingAttention.length}</Badge></>}
+            padding={false}
+            collapsible
+            defaultExpanded={containersNeedingAttention.length <= 5}
+            className="order-2 md:order-none"
+          >
+            <ResponsiveTable
+              data={containersNeedingAttention}
+              columns={attentionColumns}
+              keyExtractor={({ container }) => container.id}
+              rowHref={({ container }) => `/containers/${encodeURIComponent(container.name)}`}
+              showHeader={false}
+            />
+          </Box>
         )}
-      </Box>
+
+        {/* Projects */}
+        <Box
+          title={
+            <Link href="/projects" className="hover:text-accent transition-colors">
+              Projects
+            </Link>
+          }
+          actions={
+            !projectsLoading && (
+              <span className="text-muted font-normal text-xs">
+                {runningProjects}/{totalProjects} running
+              </span>
+            )
+          }
+          padding={false}
+          className="order-4 md:order-none"
+          collapsible
+        >
+          {projectsLoading ? (
+            <div className="p-4">
+              <Spinner />
+            </div>
+          ) : topProjects.length === 0 ? (
+            <div className="p-4 text-muted">
+              No projects found.{" "}
+              <Link href="/projects" className="text-accent hover:underline">
+                Create one
+              </Link>
+            </div>
+          ) : (
+            <ResponsiveTable
+              data={topProjects}
+              columns={projectColumns}
+              keyExtractor={(project) => project.name}
+              rowHref={(project) => `/projects/${encodeURIComponent(project.name)}`}
+              showHeader={false}
+              emptyState={
+                <div className="p-4 text-muted">
+                  No projects found.{" "}
+                  <Link href="/projects" className="text-accent hover:underline">
+                    Create one
+                  </Link>
+                </div>
+              }
+            />
+          )}
+          {hasMoreProjects && (
+            <Link
+              href="/projects"
+              className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
+            >
+              View all {totalProjects} projects →
+            </Link>
+          )}
+        </Box>
+
+        {/* Storage */}
+        <Box
+          title={
+            <Link href="/system" className="hover:text-accent transition-colors">
+              Storage
+            </Link>
+          }
+          padding={false}
+          className="order-5 md:order-none"
+          collapsible
+        >
+          {diskLoading ? (
+            <div className="p-4">
+              <Spinner />
+            </div>
+          ) : diskUsage ? (
+            <>
+              <ResponsiveTable
+                data={storageItems}
+                columns={storageColumns}
+                keyExtractor={(item) => item.category}
+                showHeader={false}
+              />
+              <Link
+                href="/system"
+                className="block px-2 py-1.5 text-muted hover:bg-surface hover:text-foreground text-xs border-t border-border"
+              >
+                View more system info →
+              </Link>
+            </>
+          ) : (
+            <div className="p-4 text-muted">Unable to load storage info</div>
+          )}
+        </Box>
+      </div>
     </div>
   );
 }

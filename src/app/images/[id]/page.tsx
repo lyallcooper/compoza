@@ -183,45 +183,53 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       } />
 
       {/* Content sections */}
-      <div className="columns-1 md:columns-2 gap-6 space-y-6">
-        {/* Details */}
-        <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
-          <PropertyTable data={detailsData} />
-        </Box>
-
-        {/* Configuration */}
-        {hasConfig && (
-          <Box title="Configuration" padding={false} className="break-inside-avoid" collapsible>
-            <PropertyTable data={configData} />
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+          {/* Details */}
+          <Box title="Details" padding={false} className="order-1 md:order-none" collapsible>
+            <PropertyTable data={detailsData} />
           </Box>
-        )}
 
-        {/* Containers */}
-        {sortedContainers.length > 0 && (
-          <Box
-            title="Containers"
-            padding={false}
-            className="break-inside-avoid"
-            collapsible
-          >
-            <ResponsiveTable
-              data={sortedContainers}
-              columns={containerColumns}
-              keyExtractor={(c) => c.id}
-              rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
-            />
-          </Box>
-        )}
+          {/* Containers */}
+          {sortedContainers.length > 0 && (
+            <Box
+              title="Containers"
+              padding={false}
+              className="order-3 md:order-none"
+              collapsible
+            >
+              <ResponsiveTable
+                data={sortedContainers}
+                columns={containerColumns}
+                keyExtractor={(c) => c.id}
+                rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
+              />
+            </Box>
+          )}
 
-        {/* Environment Variables */}
-        {image.config?.env && Object.keys(image.config.env).length > 0 && (
-          <EnvironmentVariablesSection env={image.config.env} />
-        )}
+          {/* Labels */}
+          {image.config?.labels && Object.keys(image.config.labels).length > 0 && (
+            <div className="order-5 md:order-none">
+              <GroupedLabels labels={image.config.labels} />
+            </div>
+          )}
+        </div>
 
-        {/* Labels */}
-        {image.config?.labels && Object.keys(image.config.labels).length > 0 && (
-          <GroupedLabels labels={image.config.labels} />
-        )}
+        <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+          {/* Configuration */}
+          {hasConfig && (
+            <Box title="Configuration" padding={false} className="order-2 md:order-none" collapsible>
+              <PropertyTable data={configData} />
+            </Box>
+          )}
+
+          {/* Environment Variables */}
+          {image.config?.env && Object.keys(image.config.env).length > 0 && (
+            <div className="order-4 md:order-none">
+              <EnvironmentVariablesSection env={image.config.env} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Delete confirmation modal */}

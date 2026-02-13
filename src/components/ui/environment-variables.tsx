@@ -66,7 +66,7 @@ export function EnvironmentVariablesSection({ env }: EnvironmentVariablesSection
   ];
 
   return (
-    <Box title="Environment Variables" padding={false} className="break-inside-avoid" collapsible>
+    <Box title="Environment Variables" padding={false} collapsible>
       <ResponsiveTable
         data={sortedEntries}
         columns={columns}

@@ -167,7 +167,7 @@ export function GroupedLabels({ labels, title = "Labels" }: GroupedLabelsProps) 
     const depth = ancestorIsLast.length;
 
     return (
-      <div key={node.key} className="break-inside-avoid">
+      <div key={node.key}>
         {/* Node row */}
         <div
           className={`
@@ -296,7 +296,7 @@ export function GroupedLabels({ labels, title = "Labels" }: GroupedLabelsProps) 
   );
 
   return (
-    <Box title={title} padding={false} collapsible className="break-inside-avoid" actions={toggleButton}>
+    <Box title={title} padding={false} collapsible actions={toggleButton}>
       {viewMode === "tree" ? (
         <div>
           {tree.map((node, index) =>

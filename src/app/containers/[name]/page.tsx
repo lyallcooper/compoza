@@ -274,188 +274,196 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
         )}
       </DetailHeader>
 
-      {/* Content sections - columns layout for masonry-like flow */}
-      <div className="columns-1 md:columns-2 gap-6 space-y-6">
-        {/* Stats - only shown for running containers */}
-        {container.state === "running" && (
-          <Box title="Stats" padding={false} className="break-inside-avoid" collapsible>
-            <StatsDisplay stats={stats} loading={!stats} />
+      {/* Content sections - two independent columns */}
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+          {/* Details */}
+          <Box title="Details" padding={false} className="order-1 md:order-none" collapsible>
+            <PropertyTable data={detailsData} />
           </Box>
-        )}
 
-        {/* Details */}
-        <Box title="Details" padding={false} className="break-inside-avoid" collapsible>
-          <PropertyTable data={detailsData} />
-        </Box>
+          {/* Ports */}
+          {sortedPorts.length > 0 && (
+            <Box title="Ports" padding={false} className="order-3 md:order-none" collapsible>
+              <ResponsiveTable
+                data={sortedPorts}
+                keyExtractor={(p) => `${p.container}-${p.protocol}`}
+                columns={[
+                  {
+                    key: "host",
+                    header: "Host",
+                    shrink: true,
+                    cardPosition: "header",
+                    render: (p) => (
+                      <span className="font-mono">
+                        {p.host || <span className="text-muted">-</span>}
+                      </span>
+                    ),
+                    renderCard: (p) => (
+                      <span className="font-mono">
+                        {p.host || "-"} → {p.container}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "container",
+                    header: "Container",
+                    shrink: true,
+                    cardPosition: "hidden",
+                    render: (p) => <span className="font-mono">{p.container}</span>,
+                  },
+                  {
+                    key: "protocol",
+                    header: "Protocol",
+                    shrink: true,
+                    cardPosition: "body",
+                    render: (p) => <span className="text-muted">{p.protocol}</span>,
+                  },
+                ] satisfies ColumnDef<typeof container.ports[number]>[]}
+              />
+            </Box>
+          )}
 
-        {/* Ports */}
-        {sortedPorts.length > 0 && (
-          <Box title="Ports" padding={false} className="break-inside-avoid" collapsible>
-            <ResponsiveTable
-              data={sortedPorts}
-              keyExtractor={(p) => `${p.container}-${p.protocol}`}
-              columns={[
-                {
-                  key: "host",
-                  header: "Host",
-                  shrink: true,
-                  cardPosition: "header",
-                  render: (p) => (
-                    <span className="font-mono">
-                      {p.host || <span className="text-muted">-</span>}
-                    </span>
-                  ),
-                  renderCard: (p) => (
-                    <span className="font-mono">
-                      {p.host || "-"} → {p.container}
-                    </span>
-                  ),
-                },
-                {
-                  key: "container",
-                  header: "Container",
-                  shrink: true,
-                  cardPosition: "hidden",
-                  render: (p) => <span className="font-mono">{p.container}</span>,
-                },
-                {
-                  key: "protocol",
-                  header: "Protocol",
-                  shrink: true,
-                  cardPosition: "body",
-                  render: (p) => <span className="text-muted">{p.protocol}</span>,
-                },
-              ] satisfies ColumnDef<typeof container.ports[number]>[]}
-            />
-          </Box>
-        )}
+          {/* Mounts */}
+          {sortedMounts.length > 0 && (
+            <Box title="Mounts" padding={false} className="order-5 md:order-none" collapsible>
+              <ResponsiveTable
+                data={sortedMounts}
+                keyExtractor={(m) => m.destination}
+                columns={[
+                  {
+                    key: "type",
+                    header: "Type",
+                    shrink: true,
+                    cardPosition: "body",
+                    render: (m) => <span className="capitalize text-muted">{m.type}</span>,
+                  },
+                  {
+                    key: "source",
+                    header: "Source",
+                    cardPosition: "body",
+                    getValue: (m) => m.source || "",
+                    render: (m) => (
+                      <span className="font-mono">
+                        {m.type === "volume" && m.name ? (
+                          <Link
+                            href={`/volumes/${encodeURIComponent(m.name)}`}
+                            className="text-accent hover:underline"
+                          >
+                            <TruncatedText text={m.name} />
+                          </Link>
+                        ) : (
+                          <TruncatedText text={m.source || "-"} />
+                        )}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "destination",
+                    header: "Destination",
+                    cardPosition: "header",
+                    getValue: (m) => m.destination,
+                    render: (m) => (
+                      <span className="font-mono">
+                        <TruncatedText text={m.destination} />
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "mode",
+                    header: "Mode",
+                    shrink: true,
+                    cardPosition: "body",
+                    render: (m) => (
+                      <span className="text-muted">
+                        {m.rw ? (m.mode || "rw") : <span className="text-warning">ro</span>}
+                      </span>
+                    ),
+                  },
+                ] satisfies ColumnDef<typeof container.mounts[number]>[]}
+              />
+            </Box>
+          )}
 
-        {/* Mounts */}
-        {sortedMounts.length > 0 && (
-          <Box title="Mounts" padding={false} className="break-inside-avoid" collapsible>
-            <ResponsiveTable
-              data={sortedMounts}
-              keyExtractor={(m) => m.destination}
-              columns={[
-                {
-                  key: "type",
-                  header: "Type",
-                  shrink: true,
-                  cardPosition: "body",
-                  render: (m) => <span className="capitalize text-muted">{m.type}</span>,
-                },
-                {
-                  key: "source",
-                  header: "Source",
-                  cardPosition: "body",
-                  getValue: (m) => m.source || "",
-                  render: (m) => (
-                    <span className="font-mono">
-                      {m.type === "volume" && m.name ? (
-                        <Link
-                          href={`/volumes/${encodeURIComponent(m.name)}`}
-                          className="text-accent hover:underline"
-                        >
-                          <TruncatedText text={m.name} />
-                        </Link>
-                      ) : (
-                        <TruncatedText text={m.source || "-"} />
-                      )}
-                    </span>
-                  ),
-                },
-                {
-                  key: "destination",
-                  header: "Destination",
-                  cardPosition: "header",
-                  getValue: (m) => m.destination,
-                  render: (m) => (
-                    <span className="font-mono">
-                      <TruncatedText text={m.destination} />
-                    </span>
-                  ),
-                },
-                {
-                  key: "mode",
-                  header: "Mode",
-                  shrink: true,
-                  cardPosition: "body",
-                  render: (m) => (
-                    <span className="text-muted">
-                      {m.rw ? (m.mode || "rw") : <span className="text-warning">ro</span>}
-                    </span>
-                  ),
-                },
-              ] satisfies ColumnDef<typeof container.mounts[number]>[]}
-            />
-          </Box>
-        )}
+          {/* Labels */}
+          {Object.keys(container.labels).length > 0 && (
+            <div className="order-7 md:order-none">
+              <GroupedLabels labels={container.labels} />
+            </div>
+          )}
+        </div>
 
-        {/* Networks */}
-        {sortedNetworks.length > 0 && (
-          <Box title="Networks" padding={false} className="break-inside-avoid" collapsible>
-            <ResponsiveTable
-              data={sortedNetworks}
-              keyExtractor={(n) => n.name}
-              columns={[
-                {
-                  key: "name",
-                  header: "Name",
-                  shrink: true,
-                  cardPosition: "header",
-                  render: (n) => (
-                    <Link
-                      href={`/networks/${encodeURIComponent(n.name)}`}
-                      className="text-accent hover:underline font-medium"
-                    >
-                      {n.name}
-                    </Link>
-                  ),
-                },
-                {
-                  key: "ipAddress",
-                  header: "IP Addr",
-                  cardPosition: "body",
-                  render: (n) => (
-                    <span className="font-mono">
-                      {n.ipAddress ? <TruncatedText text={n.ipAddress} /> : <span className="text-muted">-</span>}
-                    </span>
-                  ),
-                },
-                {
-                  key: "gateway",
-                  header: "Gateway",
-                  cardPosition: "body",
-                  render: (n) => (
-                    <span className="font-mono">
-                      {n.gateway ? <TruncatedText text={n.gateway} /> : <span className="text-muted">-</span>}
-                    </span>
-                  ),
-                },
-                {
-                  key: "macAddress",
-                  header: "MAC Addr",
-                  cardPosition: "body",
-                  render: (n) => (
-                    <span className="font-mono">
-                      {n.macAddress ? <TruncatedText text={n.macAddress} /> : <span className="text-muted">-</span>}
-                    </span>
-                  ),
-                },
-              ] satisfies ColumnDef<typeof container.networks[number]>[]}
-            />
-          </Box>
-        )}
+        <div className="contents md:flex md:flex-col md:gap-6 md:flex-1 md:min-w-0">
+          {/* Stats - only shown for running containers */}
+          {container.state === "running" && (
+            <Box title="Stats" padding={false} className="order-2 md:order-none" collapsible>
+              <StatsDisplay stats={stats} loading={!stats} />
+            </Box>
+          )}
 
-        {/* Environment Variables */}
-        {Object.keys(container.env).length > 0 && (
-          <EnvironmentVariablesSection env={container.env} />
-        )}
+          {/* Networks */}
+          {sortedNetworks.length > 0 && (
+            <Box title="Networks" padding={false} className="order-4 md:order-none" collapsible>
+              <ResponsiveTable
+                data={sortedNetworks}
+                keyExtractor={(n) => n.name}
+                columns={[
+                  {
+                    key: "name",
+                    header: "Name",
+                    shrink: true,
+                    cardPosition: "header",
+                    render: (n) => (
+                      <Link
+                        href={`/networks/${encodeURIComponent(n.name)}`}
+                        className="text-accent hover:underline font-medium"
+                      >
+                        {n.name}
+                      </Link>
+                    ),
+                  },
+                  {
+                    key: "ipAddress",
+                    header: "IP Addr",
+                    cardPosition: "body",
+                    render: (n) => (
+                      <span className="font-mono">
+                        {n.ipAddress ? <TruncatedText text={n.ipAddress} /> : <span className="text-muted">-</span>}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "gateway",
+                    header: "Gateway",
+                    cardPosition: "body",
+                    render: (n) => (
+                      <span className="font-mono">
+                        {n.gateway ? <TruncatedText text={n.gateway} /> : <span className="text-muted">-</span>}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "macAddress",
+                    header: "MAC Addr",
+                    cardPosition: "body",
+                    render: (n) => (
+                      <span className="font-mono">
+                        {n.macAddress ? <TruncatedText text={n.macAddress} /> : <span className="text-muted">-</span>}
+                      </span>
+                    ),
+                  },
+                ] satisfies ColumnDef<typeof container.networks[number]>[]}
+              />
+            </Box>
+          )}
 
-        {/* Labels - last to avoid column reflow when expanding */}
-        {Object.keys(container.labels).length > 0 && (
-          <GroupedLabels labels={container.labels} />
-        )}
+          {/* Environment Variables */}
+          {Object.keys(container.env).length > 0 && (
+            <div className="order-6 md:order-none">
+              <EnvironmentVariablesSection env={container.env} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Update confirmation modal - with detected updates */}

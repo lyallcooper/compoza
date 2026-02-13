@@ -91,25 +91,27 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
       key: "name",
       header: "Name",
       cardPosition: "header",
-      render: (c) => <TruncatedText text={c.name} />,
+      render: (c) => <span className="text-accent"><TruncatedText text={c.name} /></span>,
     },
     {
       key: "ipv4Address",
       header: "IP Address",
+      selectable: true,
       cardPosition: "body",
       render: (c) => (
         <span className="font-mono">
-          {c.ipv4Address || <span className="text-muted">-</span>}
+          {c.ipv4Address ? <TruncatedText text={c.ipv4Address} /> : <span className="text-muted">-</span>}
         </span>
       ),
     },
     {
       key: "macAddress",
       header: "MAC Address",
+      selectable: true,
       cardPosition: "body",
       render: (c) => (
         <span className="font-mono">
-          {c.macAddress || <span className="text-muted">-</span>}
+          {c.macAddress ? <TruncatedText text={c.macAddress} /> : <span className="text-muted">-</span>}
         </span>
       ),
     },
@@ -149,7 +151,7 @@ export default function NetworkDetailPage({ params }: NetworkRouteProps) {
           {/* Connected Containers */}
           {sortedContainers.length > 0 && (
             <Box
-              title="Connected Containers"
+              title={<>Connected Containers <span className="text-muted font-normal">{sortedContainers.length}</span></>}
               padding={false}
               className="order-2 md:order-none"
               collapsible

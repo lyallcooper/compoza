@@ -91,7 +91,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
       key: "name",
       header: "Name",
       cardPosition: "header",
-      render: (c) => <TruncatedText text={c.name} />,
+      render: (c) => <span className="text-accent"><TruncatedText text={c.name} /></span>,
     },
   ];
 
@@ -129,7 +129,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
           {/* Connected Containers */}
           {sortedContainers.length > 0 && (
             <Box
-              title="Connected Containers"
+              title={<>Connected Containers <span className="text-muted font-normal">{sortedContainers.length}</span></>}
               padding={false}
               className="order-2 md:order-none"
               collapsible
@@ -139,6 +139,7 @@ export default function VolumeDetailPage({ params }: VolumeRouteProps) {
                 columns={containerColumns}
                 keyExtractor={(c) => c.id}
                 rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
+                showHeader={false}
               />
             </Box>
           )}

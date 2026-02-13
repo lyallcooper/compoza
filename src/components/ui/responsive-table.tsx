@@ -40,6 +40,8 @@ export interface ColumnDef<T> {
   cardPosition?: "header" | "body" | "footer" | "hidden";
   /** Force item to take a full line in card body */
   cardFullWidth?: boolean;
+  /** Allow text selection instead of row navigation when rowHref is set */
+  selectable?: boolean;
 }
 
 export interface ResponsiveTableProps<T> {
@@ -79,10 +81,33 @@ function handleRowKeyDown(e: React.KeyboardEvent) {
   }
 }
 
-/** Prevents link navigation when user is selecting text */
-function handleRowLinkClick(e: React.MouseEvent) {
-  const selection = window.getSelection();
-  if (selection && !selection.isCollapsed) e.preventDefault();
+/** Opens the row link in a new tab */
+function openRowLinkInNewTab(row: Element) {
+  const link = row.querySelector<HTMLAnchorElement>("a[data-row-link]");
+  if (link) window.open(link.href, "_blank");
+}
+
+/** Click handler for row navigation — skips selectable cells and text selections */
+function handleRowClick(e: React.MouseEvent) {
+  const target = e.target as HTMLElement;
+  // Modified clicks always open in new tab (clear navigation intent, even on selectable content)
+  if (e.metaKey || e.ctrlKey) {
+    openRowLinkInNewTab(e.currentTarget);
+    return;
+  }
+  // Regular clicks: skip for interactive elements and selectable content
+  if (target.closest("a, button, [data-selectable]")) return;
+  const sel = window.getSelection();
+  if (sel && !sel.isCollapsed) return;
+  e.currentTarget.querySelector<HTMLAnchorElement>("a[data-row-link]")?.click();
+}
+
+/** Middle-click handler — opens row link in new tab */
+function handleRowAuxClick(e: React.MouseEvent) {
+  if (e.button !== 1) return;
+  const target = e.target as HTMLElement;
+  if (target.closest("a, button")) return;
+  openRowLinkInNewTab(e.currentTarget);
 }
 
 function SortIndicator({ active, direction }: { active: boolean; direction: SortDirection }) {
@@ -218,6 +243,8 @@ export function ResponsiveTable<T>({
                   key={keyExtractor(row, rowIndex)}
                   role="row"
                   className={`grid grid-cols-subgrid col-span-full group ${isClickable ? "relative cursor-pointer" : ""}`}
+                  onClick={isClickable ? handleRowClick : undefined}
+                  onAuxClick={isClickable ? handleRowAuxClick : undefined}
                   onKeyDown={isClickable ? handleRowKeyDown : undefined}
                   tabIndex={isClickable ? 0 : undefined}
                   data-row-clickable={isClickable ? "true" : undefined}
@@ -225,10 +252,9 @@ export function ResponsiveTable<T>({
                   {isClickable && (
                     <Link
                       href={href}
-                      className="absolute inset-0 z-[1]"
+                      className="absolute inset-0 pointer-events-none"
                       tabIndex={-1}
                       aria-hidden="true"
-                      onClick={handleRowLinkClick}
                       data-row-link
                     />
                   )}
@@ -241,7 +267,11 @@ export function ResponsiveTable<T>({
                       } ${col.shrink ? "whitespace-nowrap" : "min-w-0 overflow-hidden"}`}
                       data-truncate-container={col.shrink ? undefined : "true"}
                     >
-                      {col.render(row, rowIndex)}
+                      {isClickable && col.selectable ? (
+                        <span data-selectable className="min-w-0">{col.render(row, rowIndex)}</span>
+                      ) : (
+                        col.render(row, rowIndex)
+                      )}
                     </div>
                   ))}
                 </div>
@@ -281,6 +311,8 @@ export function ResponsiveTable<T>({
           return (
             <div
               key={keyExtractor(row, index)}
+              onClick={isClickable ? handleRowClick : undefined}
+              onAuxClick={isClickable ? handleRowAuxClick : undefined}
               onKeyDown={isClickable ? handleRowKeyDown : undefined}
               tabIndex={isClickable ? 0 : undefined}
               data-truncate-container="true"
@@ -293,10 +325,9 @@ export function ResponsiveTable<T>({
               {isClickable && (
                 <Link
                   href={href}
-                  className="absolute inset-0 z-[1]"
+                  className="absolute inset-0 pointer-events-none"
                   tabIndex={-1}
                   aria-hidden="true"
-                  onClick={handleRowLinkClick}
                   data-row-link
                 />
               )}

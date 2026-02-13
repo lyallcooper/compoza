@@ -8,7 +8,7 @@ import type { PropertyRow } from "@/components/ui";
 import { StatsDisplay } from "@/components/containers";
 import { UpdateConfirmModal } from "@/components/projects";
 import { useContainer, useContainerStats, useStartContainer, useStopContainer, useRestartContainer, useRemoveContainer, useImageUpdates, useBackgroundContainerUpdate } from "@/hooks";
-import { formatDateTime, extractSourceUrl, formatVersion, formatVersionChange } from "@/lib/format";
+import { formatDateTime, extractSourceUrl, formatVersion, formatVersionChange, formatDisplayUrl } from "@/lib/format";
 import type { ContainerRouteProps } from "@/types";
 
 export default function ContainerDetailPage({ params }: ContainerRouteProps) {
@@ -154,7 +154,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
     ...(sourceUrl
       ? [{
           label: "Source",
-          value: sourceUrl,
+          value: formatDisplayUrl(sourceUrl),
           link: sourceUrl,
           external: true,
         }]
@@ -407,6 +407,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
               <ResponsiveTable
                 data={sortedNetworks}
                 keyExtractor={(n) => n.name}
+                rowHref={(n) => `/networks/${encodeURIComponent(n.name)}`}
                 columns={[
                   {
                     key: "name",
@@ -414,17 +415,15 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                     shrink: true,
                     cardPosition: "header",
                     render: (n) => (
-                      <Link
-                        href={`/networks/${encodeURIComponent(n.name)}`}
-                        className="text-accent hover:underline font-medium"
-                      >
+                      <span className="text-accent font-medium">
                         {n.name}
-                      </Link>
+                      </span>
                     ),
                   },
                   {
                     key: "ipAddress",
                     header: "IP Addr",
+                    selectable: true,
                     cardPosition: "body",
                     render: (n) => (
                       <span className="font-mono">
@@ -435,6 +434,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   {
                     key: "gateway",
                     header: "Gateway",
+                    selectable: true,
                     cardPosition: "body",
                     render: (n) => (
                       <span className="font-mono">
@@ -445,6 +445,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
                   {
                     key: "macAddress",
                     header: "MAC Addr",
+                    selectable: true,
                     cardPosition: "body",
                     render: (n) => (
                       <span className="font-mono">

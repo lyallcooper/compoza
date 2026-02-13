@@ -19,7 +19,7 @@ import {
 } from "@/components/ui";
 import type { PropertyRow } from "@/components/ui";
 import { useImage, useDeleteImage, useImageUpdates } from "@/hooks";
-import { formatDateTime, formatBytes, extractSourceUrl } from "@/lib/format";
+import { formatDateTime, formatBytes, extractSourceUrl, formatDisplayUrl } from "@/lib/format";
 import type { ImageRouteProps, VolumeContainer } from "@/types";
 
 export default function ImageDetailPage({ params }: ImageRouteProps) {
@@ -112,7 +112,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       : []),
     ...(image.os ? [{ label: "OS", value: image.os }] : []),
     ...(sourceUrl
-      ? [{ label: "Source", value: sourceUrl, link: sourceUrl, external: true }]
+      ? [{ label: "Source", value: formatDisplayUrl(sourceUrl), link: sourceUrl, external: true }]
       : []),
   ];
 
@@ -164,7 +164,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
       key: "name",
       header: "Name",
       cardPosition: "header",
-      render: (c) => <TruncatedText text={c.name} />,
+      render: (c) => <span className="text-accent"><TruncatedText text={c.name} /></span>,
     },
   ];
 
@@ -193,7 +193,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
           {/* Containers */}
           {sortedContainers.length > 0 && (
             <Box
-              title="Containers"
+              title={<>Containers <span className="text-muted font-normal">{sortedContainers.length}</span></>}
               padding={false}
               className="order-3 md:order-none"
               collapsible
@@ -203,6 +203,7 @@ export default function ImageDetailPage({ params }: ImageRouteProps) {
                 columns={containerColumns}
                 keyExtractor={(c) => c.id}
                 rowHref={(c) => `/containers/${encodeURIComponent(c.name)}`}
+                showHeader={false}
               />
             </Box>
           )}

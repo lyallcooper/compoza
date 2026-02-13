@@ -100,6 +100,11 @@ export function formatShortId(id: string): string {
   return hash.slice(0, 12);
 }
 
+/** Strip protocol prefix for display: "https://github.com/foo" -> "github.com/foo" */
+export function formatDisplayUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "");
+}
+
 /**
  * Patterns that indicate a key contains sensitive data.
  */

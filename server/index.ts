@@ -61,7 +61,7 @@ async function runUpdateCheck() {
     // Trigger the API endpoint which handles the update check
     // This ensures we use the same module instance as the API routes
     // Use localhost for self-fetch (hostname is the bind address, e.g., 0.0.0.0)
-    const res = await fetch(`http://localhost:${port}/api/images/check-updates`, {
+    const res = await fetch(`http://localhost:${port}/api/images/check-updates?refresh`, {
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -83,10 +83,7 @@ async function runUpdateCheck() {
 }
 
 function startUpdateChecker() {
-  // Run immediately on startup (after a short delay to let things initialize)
-  setTimeout(() => {
-    runUpdateCheck();
-  }, 10000); // 10 second delay
+  runUpdateCheck();
 
   // Then run on interval
   updateCheckInterval = setInterval(runUpdateCheck, UPDATE_CHECK_INTERVAL);

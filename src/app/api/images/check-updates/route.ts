@@ -2,11 +2,6 @@ import { NextRequest } from "next/server";
 import { getAllCachedUpdates, getCacheStats, checkImageUpdates, clearCachedUpdates } from "@/lib/updates";
 import { listContainers } from "@/lib/docker";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
-import { log } from "@/lib/logger";
-
-// Track if we've done an initial check in this process
-let initialCheckDone = false;
-let initialCheckPromise: Promise<void> | null = null;
 
 interface ImageTrackingContainer {
   image?: string;
@@ -49,60 +44,27 @@ export function buildImageTrackingMap(
   return imageMap;
 }
 
-async function ensureInitialCheck() {
-  if (initialCheckDone) return;
-  if (initialCheckPromise) return initialCheckPromise;
-
-  initialCheckPromise = (async () => {
-    try {
-      log.updates.info("Triggering initial check from API");
-      // Collect images from all containers (compose + standalone).
-      // If multiple containers share the same image tag, keep all image IDs,
-      // ordered by oldest container first so stale deployments remain visible.
-      const containers = await listContainers({ all: true });
-      const imageMap = buildImageTrackingMap(containers);
-
-      if (imageMap.size > 0) {
-        await checkImageUpdates(imageMap);
-      }
-      initialCheckDone = true;
-      log.updates.info(`Initial check complete`, { imageCount: imageMap.size });
-    } catch (err) {
-      log.updates.error("Initial check failed", err);
-      initialCheckPromise = null; // Allow retry on failure
-    }
-  })();
-
-  return initialCheckPromise;
-}
-
-// GET returns all cached update info (triggers check if cache is empty)
+// GET returns all cached update info
 export async function GET(request: NextRequest) {
   try {
-    // Debug: return cache stats if requested
     if (request.nextUrl.searchParams.get("stats") === "true") {
       return success(getCacheStats());
     }
 
-    // Wait for any in-progress initial check to finish before returning results
-    if (initialCheckPromise && !initialCheckDone) {
-      await initialCheckPromise;
-    }
-
-    // Trigger check if cache is empty (entries expire after 1 hour)
-    const cached = getAllCachedUpdates();
-
-    if (cached.length === 0) {
-      // Reset flag so ensureInitialCheck actually runs
-      initialCheckDone = false;
-      initialCheckPromise = null;
-      await ensureInitialCheck();
+    // Server-triggered refresh: check all images, return results
+    if (request.nextUrl.searchParams.has("refresh")) {
+      const containers = await listContainers({ all: true });
+      const imageMap = buildImageTrackingMap(containers);
+      if (imageMap.size > 0) {
+        await checkImageUpdates(imageMap);
+      }
       return success(getAllCachedUpdates());
     }
 
-    return success(cached);
+    // Client poll: return cached data instantly
+    return success(getAllCachedUpdates());
   } catch (err) {
-    return error(getErrorMessage(err, "Failed to get updates"));
+    return error(getErrorMessage(err, "Failed to check updates"));
   }
 }
 
@@ -142,9 +104,6 @@ export async function DELETE(request: NextRequest) {
       clearCachedUpdates(images);
     } else {
       clearCachedUpdates();
-      // Reset flags so next GET triggers fresh check
-      initialCheckDone = false;
-      initialCheckPromise = null;
     }
 
     return success({ message: "Cache cleared" });

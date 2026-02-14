@@ -1,3 +1,10 @@
+import { getDocker } from "@/lib/docker";
+
 export async function GET() {
-  return Response.json({ ok: true });
+  try {
+    await getDocker().ping();
+    return Response.json({ ok: true });
+  } catch {
+    return Response.json({ ok: false }, { status: 503 });
+  }
 }

@@ -25,6 +25,7 @@ function getVersion(): string {
 const nextConfig: NextConfig = {
   devIndicators: process.env.NEXT_PUBLIC_DEMO_BANNER === "false" ? false : undefined,
   allowedDevOrigins: ["127.0.0.1"],
+  serverExternalPackages: ["dockerode", "ssh2"],
   env: {
     COMPOZA_VERSION: getVersion(),
   },

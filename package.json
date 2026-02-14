@@ -1,8 +1,8 @@
 {
   "name": "compoza",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "A TUI-inspired web interface for managing Docker Compose projects",
+  "description": "Docker management for the discerning individual",
   "license": "MIT",
   "author": "Lyall Cooper",
   "homepage": "https://github.com/lyallcooper/compoza",

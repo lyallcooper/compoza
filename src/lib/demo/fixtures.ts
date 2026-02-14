@@ -551,7 +551,7 @@ export function createSystemInfo(): DockerSystemInfo {
     cpus: 4,
     warnings: [],
     compoza: {
-      version: process.env.COMPOZA_VERSION ?? "0.1.0",
+      version: process.env.COMPOZA_VERSION ?? "1.0.0",
       projectsDir: "/home/user/docker",
       hostProjectsDir: "/home/user/docker",
       dockerHost: "/var/run/docker.sock",

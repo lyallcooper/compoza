@@ -17,6 +17,8 @@ COPY . .
 
 # Build Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG COMPOZA_VERSION
+ENV COMPOZA_VERSION=${COMPOZA_VERSION}
 RUN pnpm build
 
 # Compile custom server to JavaScript

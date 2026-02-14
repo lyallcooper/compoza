@@ -1,17 +1,12 @@
 services:
   compoza:
-    build: .
-    # Or use pre-built image:
-    # image: compoza:latest
+    image: ghcr.io/lyallcooper/compoza:latest
     container_name: compoza
     ports:
-      - "3000:3000"
+      - 3000:3000
     volumes:
-      # Docker socket - required for Docker API access
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Projects directory - MUST be mounted at the same path
-      # This ensures relative paths in compose files resolve correctly
-      - ${PROJECTS_DIR:-/home/user/docker}:${PROJECTS_DIR:-/home/user/docker}:rw
+      - /path/to/your/projects:/path/to/your/projects
     environment:
-      - PROJECTS_DIR=${PROJECTS_DIR:-/home/user/docker}
+      - PROJECTS_DIR=/path/to/your/projects
     restart: unless-stopped

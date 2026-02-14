@@ -307,8 +307,8 @@ export default function Dashboard() {
             title={<>Updates <Badge variant="accent">{projectsWithUpdates.length}</Badge></>}
             padding={false}
             collapsible
-            defaultExpanded={projectsWithUpdates.length <= 5}
-            className="order-1 md:order-none"
+            defaultExpanded
+            className="order-2 md:order-none"
             actions={
               <Button
                 variant="accent"
@@ -385,8 +385,8 @@ export default function Dashboard() {
             title={<>Needs Attention <Badge variant="warning">{containersNeedingAttention.length}</Badge></>}
             padding={false}
             collapsible
-            defaultExpanded={containersNeedingAttention.length <= 5}
-            className="order-2 md:order-none"
+            defaultExpanded
+            className="order-1 md:order-none"
           >
             <ResponsiveTable
               data={containersNeedingAttention}

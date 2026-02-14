@@ -3,11 +3,16 @@
 import { useState, useEffect, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Box, Button, Badge, Spinner, Modal, ProjectStatusBadge, ContainerStateBadge, TruncatedText, PortsList, DropdownMenu, DropdownItem, Toast, ResponsiveTable, ColumnDef, DetailHeader, ConfirmModal, Checkbox } from "@/components/ui";
 import { ContainerActions } from "@/components/containers";
-import { YamlEditor, EnvEditor, UpdateConfirmModal } from "@/components/projects";
+import { UpdateConfirmModal } from "@/components/projects";
 import { useProject, useProjectUp, useProjectDown, useDeleteProject, useImageUpdates, useProjectCompose, useProjectEnv, useSaveProjectCompose, useSaveProjectEnv, useBackgroundProjectUpdate } from "@/hooks";
 import { isProjectRunning, type ProjectRouteProps } from "@/types";
+
+const editorFallback = <div className="h-80 lg:h-[32rem]" />;
+const YamlEditor = dynamic(() => import("@/components/projects/yaml-editor").then(m => m.YamlEditor), { ssr: false, loading: () => editorFallback });
+const EnvEditor = dynamic(() => import("@/components/projects/env-editor").then(m => m.EnvEditor), { ssr: false, loading: () => editorFallback });
 
 export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const { name } = use(params);

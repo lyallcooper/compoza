@@ -3,9 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Box, Button, Input } from "@/components/ui";
-import { YamlEditor, EnvEditor } from "@/components/projects";
 import { useCreateProject } from "@/hooks";
+
+const editorFallback = <div className="h-80 lg:h-[32rem]" />;
+const YamlEditor = dynamic(() => import("@/components/projects/yaml-editor").then(m => m.YamlEditor), { ssr: false, loading: () => editorFallback });
+const EnvEditor = dynamic(() => import("@/components/projects/env-editor").then(m => m.EnvEditor), { ssr: false, loading: () => editorFallback });
 
 const DEFAULT_COMPOSE = `services:
   app:

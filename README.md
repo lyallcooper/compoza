@@ -11,8 +11,8 @@ Compoza's thoughtfully designed interface has just the features you need to easi
 <p align="center">
   <a href="https://demo.compoza.lyall.co">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
-      <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/9c86c3de-c884-4deb-87bb-9a5c1ab32349">
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/e364408a-2775-4035-8d16-30cfe93f9f8c">
+      <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/75e10bd6-f7f7-4b55-905d-63dc192e65dd">
       <img src="https://github.com/user-attachments/assets/25b6b675-353a-4c86-845d-34c316cd8c2a">
     </picture>
   </a>

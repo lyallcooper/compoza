@@ -134,6 +134,7 @@ DOCKER_HOST=tcp://your-server:2375
 
 | Shortcut | Action |
 |----------|--------|
+| `/` | Focus search |
 | `?` | Show keyboard shortcuts |
 | `g h` | Go to Dashboard |
 | `g p` | Go to Projects |

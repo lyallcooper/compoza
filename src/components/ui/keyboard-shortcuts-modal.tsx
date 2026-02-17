@@ -17,15 +17,15 @@ interface ShortcutGroup {
 
 const shortcutGroups: ShortcutGroup[] = [
   {
-    title: "Navigation",
+    title: "Go to",
     shortcuts: [
-      { keys: ["g", "h"], description: "Go to Dashboard" },
-      { keys: ["g", "p"], description: "Go to Projects" },
-      { keys: ["g", "c"], description: "Go to Containers" },
-      { keys: ["g", "i"], description: "Go to Images" },
-      { keys: ["g", "n"], description: "Go to Networks" },
-      { keys: ["g", "v"], description: "Go to Volumes" },
-      { keys: ["g", "s"], description: "Go to System" },
+      { keys: ["g", "h"], description: "Dashboard" },
+      { keys: ["g", "p"], description: "Projects" },
+      { keys: ["g", "c"], description: "Containers" },
+      { keys: ["g", "i"], description: "Images" },
+      { keys: ["g", "n"], description: "Networks" },
+      { keys: ["g", "v"], description: "Volumes" },
+      { keys: ["g", "s"], description: "System" },
     ],
   },
   {
@@ -41,20 +41,19 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ["Cmd", "S"], description: "Save changes" },
     ],
   },
-  {
-    title: "Help",
-    shortcuts: [
-      { keys: ["?"], description: "Show this help" },
-    ],
-  },
 ];
 
+const modifierKeys = new Set(["Cmd", "Ctrl", "Shift", "Alt"]);
+
 function KeyCombo({ keys }: { keys: string[] }) {
+  const isSimultaneous = keys.some((k) => modifierKeys.has(k));
+  const separator = isSimultaneous ? "+" : "→";
+
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       {keys.map((key, i) => (
-        <span key={i}>
-          {i > 0 && <span className="text-muted mx-0.5">+</span>}
+        <span key={i} className="flex items-center gap-1.5">
+          {i > 0 && <span className="text-muted text-xs">{separator}</span>}
           <kbd className="px-1.5 py-0.5 text-xs font-mono bg-surface border border-border rounded min-w-[1.5rem] text-center inline-block">
             {key}
           </kbd>

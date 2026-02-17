@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -29,6 +29,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const saveEnv = useSaveProjectEnv(decodedName);
 
   // Editing state
+  const focusedEditor = useRef<"compose" | "env" | null>(null);
   const [editedCompose, setEditedCompose] = useState<string | null>(null);
   const [editedEnv, setEditedEnv] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -53,19 +54,16 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const hasEnvChanges = editedEnv !== null && editedEnv !== (envContent || "");
   const hasChanges = hasComposeChanges || hasEnvChanges;
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (which: "compose" | "env" | "all") => {
     setSaving(true);
     setSaveError(null);
-
     try {
-      if (hasComposeChanges && editedCompose !== null) {
+      if ((which === "compose" || which === "all") && hasComposeChanges && editedCompose !== null) {
         await saveCompose.mutateAsync(editedCompose);
       }
-      if (hasEnvChanges && editedEnv !== null) {
+      if ((which === "env" || which === "all") && hasEnvChanges && editedEnv !== null) {
         await saveEnv.mutateAsync(editedEnv);
       }
-
-      // Show prompt to apply changes
       setShowApplyPrompt(true);
     } catch (err) {
       setSaveError(String(err));
@@ -74,25 +72,30 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     }
   }, [editedCompose, editedEnv, hasComposeChanges, hasEnvChanges, saveCompose, saveEnv]);
 
-  const handleDiscard = useCallback(() => {
-    setEditedCompose(composeContent ?? "");
-    setEditedEnv(envContent || "");
+  const handleDiscard = useCallback((which: "compose" | "env") => {
+    if (which === "compose") setEditedCompose(composeContent ?? "");
+    if (which === "env") setEditedEnv(envContent || "");
     setSaveError(null);
   }, [composeContent, envContent]);
 
-  // Keyboard shortcut: Cmd/Ctrl+S to save
+  // Keyboard shortcut: Cmd/Ctrl+S to save focused editor (or all if none focused)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (hasChanges && !saving) {
-          handleSave();
+        if (saving) return;
+        if (focusedEditor.current === "compose" && hasComposeChanges) {
+          handleSave("compose");
+        } else if (focusedEditor.current === "env" && hasEnvChanges) {
+          handleSave("env");
+        } else if (hasChanges) {
+          handleSave("all");
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hasChanges, saving, handleSave]);
+  }, [hasChanges, hasComposeChanges, hasEnvChanges, saving, handleSave]);
 
   // Get cached update info from server
   const { data: imageUpdates } = useImageUpdates();
@@ -148,14 +151,6 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const canDown = !hasChanges && project?.status !== "stopped";
   const canUpdate = !hasChanges;
   const canDelete = !hasChanges;
-
-  // Shared save/discard buttons for editor boxes
-  const saveDiscardButtons = (
-    <>
-      <Button onClick={handleDiscard} disabled={saving}>Discard</Button>
-      <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
-    </>
-  );
 
   const handleUp = () => {
     setShowApplyPrompt(false);
@@ -393,24 +388,38 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
         <Box
           title={hasComposeChanges ? "compose.yaml *" : "compose.yaml"}
           padding={false}
-          actions={hasComposeChanges && saveDiscardButtons}
-        >
-          {editedCompose !== null ? (
-            <YamlEditor value={editedCompose} onChange={setEditedCompose} className="h-80 lg:h-[32rem]" />
-          ) : (
-            <div className="p-4 text-muted">Loading...</div>
+          actions={hasComposeChanges && (
+            <>
+              <Button onClick={() => handleDiscard("compose")} disabled={saving}>Discard</Button>
+              <Button variant="primary" onClick={() => handleSave("compose")} loading={saving}>Save</Button>
+            </>
           )}
+        >
+          <div onFocus={() => focusedEditor.current = "compose"} onBlur={() => focusedEditor.current = null}>
+            {editedCompose !== null ? (
+              <YamlEditor value={editedCompose} onChange={setEditedCompose} className="h-80 lg:h-[32rem]" />
+            ) : (
+              <div className="p-4 text-muted">Loading...</div>
+            )}
+          </div>
         </Box>
         <Box
           title={hasEnvChanges ? ".env *" : ".env"}
           padding={false}
-          actions={hasEnvChanges && saveDiscardButtons}
-        >
-          {editedEnv !== null ? (
-            <EnvEditor value={editedEnv} onChange={setEditedEnv} className="h-80 lg:h-[32rem]" />
-          ) : (
-            <div className="p-4 text-muted">Loading...</div>
+          actions={hasEnvChanges && (
+            <>
+              <Button onClick={() => handleDiscard("env")} disabled={saving}>Discard</Button>
+              <Button variant="primary" onClick={() => handleSave("env")} loading={saving}>Save</Button>
+            </>
           )}
+        >
+          <div onFocus={() => focusedEditor.current = "env"} onBlur={() => focusedEditor.current = null}>
+            {editedEnv !== null ? (
+              <EnvEditor value={editedEnv} onChange={setEditedEnv} className="h-80 lg:h-[32rem]" />
+            ) : (
+              <div className="p-4 text-muted">Loading...</div>
+            )}
+          </div>
         </Box>
       </div>
 

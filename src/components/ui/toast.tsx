@@ -15,7 +15,7 @@ interface ToastProps {
 export function Toast({ children, actions, onClose, autoClose }: ToastProps) {
   const [fading, setFading] = useState(false);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     if (autoClose && onCloseRef.current) {

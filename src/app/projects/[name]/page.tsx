@@ -432,13 +432,9 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       {showApplyPrompt && !hasChanges && (
         <Toast
           onClose={() => setShowApplyPrompt(false)}
-          actions={
-            <Button variant="primary" onClick={handleUp} loading={projectUp.isPending}>
-              Up
-            </Button>
-          }
+          autoClose={5000}
         >
-          Changes saved. Run Up to apply them.
+          Changes saved. Run <Button onClick={handleUp} loading={projectUp.isPending}>Up</Button> to apply them.
         </Toast>
       )}
 

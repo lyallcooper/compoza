@@ -1,6 +1,6 @@
 {
   "name": "compoza",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Docker management for the discerning individual",
   "license": "MIT",

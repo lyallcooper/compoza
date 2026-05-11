@@ -8,7 +8,32 @@ import { UpdateAllModal, UpdateConfirmModal } from "@/components/projects";
 import { useProjects, useContainers, useImageUpdates, getProjectsWithUpdates, useBackgroundProjectUpdate, useDiskUsage } from "@/hooks";
 import type { ProjectWithUpdates } from "@/hooks/use-image-updates";
 import type { Container, Project } from "@/types";
-import { formatBytes, formatVersionChange } from "@/lib/format";
+import { formatBytes, formatVersionChange, getReleasesUrl } from "@/lib/format";
+
+/** Trigger the hidden row link unless the click originated on an interactive child. */
+function clickRowLink(currentTarget: Element) {
+  currentTarget.querySelector<HTMLAnchorElement>("a[data-row-link]")?.click();
+}
+
+function handleProjectRowClick(e: React.MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (e.metaKey || e.ctrlKey) {
+    const link = e.currentTarget.querySelector<HTMLAnchorElement>("a[data-row-link]");
+    if (link) window.open(link.href, "_blank");
+    return;
+  }
+  if (target.closest("a, button")) return;
+  const sel = window.getSelection();
+  if (sel && !sel.isCollapsed) return;
+  clickRowLink(e.currentTarget);
+}
+
+function handleProjectRowKeyDown(e: React.KeyboardEvent) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    clickRowLink(e.currentTarget);
+  }
+}
 
 function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const [showModal, setShowModal] = useState(false);
@@ -21,16 +46,35 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
 
   return (
     <>
-      <div className="flex items-center justify-between px-2 py-2 hover:bg-surface">
+      <div
+        className="relative flex items-center justify-between px-2 py-2 hover:bg-surface cursor-pointer focus:outline-none focus-visible:bg-surface"
+        onClick={handleProjectRowClick}
+        onKeyDown={handleProjectRowKeyDown}
+        tabIndex={0}
+      >
         <Link
           href={`/projects/${encodeURIComponent(project.name)}`}
-          className="flex flex-col gap-0.5 min-w-0 flex-1"
-        >
+          className="absolute inset-0 pointer-events-none"
+          tabIndex={-1}
+          aria-hidden="true"
+          data-row-link
+        />
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           <span className="font-medium">{project.name}</span>
           {project.images.map((img) => {
             const change = formatVersionChange(img);
             return (
             <div key={img.image} className="text-xs text-muted">
+              {img.sourceUrl && (
+                <a
+                  href={getReleasesUrl(img.sourceUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative text-accent hover:underline"
+                >
+                  View releases
+                </a>
+              )}
               <div className="font-mono truncate">{img.image}</div>
               {change && (
                 <div className="text-accent">{change}</div>
@@ -38,10 +82,10 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
             </div>
             );
           })}
-        </Link>
+        </div>
         <Button
           variant="accent"
-          className="ml-2 flex-shrink-0"
+          className="ml-2 flex-shrink-0 relative"
           onClick={() => setShowModal(true)}
         >
           Update…

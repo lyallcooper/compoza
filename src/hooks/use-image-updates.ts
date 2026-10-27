@@ -12,11 +12,20 @@ export interface ImageUpdateStatus {
   checkedAt: number;
   currentDigest?: string;
   latestDigest?: string;
+  outdatedImageIds?: string[];
+  checkedImageIds?: string[];
   currentVersion?: string;
   latestVersion?: string;
   matchedTags?: string[];
   versionStatus?: "pending" | "resolved" | "failed";
   sourceUrl?: string;
+}
+
+/** Match updates to the image a particular container actually uses. */
+export function hasImageUpdate(update: ImageUpdateStatus | undefined, imageId?: string): boolean {
+  return !!update?.updateAvailable && (
+    !imageId || update.status !== "checked" || !update.outdatedImageIds || !update.checkedImageIds?.includes(imageId) || update.outdatedImageIds.includes(imageId)
+  );
 }
 
 export interface ProjectWithUpdates {
@@ -63,7 +72,7 @@ export function getProjectsWithUpdates(
       for (const service of project.services) {
         if (!service.image || seenImages.has(service.image)) continue;
         const update = updateMap.get(service.image);
-        if (!update?.updateAvailable) continue;
+        if (!update || !hasImageUpdate(update, service.imageId)) continue;
 
         seenImages.add(service.image);
         images.push({

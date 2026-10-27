@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from "fs/promises";
 import { isAbsolute, join, relative, resolve } from "path";
+import { parse as parseEnv } from "dotenv";
 import { parse as parseYaml } from "yaml";
 import type { Project, ProjectStatus, ProjectService, ComposeConfig, Container } from "@/types";
 import { listContainers } from "@/lib/docker";
@@ -229,17 +230,26 @@ async function buildProject(
 ): Promise<Project> {
   let services: ProjectService[] = [];
   let status: ProjectStatus = "unknown";
+  let composeName = name;
 
   try {
     const content = await readFile(composeFile, "utf-8");
     const config = parseYaml(content) as ComposeConfig;
-    const projectContainers = containers.filter((c) => c.projectName === name);
+    const env = await readFile(join(path, ".env"), "utf-8").then(parseEnv).catch(() => ({} as Record<string, string>));
+    const variables = { ...env, ...process.env };
+    const configuredName = process.env.COMPOSE_PROJECT_NAME || env.COMPOSE_PROJECT_NAME || config.name || name;
+    composeName = configuredName.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)(?:(:-|-)([^}]*))?\}/g,
+      (_match, key: string, operator: string, fallback: string) =>
+        variables[key] === undefined || (operator === ":-" && variables[key] === "")
+          ? fallback || "" : variables[key]!
+    ).toLowerCase().replace(/[^a-z0-9_-]/g, "").replace(/^[^a-z0-9]+/, "");
+    const projectContainers = containers.filter((c) => c.projectName === composeName);
     ({ services, status } = buildServicesFromConfig(config, projectContainers));
   } catch (error) {
     log.projects.error(`Failed to parse compose file for ${name}`, error);
   }
 
-  return { name, path, composeFile, status, services };
+  return { name, path, composeFile, composeName, status, services };
 }
 
 export async function getProject(name: string): Promise<Project | null> {
@@ -261,6 +271,10 @@ export async function getProject(name: string): Promise<Project | null> {
     const containers = await listContainers({ all: true });
     return buildProject(name, projectPath, composeFile, containers);
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      const projects = await scanProjects();
+      return projects.find((project) => project.composeName === name) || null;
+    }
     log.projects.error(`Failed to get project ${name}`, error);
     return null;
   }

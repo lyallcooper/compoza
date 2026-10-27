@@ -7,5 +7,5 @@ export {
   invalidateVolumeQueries,
   invalidateSystemQueries,
   invalidateAllQueries,
-  clearUpdateCacheAndInvalidate,
+  refreshUpdateCacheAndInvalidate,
 } from "./invalidate";

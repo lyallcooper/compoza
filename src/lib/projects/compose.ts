@@ -4,7 +4,7 @@ import { join } from "path";
 import { getProjectsDir, getProject, toHostPath, isValidProjectName, invalidateProjectScanCache } from "./scanner";
 import { isPathMappingActive, preprocessComposeFile } from "./preprocess";
 import { log } from "@/lib/logger";
-import { getDocker, getSelfProjectName } from "@/lib/docker";
+import { streamContainerLogs, getSelfProjectName } from "@/lib/docker";
 import { spawnUpdaterContainer } from "@/lib/updates";
 import type { ProjectService } from "@/types";
 
@@ -13,7 +13,8 @@ import type { ProjectService } from "@/types";
  */
 async function isSelfProject(projectName: string): Promise<boolean> {
   const selfProject = await getSelfProjectName();
-  return selfProject !== null && selfProject === projectName;
+  const project = await getProject(projectName);
+  return selfProject !== null && selfProject === (project?.composeName || projectName);
 }
 
 /**
@@ -194,7 +195,7 @@ async function runComposeCommand(
       });
       proc.kill("SIGTERM");
       killTimeoutId = setTimeout(() => {
-        if (!proc.killed) {
+        if (proc.exitCode === null && proc.signalCode === null) {
           proc.kill("SIGKILL");
         }
       }, 5000);
@@ -226,7 +227,7 @@ async function runComposeCommand(
       proc.kill("SIGTERM");
       // Force kill after 5 seconds if still running
       killTimeoutId = setTimeout(() => {
-        if (!proc.killed) {
+        if (proc.exitCode === null && proc.signalCode === null) {
           proc.kill("SIGKILL");
         }
       }, 5000);
@@ -416,7 +417,7 @@ export async function composeUpService(
 
 export async function composeLogs(
   projectName: string,
-  options: { follow?: boolean; tail?: number; service?: string } = {}
+  options: { follow?: boolean; tail?: number; service?: string; signal?: AbortSignal } = {}
 ): Promise<AsyncGenerator<string, void, unknown>> {
   const project = await getProject(projectName);
   if (!project) {
@@ -440,106 +441,32 @@ export async function composeLogs(
 
 async function* streamProjectLogs(
   services: ProjectService[],
-  options: { follow?: boolean; tail?: number } = {}
+  options: { follow?: boolean; tail?: number; signal?: AbortSignal } = {}
 ): AsyncGenerator<string, void, unknown> {
-  const docker = getDocker();
-  const streams: { name: string; stream: NodeJS.ReadableStream; buffer: Buffer }[] = [];
-
-  // Start log streams for each container
-  for (const service of services) {
-    if (!service.containerId) continue;
-
-    const container = docker.getContainer(service.containerId);
-    const stream = await container.logs({
-      follow: true,
-      stdout: true,
-      stderr: true,
-      tail: options.tail ?? 100,
-      timestamps: true,
-    } as const);
-
-    streams.push({
-      name: service.name,
-      stream: stream as unknown as NodeJS.ReadableStream,
-      buffer: Buffer.alloc(0),
-    });
-  }
-
-  if (streams.length === 0) {
-    return;
-  }
-
-  // Merge streams into a single async generator
-  const lines: string[] = [];
-  let resolveNext: ((value: IteratorResult<string, void>) => void) | null = null;
-  let activeStreams = streams.length;
-
-  const pushLine = (line: string) => {
-    if (resolveNext) {
-      const resolve = resolveNext;
-      resolveNext = null;
-      resolve({ value: line, done: false });
-    } else {
-      lines.push(line);
-    }
-  };
-
-  // Process Docker multiplexed log format (8-byte header)
-  const processChunk = (entry: typeof streams[0], chunk: Buffer) => {
-    entry.buffer = Buffer.concat([entry.buffer, chunk]);
-
-    while (entry.buffer.length >= 8) {
-      const size = entry.buffer.readUInt32BE(4);
-      if (entry.buffer.length < 8 + size) break;
-
-      const content = entry.buffer.subarray(8, 8 + size).toString("utf8").trimEnd();
-      entry.buffer = entry.buffer.subarray(8 + size);
-
-      if (content) {
-        // Prefix with service name like docker compose logs does
-        pushLine(`${entry.name}  | ${content}`);
-      }
-    }
-  };
-
-  for (const entry of streams) {
-    entry.stream.on("data", (chunk: Buffer) => {
-      processChunk(entry, chunk);
-    });
-
-    entry.stream.on("end", () => {
-      activeStreams--;
-      if (activeStreams === 0 && resolveNext) {
-        resolveNext({ value: undefined, done: true });
-      }
-    });
-
-    entry.stream.on("error", (err: Error) => {
-      log.compose.error("Log stream error", { service: entry.name, error: err.message });
-      activeStreams--;
-      if (activeStreams === 0 && resolveNext) {
-        resolveNext({ value: undefined, done: true });
-      }
-    });
-  }
-
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
+  const iterators = services.filter((service) => service.containerId).map((service) => ({
+    name: service.name,
+    iterator: streamContainerLogs(service.containerId!, { ...options, signal: controller.signal }),
+  }));
+  const pending = new Map<number, Promise<{ index: number; result: IteratorResult<string, void> }>>();
+  const next = (index: number) => iterators[index].iterator.next().then((result) => ({ index, result }));
   try {
-    while (activeStreams > 0 || lines.length > 0) {
-      if (lines.length > 0) {
-        yield lines.shift()!;
-      } else if (activeStreams > 0) {
-        const result = await new Promise<IteratorResult<string, void>>((resolve) => {
-          resolveNext = resolve;
-        });
-        if (result.done) break;
-        yield result.value;
-      }
+    iterators.forEach((_, index) => pending.set(index, next(index)));
+    while (pending.size > 0 && !controller.signal.aborted) {
+      const { index, result } = await Promise.race(pending.values());
+      pending.delete(index);
+      if (result.done) continue;
+      yield `${iterators[index].name}  | ${result.value.trimEnd()}`;
+      pending.set(index, next(index));
     }
   } finally {
-    // Clean up streams
-    for (const entry of streams) {
-      (entry.stream as NodeJS.ReadableStream & { destroy?: () => void }).destroy?.();
-    }
+    controller.abort();
+    options.signal?.removeEventListener("abort", abort);
+    await Promise.allSettled(iterators.map(({ iterator }) => iterator.return()));
+    await Promise.allSettled(pending.values());
   }
 }
 

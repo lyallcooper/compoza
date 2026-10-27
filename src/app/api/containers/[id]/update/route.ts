@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { getContainer } from "@/lib/docker";
 import { composePullService, composeUpService } from "@/lib/projects";
-import { clearCachedUpdates } from "@/lib/updates";
 import { notFound, badRequest, createSSEResponse } from "@/lib/api";
 import type { ContainerUpdateStreamEvent } from "@/types";
 
@@ -25,7 +24,7 @@ export async function POST(
   }
 
   return createSSEResponse<ContainerUpdateStreamEvent>(async (send) => {
-    const wasRunning = container.state === "running";
+    const wasRunning = container.state === "running" || container.state === "restarting";
 
     // Pull the image for this service
     const pullResult = await composePullService(
@@ -40,11 +39,6 @@ export async function POST(
     if (!pullResult.success) {
       send({ type: "error", message: pullResult.error || "Failed to pull image" });
       return;
-    }
-
-    // Clear update cache after pull
-    if (container.image) {
-      clearCachedUpdates([container.image]);
     }
 
     // Recreate the service if it was running

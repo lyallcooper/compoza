@@ -4,6 +4,7 @@ export interface Project {
   name: string;
   path: string;
   composeFile: string;
+  composeName?: string;
   status: ProjectStatus;
   services: ProjectService[];
 }
@@ -150,6 +151,7 @@ export interface DockerImageDetail extends DockerImage {
 }
 
 export interface ComposeConfig {
+  name?: string;
   version?: string;
   services: Record<string, ComposeService>;
   networks?: Record<string, unknown>;

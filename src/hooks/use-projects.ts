@@ -7,7 +7,7 @@ import {
   queryKeys,
   invalidateProjectQueries,
   invalidateAllQueries,
-  clearUpdateCacheAndInvalidate,
+  refreshUpdateCacheAndInvalidate,
 } from "@/lib/query";
 import { type Project } from "@/types";
 import { useBackgroundOperation, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
@@ -123,7 +123,7 @@ export function useProjectPull(name: string) {
       return { images };
     },
     onSuccess: async (result: { images: string[] } | undefined) => {
-      await clearUpdateCacheAndInvalidate(queryClient, result?.images);
+      await refreshUpdateCacheAndInvalidate(queryClient, result?.images);
       invalidateProjectQueries(queryClient, name);
     },
     onError: async () => {

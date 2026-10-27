@@ -1,5 +1,7 @@
 "use client";
 
+import { hasImageUpdate, type ImageUpdateStatus } from "@/hooks/use-image-updates";
+
 import { useState, useEffect, useRef, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -100,10 +102,10 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   // Get cached update info from server
   const { data: imageUpdates } = useImageUpdates();
   const updatesMap = useMemo(() => {
-    const map = new Map<string, boolean>();
+    const map = new Map<string, ImageUpdateStatus>();
     if (imageUpdates) {
       for (const update of imageUpdates) {
-        map.set(update.image, update.updateAvailable);
+        map.set(update.image, update);
       }
     }
     return map;
@@ -116,7 +118,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   // Check if project has any updates available
   const hasUpdates = useMemo(() => {
     if (!project) return false;
-    return project.services.some((s) => s.image && updatesMap.get(s.image));
+    return project.services.some((s) => s.image && hasImageUpdate(updatesMap.get(s.image), s.imageId));
   }, [project, updatesMap]);
 
   // Check if project has any services with Dockerfile builds
@@ -131,7 +133,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
     const seenImages = new Set<string>();
     const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string; sourceUrl?: string }[] = [];
     for (const service of project.services) {
-      if (service.image && updatesMap.get(service.image) && !seenImages.has(service.image)) {
+      if (service.image && hasImageUpdate(updatesMap.get(service.image), service.imageId) && !seenImages.has(service.image)) {
         seenImages.add(service.image);
         const update = imageUpdates.find((u) => u.image === service.image);
         images.push({
@@ -347,8 +349,8 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
               cardLabel: false,
               cardFullWidth: true,
               render: (s) => {
-                const hasImageUpdate = s.image && updatesMap.get(s.image);
-                return hasImageUpdate ? (
+                const serviceHasUpdate = s.image && hasImageUpdate(updatesMap.get(s.image), s.imageId);
+                return serviceHasUpdate ? (
                   <div className="flex items-center gap-1.5">
                     <ContainerStateBadge state={s.status} />
                     <Badge variant="accent">update</Badge>

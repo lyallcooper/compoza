@@ -22,19 +22,30 @@ export async function consumeSSEStream<TEvent extends { type: string }>(
   const { method = "POST", body, signal, onEvent } = options;
 
   let response: Response;
-  if (isDemoMode()) {
-    response = await demoFetchRaw(url, {
+  while (true) {
+    const fetchFn = isDemoMode() ? demoFetchRaw : fetch;
+    response = await fetchFn(url, {
       method,
       headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
     });
-  } else {
-    response = await fetch(url, {
-      method,
-      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal,
+    if (response.status !== 429) break;
+    const retryAfter = response.headers.get("Retry-After");
+    const seconds = retryAfter === null ? 60 : Number(retryAfter);
+    const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter!) - Date.now();
+    await response.body?.cancel();
+    await new Promise<void>((resolve, reject) => {
+      signal.throwIfAborted();
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      };
+      const timer = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort);
+        resolve();
+      }, Math.max(1000, Number.isFinite(delay) ? delay : 60000));
+      signal.addEventListener("abort", onAbort, { once: true });
     });
   }
 
@@ -55,35 +66,33 @@ export async function consumeSSEStream<TEvent extends { type: string }>(
 
   const decoder = new TextDecoder();
   let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        try {
-          const event = JSON.parse(line.slice(6)) as TEvent;
-          onEvent(event);
-        } catch {
-          // Ignore parse errors
-        }
-      }
-    }
-  }
-
-  // Process any remaining data
-  if (buffer.startsWith("data: ")) {
+  let terminalEvent = false;
+  const processLine = (line: string) => {
+    if (!line.startsWith("data: ")) return;
+    let event: TEvent;
     try {
-      const event = JSON.parse(buffer.slice(6)) as TEvent;
-      onEvent(event);
+      event = JSON.parse(line.slice(6)) as TEvent;
     } catch {
-      // Ignore parse errors
+      return;
     }
+    if (event.type === "done" || event.type === "error") terminalEvent = true;
+    onEvent(event);
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      lines.forEach(processLine);
+    }
+    processLine(buffer + decoder.decode());
+    if (!terminalEvent) throw new Error("Operation ended without confirming completion");
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
@@ -109,7 +118,7 @@ export async function consumeOutputStream(
       signal: options.signal,
       onEvent: (event) => {
         if (event.type === "output" && event.data) options.appendOutput([event.data]);
-        if (event.type === "error") streamError = event.message;
+        if (event.type === "error") streamError = event.message || "Operation failed";
       },
     }
   );
@@ -228,6 +237,7 @@ export function useBackgroundOperation<TArgs = void, TResult = void>(
 
         return false;
       } finally {
+        clearTimeout(visibilityTimer);
         setInflightCount((c) => c - 1);
       }
     },

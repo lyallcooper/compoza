@@ -16,6 +16,8 @@ export interface ImageUpdateInfo {
   image: string;
   currentDigest?: string;
   latestDigest?: string;
+  outdatedImageIds?: string[];
+  checkedImageIds?: string[];
   updateAvailable: boolean;
   status: "checked" | "unknown" | "error";
   fromCache?: boolean;
@@ -27,7 +29,11 @@ export interface ImageUpdateInfo {
 
 type ImageTrackingState = string[] | undefined;
 
-export async function checkImageUpdates(images: Map<string, ImageTrackingState>): Promise<ImageUpdateInfo[]> {
+export async function checkImageUpdates(
+  images: Map<string, ImageTrackingState>,
+  options: { force?: boolean } = {}
+): Promise<ImageUpdateInfo[]> {
+  if (options.force) return checkImagesDirectly([...images], true);
   const results: ImageUpdateInfo[] = [];
   const imagesToCheck: [string, ImageTrackingState][] = [];
 
@@ -40,6 +46,8 @@ export async function checkImageUpdates(images: Map<string, ImageTrackingState>)
         image: cached.image,
         currentDigest: cached.currentDigest,
         latestDigest: cached.latestDigest,
+        outdatedImageIds: cached.outdatedImageIds,
+        checkedImageIds: cached.checkedImageIds,
         updateAvailable: cached.updateAvailable,
         status: cached.status,
         fromCache: true,
@@ -82,18 +90,41 @@ export async function checkImageUpdates(images: Map<string, ImageTrackingState>)
   return results;
 }
 
-async function checkImagesDirectly(images: [string, ImageTrackingState][]): Promise<ImageUpdateInfo[]> {
+async function checkImagesDirectly(images: [string, ImageTrackingState][], force = false): Promise<ImageUpdateInfo[]> {
   const docker = getDocker();
 
   const settled = await Promise.allSettled(
     images.map(([imageName, containerImageIds]) =>
-      checkSingleImage(docker, imageName, containerImageIds)
+      checkImageSerially(docker, imageName, containerImageIds, force)
     )
   );
 
   return settled
     .filter((r): r is PromiseFulfilledResult<ImageUpdateInfo> => r.status === "fulfilled")
     .map((r) => r.value);
+}
+
+// Serialize checks so a pre-update inspection cannot overwrite a newer result.
+const inFlightChecks = new Map<string, Promise<ImageUpdateInfo>>();
+
+async function checkImageSerially(
+  docker: ReturnType<typeof getDocker>,
+  imageName: string,
+  imageIds: string[] | undefined,
+  force: boolean
+): Promise<ImageUpdateInfo> {
+  while (inFlightChecks.has(imageName)) {
+    const pending = inFlightChecks.get(imageName)!;
+    if (!force) return pending;
+    await pending;
+  }
+  const check = checkSingleImage(docker, imageName, imageIds, force);
+  inFlightChecks.set(imageName, check);
+  try {
+    return await check;
+  } finally {
+    if (inFlightChecks.get(imageName) === check) inFlightChecks.delete(imageName);
+  }
 }
 
 function extractDigestForRepo(repoDigests: string[] | undefined, repoBase: string): string | undefined {
@@ -105,7 +136,8 @@ function extractDigestForRepo(repoDigests: string[] | undefined, repoBase: strin
 async function checkSingleImage(
   docker: ReturnType<typeof getDocker>,
   rawImageName: string,
-  containerImageIds?: string[]
+  containerImageIds?: string[],
+  force = false
 ): Promise<ImageUpdateInfo> {
   const imageName = normalizeImageName(rawImageName);
 
@@ -124,13 +156,15 @@ async function checkSingleImage(
   }
 
   // Skip if already being checked
-  if (!shouldCheckImage(imageName)) {
+  if (!force && !shouldCheckImage(imageName)) {
     const cached = getCachedUpdate(imageName);
     if (cached) {
       return {
         image: cached.image,
         currentDigest: cached.currentDigest,
         latestDigest: cached.latestDigest,
+        outdatedImageIds: cached.outdatedImageIds,
+        checkedImageIds: cached.checkedImageIds,
         updateAvailable: cached.updateAvailable,
         status: cached.status,
         fromCache: true,
@@ -141,13 +175,16 @@ async function checkSingleImage(
     }
   }
 
+  const previous = getCachedUpdate(imageName);
   markCheckPending(imageName);
 
   try {
     let currentDigest: string | undefined;
     const currentDigests = new Set<string>();
+    let unresolvedImage = false;
+    const imageDigests = new Map<string, string | undefined>();
     let sourceUrl: string | undefined;
-    const repoBase = imageName.split(":")[0];
+    const repoBase = imageName.slice(0, imageName.lastIndexOf(":") > imageName.lastIndexOf("/") ? imageName.lastIndexOf(":") : undefined);
 
     // Primary: inspect the images containers are actually running.
     const trackedImageIds = containerImageIds?.length
@@ -163,14 +200,17 @@ async function checkSingleImage(
             currentDigest = digest;
           }
         }
+        imageDigests.set(containerImageId, digest);
+        if (!digest) unresolvedImage = true;
         sourceUrl = sourceUrl || extractSourceUrl(inspection.Config?.Labels, imageName);
       } catch {
-        // Image may have been pruned; fall through to listImages
+        imageDigests.set(containerImageId, undefined);
+        unresolvedImage = true;
       }
     }
 
-    // Fallback when no tracked image IDs resolve (e.g. images were pruned)
-    if (currentDigests.size === 0) {
+    // A downloaded tag cannot prove that an existing container was recreated.
+    if (currentDigests.size === 0 && trackedImageIds.length === 0) {
       const localImages = await docker.listImages({
         filters: { reference: [imageName] },
       });
@@ -211,9 +251,11 @@ async function checkSingleImage(
             image: imageName,
             currentDigest,
             latestDigest: registryResult.latestDigest,
+            checkedImageIds: [...imageDigests].filter(([, digest]) => digest !== undefined).map(([id]) => id),
+            outdatedImageIds: registryResult.latestDigest ? [...imageDigests].filter(([, digest]) => digest !== registryResult.latestDigest).map(([id]) => id) : undefined,
             updateAvailable: registryResult.latestDigest
-              ? !currentDigests.has(registryResult.latestDigest)
-              : registryResult.updateAvailable,
+              ? unresolvedImage || [...currentDigests].some((digest) => digest !== registryResult.latestDigest)
+              : previous?.updateAvailable || registryResult.updateAvailable,
             status: registryResult.latestDigest ? "checked" : "unknown",
             currentVersion: registryResult.currentVersion,
             latestVersion: registryResult.latestVersion,
@@ -236,9 +278,10 @@ async function checkSingleImage(
 
     if (!latestDigest) {
       result = {
+        ...previous,
         image: imageName,
         currentDigest,
-        updateAvailable: false,
+        updateAvailable: previous?.updateAvailable ?? false,
         status: "unknown",
         sourceUrl,
       };
@@ -255,7 +298,9 @@ async function checkSingleImage(
         image: imageName,
         currentDigest,
         latestDigest,
-        updateAvailable: !currentDigests.has(latestDigest),
+        checkedImageIds: [...imageDigests].filter(([, digest]) => digest !== undefined).map(([id]) => id),
+        outdatedImageIds: [...imageDigests].filter(([, digest]) => digest !== latestDigest).map(([id]) => id),
+        updateAvailable: unresolvedImage || [...currentDigests].some((digest) => digest !== latestDigest),
         status: "checked",
         sourceUrl,
       };
@@ -277,8 +322,9 @@ async function checkSingleImage(
   } catch (error) {
     log.updates.error(`Failed to check image ${imageName}`, error);
     const result: ImageUpdateInfo = {
+      ...previous,
       image: imageName,
-      updateAvailable: false,
+      updateAvailable: previous?.updateAvailable ?? false,
       status: "error",
     };
     setCachedUpdate(imageName, result);

@@ -58,7 +58,7 @@ export function isPathMappingActive(): boolean {
 }
 
 function toAbsoluteLocalPath(relativePath: string, projectDir: string): string {
-  if (isAbsolute(relativePath)) return relativePath;
+  if (isAbsolute(relativePath) || /^[a-z][a-z0-9+.-]*:\/\//i.test(relativePath) || relativePath.startsWith("git@")) return relativePath;
   return resolve(projectDir, relativePath);
 }
 
@@ -154,13 +154,13 @@ function rewriteBuild(
 
   // Short syntax: build: ./path
   if (typeof build === "string") {
-    return toAbsoluteHostPath(build, projectDir);
+    return toAbsoluteLocalPath(build, projectDir);
   }
 
   // Long syntax: build: { context: ..., dockerfile: ... }
   const result = { ...build };
   if (result.context) {
-    result.context = toAbsoluteHostPath(result.context, projectDir);
+    result.context = toAbsoluteLocalPath(result.context, projectDir);
   }
   // dockerfile is relative to context, Docker handles this
   return result;
@@ -172,11 +172,10 @@ function rewriteExtends(
 ): ExtendsConfig | undefined {
   if (!ext || !ext.file) return ext;
 
-  // extends.file is resolved by docker compose CLI relative to --project-directory
-  // Since we set --project-directory to the host path, we need to rewrite this
+  // Compose reads extends files locally before sending requests to Docker.
   return {
     ...ext,
-    file: toAbsoluteHostPath(ext.file, projectDir),
+    file: toAbsoluteLocalPath(ext.file, projectDir),
   };
 }
 

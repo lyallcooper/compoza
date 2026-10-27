@@ -1,5 +1,7 @@
 "use client";
 
+import { hasImageUpdate } from "@/hooks/use-image-updates";
+
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -34,7 +36,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       currentVersion: update.currentVersion,
       latestDigest: update.latestDigest,
       latestVersion: update.latestVersion,
-      updateAvailable: update.updateAvailable,
+      updateAvailable: hasImageUpdate(update, container.imageId),
     };
   }, [container, imageUpdates]);
 

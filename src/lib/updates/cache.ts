@@ -7,6 +7,8 @@ export interface CachedUpdate {
   // Digest information
   currentDigest?: string;
   latestDigest?: string;
+  outdatedImageIds?: string[];
+  checkedImageIds?: string[];
   // Resolved version information
   currentVersion?: string;
   latestVersion?: string;

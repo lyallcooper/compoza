@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { getDocker } from "./client";
 import type { Container, ContainerStats, PortMapping, ContainerUpdateStrategy, ContainerActions, ContainerHealth, ContainerMount, ContainerNetwork } from "@/types";
 import { log } from "@/lib/logger";
@@ -377,34 +378,53 @@ export async function pruneContainers(): Promise<ContainerPruneResult> {
 
 export async function* streamContainerLogs(
   id: string,
-  options: { follow?: boolean; tail?: number; since?: number } = {}
+  options: { follow?: boolean; tail?: number; since?: number; signal?: AbortSignal } = {}
 ): AsyncGenerator<string, void, unknown> {
   const docker = getDocker();
   const container = docker.getContainer(id);
 
-  const stream = await container.logs({
-    follow: true,
+  const info = await container.inspect();
+  if (options.signal?.aborted) return;
+  const logOptions = {
     stdout: true,
     stderr: true,
     tail: options.tail ?? 100,
     since: options.since,
     timestamps: true,
-  } as const);
+  };
+  const stream = options.follow === false
+    ? Readable.from([await container.logs({ ...logOptions, follow: false })])
+    : await container.logs({ ...logOptions, follow: true }) as Readable;
+  const abort = () => stream.destroy();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
 
-  // Docker multiplexes stdout/stderr - header is 8 bytes: [stream type, 0, 0, 0, size (4 bytes)]
   let buffer = Buffer.alloc(0);
-
-  for await (const chunk of stream as AsyncIterable<Buffer>) {
-    buffer = Buffer.concat([buffer, chunk]);
-
-    while (buffer.length >= 8) {
-      const size = buffer.readUInt32BE(4);
-      if (buffer.length < 8 + size) break;
-
-      const line = buffer.subarray(8, 8 + size).toString("utf8");
-      buffer = buffer.subarray(8 + size);
-
-      yield line;
+  const decoder = new TextDecoder();
+  try {
+    for await (const chunk of stream) {
+      if (info.Config.Tty) {
+        const text = decoder.decode(chunk, { stream: true });
+        if (text) yield text;
+        continue;
+      }
+      buffer = Buffer.concat([buffer, chunk]);
+      while (buffer.length >= 8) {
+        const size = buffer.readUInt32BE(4);
+        if (buffer.length < 8 + size) break;
+        const line = buffer.subarray(8, 8 + size).toString("utf8");
+        buffer = buffer.subarray(8 + size);
+        yield line;
+      }
     }
+    if (info.Config.Tty) {
+      const rest = decoder.decode();
+      if (rest) yield rest;
+    }
+  } catch (error) {
+    if (!options.signal?.aborted) throw error;
+  } finally {
+    options.signal?.removeEventListener("abort", abort);
+    stream.destroy();
   }
 }

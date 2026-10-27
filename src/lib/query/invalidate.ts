@@ -77,12 +77,8 @@ export function invalidateSystemQueries(queryClient: QueryClient) {
 
 /**
  * Invalidate all queries after a major update (e.g., update all projects).
- * Optimistically clears the updates cache to remove stale badges immediately.
  */
 export function invalidateAllQueries(queryClient: QueryClient) {
-  // Clear updates cache optimistically so badges disappear immediately
-  queryClient.setQueryData(queryKeys.images.updates, []);
-
   queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.images.all });
@@ -92,46 +88,20 @@ export function invalidateAllQueries(queryClient: QueryClient) {
   invalidateSystemQueries(queryClient);
 }
 
-interface ImageUpdateStatus {
-  image: string;
-  updateAvailable: boolean;
-  status: string;
-}
-
-/**
- * Clear update cache via API and invalidate image queries.
- * If images are provided, optimistically removes them from the cache immediately
- * so badges disappear without waiting for the server refresh.
- */
-export async function clearUpdateCacheAndInvalidate(
+/** Recheck actual container images while preserving badges until verification. */
+export async function refreshUpdateCacheAndInvalidate(
   queryClient: QueryClient,
   images?: string[]
 ) {
-  // Optimistically update React Query cache to remove the updated images
-  // This makes badges disappear immediately instead of lingering during refetch
-  if (images && images.length > 0) {
-    const imageSet = new Set(images);
-    queryClient.setQueryData<ImageUpdateStatus[]>(
-      queryKeys.images.updates,
-      (old) => old?.filter((u) => !imageSet.has(u.image)) ?? []
-    );
-  } else {
-    // Clear all - reset to empty array
-    queryClient.setQueryData(queryKeys.images.updates, []);
-  }
-
-  // Clear server-side cache (best-effort — may fail during restart)
   try {
     const fetchFn = isDemoMode() ? demoFetchRaw : fetch;
-    await fetchFn("/api/images/check-updates", {
+    const response = await fetchFn("/api/images/check-updates", {
       method: "DELETE",
       headers: images ? { "Content-Type": "application/json" } : undefined,
       body: images ? JSON.stringify({ images }) : undefined,
     });
-  } catch {
-    // Ignore — cache will be stale but queries will refresh on reconnection
+    if (!response.ok) throw new Error("Failed to refresh update status");
+  } finally {
+    invalidateImageQueries(queryClient);
   }
-
-  // Trigger background refresh
-  invalidateImageQueries(queryClient);
 }

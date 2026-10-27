@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api";
 import {
   invalidateProjectQueries,
   invalidateContainerQueries,
-  clearUpdateCacheAndInvalidate,
+  refreshUpdateCacheAndInvalidate,
 } from "@/lib/query";
 import { isProjectRunning, type Project } from "@/types";
 import { useBackgroundOperation, consumeSSEStream, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
@@ -57,13 +57,13 @@ export function useBackgroundProjectUpdate() {
       return { projectName, images };
     },
     onSuccess: async (result: { projectName: string; images: string[] } | undefined) => {
-      await clearUpdateCacheAndInvalidate(queryClient, result?.images);
+      await refreshUpdateCacheAndInvalidate(queryClient, result?.images);
       if (result) invalidateProjectQueries(queryClient, result.projectName);
       invalidateContainerQueries(queryClient);
     },
     onError: async () => {
-      // Clear cache even on failure — pull may have succeeded before up failed
-      await clearUpdateCacheAndInvalidate(queryClient);
+      invalidateContainerQueries(queryClient);
+      await refreshUpdateCacheAndInvalidate(queryClient);
     },
   }), [queryClient]);
 
@@ -110,15 +110,16 @@ export function useBackgroundContainerUpdate() {
       );
 
       if (streamError) throw new Error(streamError);
+      if (!updateResult) throw new Error("Update ended without confirming completion");
       return updateResult;
     },
     onSuccess: async (result: { restarted: boolean; image?: string } | undefined, args: UpdateContainerArgs) => {
       const images = result?.image ? [result.image] : undefined;
-      await clearUpdateCacheAndInvalidate(queryClient, images);
+      await refreshUpdateCacheAndInvalidate(queryClient, images);
       invalidateContainerQueries(queryClient, args.containerId);
     },
     onError: async (_error: Error, args: UpdateContainerArgs) => {
-      await clearUpdateCacheAndInvalidate(queryClient);
+      await refreshUpdateCacheAndInvalidate(queryClient);
       invalidateContainerQueries(queryClient, args.containerId);
     },
   }), [queryClient]);

@@ -67,8 +67,8 @@ export async function handleDisconnection(
 
   if (reconnected) {
     updateTask(taskId, {
-      status: "complete",
-      progress: "Completed (reconnected)",
+      status: "error",
+      error: "Connection restored. Operation completion could not be verified.",
     });
     invalidateAllQueries(queryClient);
   } else {

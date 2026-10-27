@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
-import { queryKeys, invalidateImageQueries, clearUpdateCacheAndInvalidate } from "@/lib/query";
+import { queryKeys, invalidateImageQueries, refreshUpdateCacheAndInvalidate } from "@/lib/query";
 import { useBackgroundOperation, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
 import type { DockerImage, DockerImageDetail } from "@/types";
 
@@ -34,7 +34,7 @@ export function usePullImage() {
     },
     onSuccess: async (result: { name: string } | undefined) => {
       if (result) {
-        await clearUpdateCacheAndInvalidate(queryClient, [result.name]);
+        await refreshUpdateCacheAndInvalidate(queryClient, [result.name]);
       }
       invalidateImageQueries(queryClient);
     },

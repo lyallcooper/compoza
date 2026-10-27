@@ -161,7 +161,7 @@ services:
 // Build context rewriting
 // ---------------------------------------------------------------------------
 describe("build context rewriting", () => {
-  it("rewrites string build context to absolute host path", async () => {
+  it("rewrites string build context to absolute local path", async () => {
     mockReadFile.mockResolvedValue(`
 services:
   web:
@@ -170,7 +170,7 @@ services:
     await preprocessComposeFile("/data/projects/myapp/compose.yaml", "/data/projects/myapp");
     const yaml = getWrittenYaml();
     const build = (yaml.services as Record<string, { build: string }>).web.build;
-    expect(build).toBe("/host/projects/myapp");
+    expect(build).toBe("/data/projects/myapp");
   });
 
   it("rewrites object build context, leaves dockerfile alone", async () => {
@@ -184,7 +184,7 @@ services:
     await preprocessComposeFile("/data/projects/myapp/compose.yaml", "/data/projects/myapp");
     const yaml = getWrittenYaml();
     const build = (yaml.services as Record<string, { build: { context: string; dockerfile: string } }>).web.build;
-    expect(build.context).toBe("/host/projects/myapp/app");
+    expect(build.context).toBe("/data/projects/myapp/app");
     expect(build.dockerfile).toBe("Dockerfile.prod");
   });
 });
@@ -245,7 +245,7 @@ services:
 // Extends rewriting
 // ---------------------------------------------------------------------------
 describe("extends rewriting", () => {
-  it("rewrites extends file path to host path", async () => {
+  it("rewrites extends file path to local path", async () => {
     mockReadFile.mockResolvedValue(`
 services:
   web:
@@ -257,7 +257,7 @@ services:
     await preprocessComposeFile("/data/projects/myapp/compose.yaml", "/data/projects/myapp");
     const yaml = getWrittenYaml();
     const ext = (yaml.services as Record<string, { extends: { file: string; service: string } }>).web.extends;
-    expect(ext.file).toBe("/host/projects/base.yml");
+    expect(ext.file).toBe("/data/projects/base.yml");
     expect(ext.service).toBe("web");
   });
 });
@@ -283,4 +283,18 @@ services:
     // Relative path resolved to absolute, but no prefix translation
     expect(volumes[0]).toBe("/data/projects/myapp/data:/app/data");
   });
+});
+
+it("preserves remote build URLs", async () => {
+  mockReadFile.mockResolvedValue("services:\n  web:\n    build: https://github.com/example/app.git\n");
+  await preprocessComposeFile("/data/projects/myapp/compose.yaml", "/data/projects/myapp");
+  expect((getWrittenYaml().services as Record<string, { build: string }>).web.build).toBe("https://github.com/example/app.git");
+});
+
+it("keeps configs and secrets on host paths for bind mounting", async () => {
+  mockReadFile.mockResolvedValue("services:\n  web:\n    image: nginx\nconfigs:\n  app:\n    file: ./app.conf\nsecrets:\n  password:\n    file: ./password\n");
+  await preprocessComposeFile("/data/projects/myapp/compose.yaml", "/data/projects/myapp");
+  const yaml = getWrittenYaml();
+  expect(yaml.configs).toEqual({ app: { file: "/host/projects/myapp/app.conf" } });
+  expect(yaml.secrets).toEqual({ password: { file: "/host/projects/myapp/password" } });
 });

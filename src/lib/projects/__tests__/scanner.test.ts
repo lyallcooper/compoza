@@ -236,3 +236,32 @@ describe("getProject", () => {
     expect(result).toBeNull();
   });
 });
+
+it("associates a directory with containers using its Compose name", async () => {
+  mockReaddir.mockResolvedValue([createDirent("myapp", true)] as never);
+  mockComposeFileExists();
+  mockReadFile.mockImplementation(async (path) => String(path).endsWith(".env") ? "" : "name: production\nservices:\n  web:\n    image: nginx\n");
+  mockListContainers.mockResolvedValue([{ projectName: "production", serviceName: "web", state: "running", image: "nginx:latest", id: "web" }] as never);
+  const [project] = await scanProjects();
+  expect(project).toMatchObject({ name: "myapp", composeName: "production", status: "running" });
+  expect(project.services[0].containerId).toBe("web");
+});
+
+it("honors COMPOSE_PROJECT_NAME in the project env file", async () => {
+  mockReaddir.mockResolvedValue([createDirent("myapp", true)] as never);
+  mockComposeFileExists();
+  mockReadFile.mockImplementation(async (path) => String(path).endsWith(".env") ? "COMPOSE_PROJECT_NAME=deployed" : "name: ignored\nservices:\n  web:\n    image: nginx\n");
+  mockListContainers.mockResolvedValue([{ projectName: "deployed", serviceName: "web", state: "restarting", image: "nginx:latest" }] as never);
+  const [project] = await scanProjects();
+  expect(project).toMatchObject({ composeName: "deployed", status: "running" });
+});
+
+it("resolves a Compose label back to its directory for container updates", async () => {
+  mockReaddir.mockResolvedValue([createDirent("myapp", true)] as never);
+  mockStat.mockImplementation(async (path) => {
+    if (String(path) === "/data/projects/production") throw Object.assign(new Error("missing"), { code: "ENOENT" });
+    return { isDirectory: () => !String(path).endsWith(".yaml"), isFile: () => String(path).endsWith(".yaml") } as Stats;
+  });
+  mockReadFile.mockImplementation(async (path) => String(path).endsWith(".env") ? "" : "name: production\nservices:\n  web:\n    image: nginx\n");
+  expect(await getProject("production")).toMatchObject({ name: "myapp", path: "/data/projects/myapp", composeName: "production" });
+});

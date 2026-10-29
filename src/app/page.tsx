@@ -95,7 +95,7 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
 
       {showModal && (
         <UpdateConfirmModal
-          respectSkipped
+          showDescription={false}
           open
           onClose={() => setShowModal(false)}
           onConfirm={handleUpdate}

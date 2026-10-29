@@ -17,7 +17,7 @@ interface ImageUpdate {
 
 interface UpdateConfirmModalProps {
   open: boolean;
-  respectSkipped?: boolean;
+  showDescription?: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
@@ -37,7 +37,7 @@ interface UpdateConfirmModalProps {
 
 export function UpdateConfirmModal({
   open,
-  respectSkipped,
+  showDescription = true,
   onClose,
   onConfirm,
   title,
@@ -140,13 +140,11 @@ export function UpdateConfirmModal({
         )}
 
         {/* Description of what will happen */}
-        <p className="text-sm text-muted">
-          {respectSkipped
-            ? "Only non-skipped images will be pulled. Only their running services will be recreated."
-            : isRunning
+        {showDescription && <p className="text-sm text-muted">
+          {isRunning
             ? `This will pull the latest image${displayedImages.length > 1 ? "s" : ""}${rebuildImages ? ", rebuild Dockerfile images," : ""} and recreate the ${target}.`
             : `This will pull the latest image${displayedImages.length > 1 ? "s" : ""}${rebuildImages ? " and rebuild Dockerfile images" : ""}. The ${target} is not running, so it will not be restarted.`}
-        </p>
+        </p>}
       </div>
     </Modal>
   );

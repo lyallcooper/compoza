@@ -78,7 +78,7 @@ export function UpdateAllModal({ onClose, projects }: UpdateAllModalProps) {
     >
       <div className="space-y-4">
         <p className="text-muted">
-          Select projects to update. Only listed, non-skipped images will be pulled, and only their running services will be recreated.
+          Select projects to update.
         </p>
         <div className="space-y-3 max-h-64 overflow-y-auto">
           {projects.length > 1 && (

@@ -130,21 +130,6 @@ HOST_PROJECTS_DIR=/home/user/docker
 DOCKER_HOST=tcp://your-server:2375
 ```
 
-## Skipping Image Updates
-
-Open an **Update…** dialog and click **Skip** beside an image
-to hide that specific release for all projects using the image. A newer
-release appears automatically when detected, even if its version label is
-unchanged. Skipped releases are stored in server memory and are forgotten
-when Compoza restarts. Images without a known release digest cannot be skipped.
-
-To install a skipped release manually, open the project or container, choose
-**Update…**, then **Update**. The dialog still shows the release, marked
-**Skipped**. Skipping only hides update notifications; it does not block
-pulling or installing images. Dashboard **Update** and **Update All** only
-pull non-skipped images and recreate their running services. Other services
-in the project, including dependencies using skipped releases, stay untouched.
-
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

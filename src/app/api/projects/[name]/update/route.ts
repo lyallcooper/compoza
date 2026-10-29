@@ -1,11 +1,8 @@
 import { NextRequest } from "next/server";
 import { applyRateLimit, badRequest, createSSEResponse, validateJsonContentType } from "@/lib/api";
-import { updateProjectImages, type ProjectUpdateResult } from "@/lib/updates/project-update";
+import { updateProjectImages } from "@/lib/updates/project-update";
 
-export type ProjectUpdateEvent =
-  | { type: "output"; data: string }
-  | { type: "done"; result: ProjectUpdateResult }
-  | { type: "error"; message: string };
+import type { ProjectUpdateEvent } from "@/types";
 
 export async function POST(request: NextRequest, context: { params: Promise<{ name: string }> }) {
   const contentTypeError = validateJsonContentType(request);

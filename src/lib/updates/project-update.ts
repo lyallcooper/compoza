@@ -4,14 +4,7 @@ import { getDocker } from "@/lib/docker";
 import { normalizeImageName } from "@/lib/format";
 import { getCachedUpdate, isImageUpdateIgnored } from "./cache";
 import { refreshImageUpdates } from "./refresh";
-import type { ProjectService } from "@/types";
-
-export interface ProjectUpdateResult {
-  projectName: string;
-  images: string[];
-  services: string[];
-  restarted: boolean;
-}
+import type { ProjectService, ProjectUpdateResult } from "@/types";
 
 function eligible(service: ProjectService): boolean {
   if (!service.image) return false;

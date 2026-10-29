@@ -315,6 +315,18 @@ export interface SystemPruneResult {
 
 // SSE event types shared between API routes and client hooks
 
+export interface ProjectUpdateResult {
+  projectName: string;
+  images: string[];
+  services: string[];
+  restarted: boolean;
+}
+
+export type ProjectUpdateEvent =
+  | { type: "output"; data: string }
+  | { type: "done"; result: ProjectUpdateResult }
+  | { type: "error"; message: string };
+
 export type ContainerUpdateStreamEvent =
   | { type: "output"; data: string }
   | { type: "done"; result: { restarted: boolean; image?: string } }

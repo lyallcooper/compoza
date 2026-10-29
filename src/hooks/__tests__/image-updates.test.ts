@@ -13,3 +13,24 @@ it("preserves a known update when verification becomes unavailable", () => {
 it("keeps badges for newly observed image IDs until they are verified", () => {
   expect(hasImageUpdate(update, "unverified")).toBe(true);
 });
+
+it("keeps skipped releases out of notifications but includes them in manual dialogs", () => {
+  const skipped = { ...update, updateAvailable: false, ignored: true, latestDigest: "sha256:skipped" };
+  const projects = [{ name: "web", status: "running", services: [{ name: "app", image: update.image, imageId: "old" }] }] as Project[];
+  expect(hasImageUpdate(skipped, "old")).toBe(false);
+  expect(hasImageUpdate(skipped, "old", true)).toBe(true);
+  expect(getProjectsWithUpdates(projects, [skipped])).toEqual([]);
+  const [dialog] = getProjectsWithUpdates(projects, [skipped], { includeIgnored: true });
+  expect(dialog.images[0]).toMatchObject({ image: update.image, ignored: true, latestDigest: "sha256:skipped" });
+});
+
+it("does not show a skipped release in a manual dialog for containers already using it", () => {
+  const skipped = { ...update, updateAvailable: false, ignored: true };
+  expect(hasImageUpdate(skipped, "new", true)).toBe(false);
+  const projects = [{ name: "web", status: "running", services: [{ name: "app", image: update.image, imageId: "new" }] }] as Project[];
+  expect(getProjectsWithUpdates(projects, [skipped], { includeIgnored: true })).toEqual([]);
+});
+
+it("does not treat an up-to-date image as a skipped release", () => {
+  expect(hasImageUpdate({ ...update, updateAvailable: false }, "old", true)).toBe(false);
+});

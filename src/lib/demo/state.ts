@@ -31,6 +31,7 @@ export class DemoState {
   envFiles: Record<string, string>;
   /** Image names (e.g. "nginx:1.25-alpine") whose updates have been consumed */
   clearedImageUpdates: Set<string>;
+  ignoredImageUpdates = new Map<string, Set<string>>();
 
   constructor() {
     this.containers = createContainers();

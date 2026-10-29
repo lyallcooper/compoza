@@ -1,13 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, apiPost } from "@/lib/api";
 import { queryKeys } from "@/lib/query";
 import { isProjectRunning, type Project } from "@/types";
 
 export interface ImageUpdateStatus {
   image: string;
   updateAvailable: boolean;
+  ignored?: boolean;
   status: "checked" | "unknown" | "error";
   checkedAt: number;
   currentDigest?: string;
@@ -22,8 +23,8 @@ export interface ImageUpdateStatus {
 }
 
 /** Match updates to the image a particular container actually uses. */
-export function hasImageUpdate(update: ImageUpdateStatus | undefined, imageId?: string): boolean {
-  return !!update?.updateAvailable && (
+export function hasImageUpdate(update: ImageUpdateStatus | undefined, imageId?: string, includeIgnored = false): boolean {
+  return !!update && (update.updateAvailable || (includeIgnored && !!update.ignored)) && (
     !imageId || update.status !== "checked" || !update.outdatedImageIds || !update.checkedImageIds?.includes(imageId) || update.outdatedImageIds.includes(imageId)
   );
 }
@@ -38,6 +39,7 @@ export interface ProjectWithUpdates {
     currentDigest?: string;
     latestDigest?: string;
     sourceUrl?: string;
+    ignored?: boolean;
   }[];
 }
 
@@ -50,13 +52,26 @@ export function useImageUpdates() {
   });
 }
 
+export function useIgnoreImageUpdate(onIgnored?: (release: { image: string; latestDigest: string }) => void) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (release: { image: string; latestDigest: string }) =>
+      apiPost("/api/images/ignore-update", release),
+    onSuccess: (_data, release) => {
+      onIgnored?.(release);
+      return queryClient.invalidateQueries({ queryKey: queryKeys.images.updates });
+    },
+  });
+}
+
 /**
  * Compute projects that have image updates available.
  * Dedupes images within each project (multiple services may use the same image).
  */
 export function getProjectsWithUpdates(
   projects: Project[] | undefined,
-  imageUpdates: ImageUpdateStatus[] | undefined
+  imageUpdates: ImageUpdateStatus[] | undefined,
+  options: { includeIgnored?: boolean } = {}
 ): ProjectWithUpdates[] {
   if (!projects || !imageUpdates) return [];
 
@@ -72,7 +87,7 @@ export function getProjectsWithUpdates(
       for (const service of project.services) {
         if (!service.image || seenImages.has(service.image)) continue;
         const update = updateMap.get(service.image);
-        if (!update || !hasImageUpdate(update, service.imageId)) continue;
+        if (!update || !hasImageUpdate(update, service.imageId, options.includeIgnored)) continue;
 
         seenImages.add(service.image);
         images.push({
@@ -82,6 +97,7 @@ export function getProjectsWithUpdates(
           currentDigest: update.currentDigest,
           latestDigest: update.latestDigest,
           sourceUrl: update.sourceUrl,
+          ignored: update.ignored,
         });
       }
 

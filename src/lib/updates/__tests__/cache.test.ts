@@ -8,6 +8,8 @@ let markCheckPending: typeof import("../cache").markCheckPending;
 let markCheckComplete: typeof import("../cache").markCheckComplete;
 let updateCachedVersions: typeof import("../cache").updateCachedVersions;
 let clearCachedUpdates: typeof import("../cache").clearCachedUpdates;
+let ignoreImageUpdate: typeof import("../cache").ignoreImageUpdate;
+let getAllCachedUpdates: typeof import("../cache").getAllCachedUpdates;
 
 beforeEach(async () => {
   vi.useFakeTimers();
@@ -17,6 +19,7 @@ beforeEach(async () => {
   const g = globalThis as Record<string, unknown>;
   delete g.__updateCache;
   delete g.__pendingChecks;
+  delete g.__ignoredImageUpdates;
 
   const mod = await import("../cache");
   getCachedUpdate = mod.getCachedUpdate;
@@ -26,6 +29,70 @@ beforeEach(async () => {
   markCheckComplete = mod.markCheckComplete;
   updateCachedVersions = mod.updateCachedVersions;
   clearCachedUpdates = mod.clearCachedUpdates;
+  ignoreImageUpdate = mod.ignoreImageUpdate;
+  getAllCachedUpdates = mod.getAllCachedUpdates;
+});
+
+describe("ignored image releases", () => {
+  const image = "nginx:latest";
+  const release = { image, latestDigest: "sha256:release-a", updateAvailable: true, status: "checked" as const };
+
+  it("hides the selected release without changing detection state", () => {
+    setCachedUpdate(image, release);
+    ignoreImageUpdate(image, release.latestDigest);
+    expect(getAllCachedUpdates()[0]).toMatchObject({ updateAvailable: false, ignored: true });
+    expect(getCachedUpdate(image)?.updateAvailable).toBe(true);
+    expect(getCachedUpdate(image)?.ignored).toBeUndefined();
+  });
+
+  it("keeps the release hidden after polling, expiry, cache clearing and rechecking", () => {
+    ignoreImageUpdate(image, release.latestDigest);
+    setCachedUpdate(image, release);
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(false);
+    vi.advanceTimersByTime(60 * 60 * 1000 + 1);
+    expect(getAllCachedUpdates()).toEqual([]);
+    setCachedUpdate(image, release);
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(false);
+    clearCachedUpdates();
+    setCachedUpdate(image, release);
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(false);
+  });
+
+  it("shows a newer digest even when the version label has not changed", () => {
+    ignoreImageUpdate(image, release.latestDigest);
+    setCachedUpdate(image, { ...release, latestDigest: "sha256:release-b" });
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(true);
+    expect(getAllCachedUpdates()[0].ignored).toBeUndefined();
+  });
+
+  it("stops marking a skipped release once the image has been updated", () => {
+    ignoreImageUpdate(image, release.latestDigest);
+    setCachedUpdate(image, { ...release, updateAvailable: false });
+    expect(getAllCachedUpdates()[0].ignored).toBeUndefined();
+  });
+
+  it("scopes ignores to the image reference, including its tag", () => {
+    ignoreImageUpdate(`docker.io/library/${image}`, release.latestDigest);
+    for (const name of [image, "nginx:stable", "redis:latest"]) {
+      setCachedUpdate(name, { ...release, image: name });
+    }
+    expect(getAllCachedUpdates().map((entry) => entry.updateAvailable)).toEqual([false, true, true]);
+  });
+
+  it("remembers multiple skipped releases and never hides an unidentified release", () => {
+    ignoreImageUpdate(image, release.latestDigest);
+    ignoreImageUpdate(image, "sha256:release-b");
+    setCachedUpdate(image, release);
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(false);
+    setCachedUpdate(image, { ...release, latestDigest: undefined });
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(true);
+  });
+
+  it("keeps a skipped release hidden when checks fail with its last known digest", () => {
+    ignoreImageUpdate(image, release.latestDigest);
+    setCachedUpdate(image, { ...release, status: "error" });
+    expect(getAllCachedUpdates()[0].updateAvailable).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -29,6 +29,7 @@ function handleProjectRowClick(e: React.MouseEvent) {
 }
 
 function handleProjectRowKeyDown(e: React.KeyboardEvent) {
+  if (e.target !== e.currentTarget) return;
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
     clickRowLink(e.currentTarget);
@@ -40,7 +41,7 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
   const { updateProject } = useBackgroundProjectUpdate();
 
   const handleUpdate = () => {
-    updateProject(project.name);
+    updateProject(project.name, { images: project.images.map((image) => image.image) });
     setShowModal(false);
   };
 
@@ -94,6 +95,7 @@ function ProjectUpdateRow({ project }: { project: ProjectWithUpdates }) {
 
       {showModal && (
         <UpdateConfirmModal
+          respectSkipped
           open
           onClose={() => setShowModal(false)}
           onConfirm={handleUpdate}

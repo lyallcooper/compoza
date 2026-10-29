@@ -1,10 +1,13 @@
 "use client";
 
-import { Modal, Button } from "@/components/ui";
+import { useState } from "react";
+import { useIgnoreImageUpdate } from "@/hooks/use-image-updates";
+import { Modal, Button, Badge } from "@/components/ui";
 import { getReleasesUrl, formatVersionChange } from "@/lib/format";
 
 interface ImageUpdate {
   image: string;
+  ignored?: boolean;
   currentVersion?: string;
   latestVersion?: string;
   currentDigest?: string;
@@ -14,6 +17,7 @@ interface ImageUpdate {
 
 interface UpdateConfirmModalProps {
   open: boolean;
+  respectSkipped?: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
@@ -33,6 +37,7 @@ interface UpdateConfirmModalProps {
 
 export function UpdateConfirmModal({
   open,
+  respectSkipped,
   onClose,
   onConfirm,
   title,
@@ -44,6 +49,15 @@ export function UpdateConfirmModal({
   onRebuildChange,
 }: UpdateConfirmModalProps) {
   const target = serviceName ? "service" : "project";
+  const [skippedReleases, setSkippedReleases] = useState<string[]>([]);
+  const releaseKey = (image: ImageUpdate) => JSON.stringify([image.image, image.latestDigest]);
+  const displayedImages = images.map((image) => ({
+    ...image,
+    ignored: image.ignored || skippedReleases.includes(releaseKey(image)),
+  }));
+  const ignore = useIgnoreImageUpdate((release) => {
+    setSkippedReleases((previous) => [...previous, releaseKey(release)]);
+  });
 
   const handleConfirm = () => {
     onConfirm();
@@ -58,7 +72,7 @@ export function UpdateConfirmModal({
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="accent" onClick={handleConfirm}>
+          <Button variant="accent" onClick={handleConfirm} disabled={ignore.isPending || displayedImages.length === 0}>
             Update
           </Button>
         </>
@@ -68,32 +82,49 @@ export function UpdateConfirmModal({
         {/* Images being updated */}
         <div>
           <div className="text-sm text-muted mb-2">
-            {images.length === 1 ? "Image to update:" : "Images to update:"}
+            {displayedImages.length === 1 ? "Image to update:" : "Images to update:"}
           </div>
-          <div className="space-y-1">
-            {images.map((img, idx) => {
+          <div className="space-y-3">
+            {displayedImages.map((img, idx) => {
               const change = formatVersionChange(img);
               return (
-                <div key={`${img.image}-${idx}`} className="text-sm">
-                  <div className="font-mono truncate">{img.image}</div>
-                  {change && (
-                    <div className="text-muted text-xs italic">{change}</div>
-                  )}
-                  {img.sourceUrl && (
-                    <a
-                      href={getReleasesUrl(img.sourceUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-accent hover:underline"
-                    >
-                      View releases
-                    </a>
-                  )}
+                <div key={`${img.image}-${idx}`} className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
+                  <div className="min-w-0 w-full sm:w-auto">
+                    <div className="font-mono break-all">{img.image}</div>
+                    {change && (
+                      <div className="text-muted text-xs italic">{change}</div>
+                    )}
+                    {img.sourceUrl && (
+                      <a
+                        href={getReleasesUrl(img.sourceUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-accent hover:underline"
+                      >
+                        View releases
+                      </a>
+                    )}
+                  </div>
+                  {img.ignored ? <Badge>Skipped</Badge> : <Button
+                    className="shrink-0"
+                    disabled={!img.latestDigest || ignore.isPending}
+                    disabledReason={!img.latestDigest ? "The release must be identified before it can be skipped" : undefined}
+                    loading={ignore.isPending && ignore.variables?.image === img.image}
+                    aria-label={`Skip this update for ${img.image}`}
+                    title="Hide this release until a newer image update is available"
+                    onClick={() => {
+                      if (img.latestDigest) ignore.mutate({ image: img.image, latestDigest: img.latestDigest });
+                    }}
+                  >
+                    Skip
+                  </Button>}
                 </div>
               );
             })}
           </div>
         </div>
+
+        {ignore.isError && <p role="alert" className="text-sm text-error">{ignore.error.message}</p>}
 
         {/* Rebuild checkbox - only shown for projects with Dockerfile builds */}
         {hasBuildServices && onRebuildChange && (
@@ -110,9 +141,11 @@ export function UpdateConfirmModal({
 
         {/* Description of what will happen */}
         <p className="text-sm text-muted">
-          {isRunning
-            ? `This will pull the latest image${images.length > 1 ? "s" : ""}${rebuildImages ? ", rebuild Dockerfile images," : ""} and recreate the ${target}.`
-            : `This will pull the latest image${images.length > 1 ? "s" : ""}${rebuildImages ? " and rebuild Dockerfile images" : ""}. The ${target} is not running, so it will not be restarted.`}
+          {respectSkipped
+            ? "Only non-skipped images will be pulled. Only their running services will be recreated."
+            : isRunning
+            ? `This will pull the latest image${displayedImages.length > 1 ? "s" : ""}${rebuildImages ? ", rebuild Dockerfile images," : ""} and recreate the ${target}.`
+            : `This will pull the latest image${displayedImages.length > 1 ? "s" : ""}${rebuildImages ? " and rebuild Dockerfile images" : ""}. The ${target} is not running, so it will not be restarted.`}
         </p>
       </div>
     </Modal>

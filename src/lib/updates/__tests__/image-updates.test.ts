@@ -10,7 +10,7 @@ vi.mock("@/lib/registries", async (importOriginal) => ({
   resolveVersions: async () => ({}),
 }));
 import { checkImageUpdates } from "../image-updates";
-import { clearCachedUpdates, getCachedUpdate, setCachedUpdate } from "../cache";
+import { clearCachedUpdates, getCachedUpdate, getAllCachedUpdates, ignoreImageUpdate, setCachedUpdate } from "../cache";
 const image = "registry.example.com:5000/app:latest";
 beforeEach(() => {
   clearCachedUpdates();
@@ -38,6 +38,17 @@ it("preserves a known update when the registry check fails", async () => {
   const [result] = await checkImageUpdates(new Map([[image, ["old"]]]), { force: true });
   expect(result.updateAvailable).toBe(true);
   expect(result.status).toBe("unknown");
+});
+
+it("keeps a skipped release hidden when the registry cannot verify its digest", async () => {
+  const image = "nginx:latest";
+  setCachedUpdate(image, { image, latestDigest: "sha256:skipped", updateAvailable: true, status: "checked" });
+  ignoreImageUpdate(image, "sha256:skipped");
+  mocks.query.mockResolvedValue({ updateAvailable: true });
+  const [result] = await checkImageUpdates(new Map([[image, ["old"]]]), { force: true });
+  expect(result.status).toBe("unknown");
+  expect(result.latestDigest).toBe("sha256:skipped");
+  expect(getAllCachedUpdates()[0].updateAvailable).toBe(false);
 });
 
 it("does not substitute a downloaded tag for an unresolved container image", async () => {

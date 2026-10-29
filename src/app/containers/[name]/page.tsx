@@ -37,6 +37,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       latestDigest: update.latestDigest,
       latestVersion: update.latestVersion,
       updateAvailable: hasImageUpdate(update, container.imageId),
+      ignored: !!update.ignored && hasImageUpdate(update, container.imageId, true),
     };
   }, [container, imageUpdates]);
 
@@ -48,8 +49,8 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
 
   const hasUpdate = imageInfo?.updateAvailable;
 
-  // Build update info for the modal (only when update available)
-  const updateInfo = hasUpdate ? imageInfo : null;
+  // Include skipped releases when opening the update dialog manually.
+  const updateInfo = hasUpdate || imageInfo?.ignored ? imageInfo : null;
 
   // Use domain model's computed actions - show Update for all compose containers
   const canUpdate = container?.actions.canUpdate;
@@ -470,7 +471,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       </div>
 
       {/* Update confirmation modal - with detected updates */}
-      {showUpdateModal && hasUpdate && container.projectName && container.serviceName && (
+      {showUpdateModal && updateInfo && container.projectName && container.serviceName && (
         <UpdateConfirmModal
           open
           onClose={() => setShowUpdateModal(false)}
@@ -483,6 +484,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
             latestVersion: updateInfo?.latestVersion,
             currentDigest: updateInfo?.currentDigest,
             latestDigest: updateInfo?.latestDigest,
+            ignored: updateInfo?.ignored,
             sourceUrl,
           }]}
           isRunning={container.state === "running"}
@@ -490,7 +492,7 @@ export default function ContainerDetailPage({ params }: ContainerRouteProps) {
       )}
 
       {/* Update modal - no updates detected */}
-      {showUpdateModal && !hasUpdate && container.projectName && container.serviceName && (
+      {showUpdateModal && !updateInfo && container.projectName && container.serviceName && (
         <Modal
           open
           onClose={() => setShowUpdateModal(false)}

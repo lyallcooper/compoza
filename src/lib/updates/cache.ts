@@ -1,6 +1,9 @@
+import { normalizeImageName } from "@/lib/format";
+
 export interface CachedUpdate {
   image: string;
   updateAvailable: boolean;
+  ignored?: boolean;
   status: "checked" | "unknown" | "error";
   checkedAt: number;
   expiresAt: number;
@@ -24,6 +27,7 @@ export interface CachedUpdate {
 const globalCache = globalThis as typeof globalThis & {
   __updateCache?: Map<string, CachedUpdate>;
   __pendingChecks?: Set<string>;
+  __ignoredImageUpdates?: Map<string, Set<string>>;
 };
 
 if (!globalCache.__updateCache) {
@@ -33,6 +37,19 @@ if (!globalCache.__updateCache) {
 
 const cache = globalCache.__updateCache;
 const pendingChecks = globalCache.__pendingChecks!;
+const ignoredUpdates = globalCache.__ignoredImageUpdates ??= new Map<string, Set<string>>();
+
+/** Ignore only the selected release, independently of the detection cache TTL. */
+export function ignoreImageUpdate(image: string, digest: string): void {
+  image = normalizeImageName(image);
+  const digests = ignoredUpdates.get(image) ?? new Set<string>();
+  digests.add(digest);
+  ignoredUpdates.set(image, digests);
+}
+
+export function isImageUpdateIgnored(image: string, digest?: string): boolean {
+  return !!digest && !!ignoredUpdates.get(normalizeImageName(image))?.has(digest);
+}
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 const PENDING_CHECK_TIMEOUT = 5 * 60 * 1000; // 5 minutes max for pending checks
@@ -140,7 +157,9 @@ export function getAllCachedUpdates(): CachedUpdate[] {
 
   for (const [, cached] of cache) {
     if (now < cached.expiresAt) {
-      results.push(cached);
+      results.push(cached.updateAvailable && isImageUpdateIgnored(cached.image, cached.latestDigest)
+        ? { ...cached, updateAvailable: false, ignored: true }
+        : cached);
     }
   }
 

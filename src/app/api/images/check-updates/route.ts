@@ -4,8 +4,6 @@ import { refreshImageUpdates, shouldRefreshUpdates } from "@/lib/updates/refresh
 import { log } from "@/lib/logger";
 import { success, error, getErrorMessage, validateJsonContentType } from "@/lib/api";
 
-export { buildImageTrackingMap } from "@/lib/updates/refresh";
-
 // GET returns all cached update info
 export async function GET(request: NextRequest) {
   try {

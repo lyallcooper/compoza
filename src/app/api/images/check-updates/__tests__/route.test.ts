@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildImageTrackingMap } from "../route";
+import { buildImageTrackingMap } from "@/lib/updates/refresh";
 
 describe("buildImageTrackingMap", () => {
   it("orders image IDs by oldest container and deduplicates IDs", () => {

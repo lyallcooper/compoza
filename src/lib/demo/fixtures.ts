@@ -562,9 +562,9 @@ export function createSystemInfo(): DockerSystemInfo {
 
 
 // Demo image updates
-export const DEMO_UPDATES: Record<string, { currentVersion: string; latestVersion: string }> = {
-  "nginx:1.25-alpine": { currentVersion: "1.25.3", latestVersion: "1.25.4" },
-  "grafana/grafana:10.2.3": { currentVersion: "10.2.3", latestVersion: "10.4.1" },
+export const DEMO_UPDATES: Record<string, { currentVersion: string; latestVersion: string; latestDigest: string }> = {
+  "nginx:1.25-alpine": { currentVersion: "1.25.3", latestVersion: "1.25.4", latestDigest: `sha256:${"a".repeat(64)}` },
+  "grafana/grafana:10.2.3": { currentVersion: "10.2.3", latestVersion: "10.4.1", latestDigest: `sha256:${"b".repeat(64)}` },
 };
 
 // Compose files

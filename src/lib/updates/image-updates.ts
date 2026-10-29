@@ -250,7 +250,7 @@ async function checkSingleImage(
           const result: ImageUpdateInfo = {
             image: imageName,
             currentDigest,
-            latestDigest: registryResult.latestDigest,
+            latestDigest: registryResult.latestDigest ?? previous?.latestDigest,
             checkedImageIds: [...imageDigests].filter(([, digest]) => digest !== undefined).map(([id]) => id),
             outdatedImageIds: registryResult.latestDigest ? [...imageDigests].filter(([, digest]) => digest !== registryResult.latestDigest).map(([id]) => id) : undefined,
             updateAvailable: registryResult.latestDigest

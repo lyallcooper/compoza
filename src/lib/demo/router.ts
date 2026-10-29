@@ -55,6 +55,7 @@ export async function demoRoute(url: string, init?: RequestInit): Promise<Respon
   if (path === "/api/images" && method === "GET") return images.listImages(state);
   if (path === "/api/images/pull" && method === "POST") return images.pullImage(state, body);
   if (path === "/api/images/prune" && method === "POST") return delayed(images.pruneImages(state), 1500);
+  if (path === "/api/images/ignore-update" && method === "POST") return images.ignoreUpdate(state, body);
   if (path === "/api/images/check-updates" && method === "GET") return images.checkUpdatesGet(state);
   if (path === "/api/images/check-updates" && method === "POST") return images.checkUpdatesPost(state, body ?? {});
   if (path === "/api/images/check-updates" && method === "DELETE") return delayed(images.checkUpdatesDelete(state, body), 200);
@@ -81,6 +82,7 @@ export async function demoRoute(url: string, init?: RequestInit): Promise<Respon
     if (action === "env" && method === "PUT") return projects.writeEnvFile(state, name, body);
     if (action === "up" && method === "POST") return composeOps.projectUp(state, name);
     if (action === "down" && method === "POST") return composeOps.projectDown(state, name);
+    if (action === "update" && method === "POST") return composeOps.projectUpdate(state, name, body);
     if (action === "pull" && method === "POST") return composeOps.projectPull(state, name);
     if (action === "logs" && method === "GET") {
       const service = parsedUrl.searchParams.get("service") ?? undefined;

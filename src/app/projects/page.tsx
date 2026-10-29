@@ -167,7 +167,8 @@ export default function ProjectsPage() {
       {updateModalProject && (
         <UpdateConfirmModalWrapper
           project={updateModalProject.project}
-          updatableImages={updateModalProject.updatableImages}
+          updatableImages={getProjectsWithUpdates(projects, imageUpdates, { includeIgnored: true })
+            .find((project) => project.name === updateModalProject.project.name)?.images ?? []}
           onClose={() => setUpdateModalProject(null)}
         />
       )}

@@ -131,9 +131,9 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
   const updatableImages = useMemo(() => {
     if (!project || !imageUpdates) return [];
     const seenImages = new Set<string>();
-    const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string; sourceUrl?: string }[] = [];
+    const images: { image: string; currentVersion?: string; latestVersion?: string; currentDigest?: string; latestDigest?: string; sourceUrl?: string; ignored?: boolean }[] = [];
     for (const service of project.services) {
-      if (service.image && hasImageUpdate(updatesMap.get(service.image), service.imageId) && !seenImages.has(service.image)) {
+      if (service.image && hasImageUpdate(updatesMap.get(service.image), service.imageId, true) && !seenImages.has(service.image)) {
         seenImages.add(service.image);
         const update = imageUpdates.find((u) => u.image === service.image);
         images.push({
@@ -143,6 +143,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
           currentDigest: update?.currentDigest,
           latestDigest: update?.latestDigest,
           sourceUrl: update?.sourceUrl,
+          ignored: update?.ignored,
         });
       }
     }
@@ -456,7 +457,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       </ConfirmModal>
 
       {/* Update Modal */}
-      {showUpdateModal && hasUpdates && (
+      {showUpdateModal && updatableImages.length > 0 && (
         <UpdateConfirmModal
           open
           onClose={handleCloseUpdateModal}
@@ -471,7 +472,7 @@ export default function ProjectDetailPage({ params }: ProjectRouteProps) {
       )}
 
       {/* Update Modal - No updates detected */}
-      {showUpdateModal && !hasUpdates && (
+      {showUpdateModal && updatableImages.length === 0 && (
         <Modal
           open
           onClose={handleCloseUpdateModal}

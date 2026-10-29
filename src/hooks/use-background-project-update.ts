@@ -10,11 +10,13 @@ import {
 } from "@/lib/query";
 import { isProjectRunning, type Project } from "@/types";
 import { useBackgroundOperation, consumeSSEStream, consumeOutputStream, type OperationCallbacks } from "./use-background-operation";
+import type { ProjectUpdateEvent } from "@/app/api/projects/[name]/update/route";
 import type { ContainerUpdateStreamEvent } from "@/types";
 
 interface UpdateProjectArgs {
   projectName: string;
   rebuild?: boolean;
+  images?: string[];
 }
 
 export function useBackgroundProjectUpdate() {
@@ -26,6 +28,23 @@ export function useBackgroundProjectUpdate() {
     initialProgress: "Checking status...",
     execute: async (args: UpdateProjectArgs, { setProgress, appendOutput, signal }: OperationCallbacks) => {
       const { projectName } = args;
+      if (args.images !== undefined) {
+        let result: { projectName: string; images: string[]; restarted: boolean } | undefined;
+        let streamError: string | undefined;
+        await consumeSSEStream<ProjectUpdateEvent>(`/api/projects/${encodeURIComponent(projectName)}/update`, {
+          body: { images: args.images },
+          signal,
+          onEvent: (event) => {
+            if (event.type === "output") appendOutput([event.data]);
+            if (event.type === "error") streamError = event.message;
+            if (event.type === "done") result = event.result;
+          },
+        });
+        if (streamError) throw new Error(streamError);
+        if (!result) throw new Error("Update ended without confirming completion");
+        setProgress(result.images.length === 0 ? "Nothing to update" : result.restarted ? "Updated and restarted" : "Updated");
+        return result;
+      }
 
       // Check current project status
       setProgress("Checking status...");
@@ -70,7 +89,7 @@ export function useBackgroundProjectUpdate() {
   const { execute } = useBackgroundOperation<UpdateProjectArgs, { projectName: string; images: string[] }>(config);
 
   const updateProject = useCallback(
-    (projectName: string, options?: { rebuild?: boolean }) =>
+    (projectName: string, options?: { rebuild?: boolean; images?: string[] }) =>
       execute({ projectName, ...options }),
     [execute]
   );

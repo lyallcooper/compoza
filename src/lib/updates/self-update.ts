@@ -121,7 +121,8 @@ async function checkAutoRestartPossible(): Promise<AutoRestartCheck> {
  */
 export async function spawnUpdaterContainer(
   projectName: string,
-  composeFile: string
+  composeFile: string,
+  services?: string[]
 ): Promise<{ success: boolean; output: string }> {
   const docker = getDocker();
 
@@ -177,6 +178,7 @@ export async function spawnUpdaterContainer(
       "-f", hostComposeFile,
       "--project-directory", hostProjectDir,
       "up", "-d", "--force-recreate",
+      ...(services ? ["--no-deps", "--no-build", "--pull", "never", "--", ...services] : []),
     ],
     Env: env.length > 0 ? env : undefined,
     HostConfig: {

@@ -71,10 +71,12 @@ export function checkUpdatesGet(state: DemoState): Response {
     .filter(([image]) => !state.clearedImageUpdates.has(image))
     .map(([image, info]) => ({
       image,
-      updateAvailable: true,
+      updateAvailable: !state.ignoredImageUpdates.get(image)?.has(info.latestDigest),
+      ignored: !!state.ignoredImageUpdates.get(image)?.has(info.latestDigest),
       status: "checked",
       currentVersion: info.currentVersion,
       latestVersion: info.latestVersion,
+      latestDigest: info.latestDigest,
     }));
   return json(results);
 }
@@ -86,10 +88,12 @@ export function checkUpdatesPost(state: DemoState, body: { images?: string[] }):
     const cleared = state.clearedImageUpdates.has(image);
     return {
       image,
-      updateAvailable: !!info && !cleared,
+      updateAvailable: !!info && !cleared && !state.ignoredImageUpdates.get(image)?.has(info.latestDigest),
+      ignored: !!info && !cleared && !!state.ignoredImageUpdates.get(image)?.has(info.latestDigest),
       status: "checked" as const,
       currentVersion: info?.currentVersion,
       latestVersion: info?.latestVersion,
+      latestDigest: info?.latestDigest,
     };
   });
   return json(results);
@@ -106,3 +110,10 @@ export function checkUpdatesDelete(state: DemoState, body?: { images?: string[] 
   return json({ message: "Cache cleared" });
 }
 
+export function ignoreUpdate(state: DemoState, body?: { image?: string; latestDigest?: string }): Response {
+  if (!body?.image || !body.latestDigest) return json({ error: "An image and release digest are required" }, 400);
+  const digests = state.ignoredImageUpdates.get(body.image) ?? new Set<string>();
+  digests.add(body.latestDigest);
+  state.ignoredImageUpdates.set(body.image, digests);
+  return json({ message: "Image update skipped" });
+}

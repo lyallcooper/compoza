@@ -23,14 +23,15 @@ async function isSelfProject(projectName: string): Promise<boolean> {
  */
 async function handleSelfUpdate(
   projectName: string,
-  composeFile: string
+  composeFile: string,
+  services?: string[]
 ): Promise<ComposeResult | null> {
   if (!(await isSelfProject(projectName))) {
     return null;
   }
 
   try {
-    const result = await spawnUpdaterContainer(projectName, composeFile);
+    const result = await spawnUpdaterContainer(projectName, composeFile, services);
     if (!result.success) {
       return {
         success: false,
@@ -289,9 +290,15 @@ async function runComposeCommand(
   });
 }
 
+function validSelectedServices(projectServices: ProjectService[], selected: string[]): boolean {
+  return selected.length > 0 && selected.every((name) =>
+    projectServices.some((service) => service.name === name)
+  );
+}
+
 export async function composeUp(
   projectName: string,
-  options: { detach?: boolean; build?: boolean; pull?: boolean; signal?: AbortSignal } = {},
+  options: { detach?: boolean; build?: boolean; pull?: boolean; signal?: AbortSignal; services?: string[] } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -299,8 +306,12 @@ export async function composeUp(
     return { success: false, output: "", error: "Project not found" };
   }
 
+  if (options.services && !validSelectedServices(project.services, options.services)) {
+    return { success: false, output: "", error: "A nonempty list of valid services is required" };
+  }
+
   // If updating ourselves, use the updater container approach
-  const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile);
+  const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile, options.services);
   if (selfUpdateResult) {
     if (selfUpdateResult.success) {
       invalidateProjectScanCache();
@@ -310,8 +321,12 @@ export async function composeUp(
 
   const args = ["up"];
   if (options.detach !== false) args.push("-d");
-  if (options.build) args.push("--build");
-  if (options.pull) args.push("--pull", "always");
+  if (options.services) {
+    args.push("--no-deps", "--no-build", "--pull", "never", "--", ...options.services);
+  } else {
+    if (options.build) args.push("--build");
+    if (options.pull) args.push("--pull", "always");
+  }
 
   const result = await runComposeCommand(project.path, args, {
     onOutput,
@@ -351,7 +366,7 @@ export async function composeDown(
 
 export async function composePull(
   projectName: string,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; services?: string[] } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
   const project = await getProject(projectName);
@@ -359,7 +374,11 @@ export async function composePull(
     return { success: false, output: "", error: "Project not found" };
   }
 
-  return runComposeCommand(project.path, ["pull"], {
+  if (options.services && !validSelectedServices(project.services, options.services)) {
+    return { success: false, output: "", error: "A nonempty list of valid services is required" };
+  }
+  const args = options.services ? ["pull", "--policy", "always", "--", ...options.services] : ["pull"];
+  return runComposeCommand(project.path, args, {
     onOutput,
     composeFile: project.composeFile,
     signal: options.signal,
@@ -372,16 +391,7 @@ export async function composePullService(
   options: { signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
-  const project = await getProject(projectName);
-  if (!project) {
-    return { success: false, output: "", error: "Project not found" };
-  }
-
-  return runComposeCommand(project.path, ["pull", serviceName], {
-    onOutput,
-    composeFile: project.composeFile,
-    signal: options.signal,
-  });
+  return composePull(projectName, { ...options, services: [serviceName] }, onOutput);
 }
 
 export async function composeUpService(
@@ -390,29 +400,7 @@ export async function composeUpService(
   options: { signal?: AbortSignal } = {},
   onOutput?: (data: string) => void
 ): Promise<ComposeResult> {
-  const project = await getProject(projectName);
-  if (!project) {
-    return { success: false, output: "", error: "Project not found" };
-  }
-
-  // If updating ourselves, use the updater container approach
-  const selfUpdateResult = await handleSelfUpdate(projectName, project.composeFile);
-  if (selfUpdateResult) {
-    if (selfUpdateResult.success) {
-      invalidateProjectScanCache();
-    }
-    return selfUpdateResult;
-  }
-
-  const result = await runComposeCommand(project.path, ["up", "-d", serviceName], {
-    onOutput,
-    composeFile: project.composeFile,
-    signal: options.signal,
-  });
-  if (result.success) {
-    invalidateProjectScanCache();
-  }
-  return result;
+  return composeUp(projectName, { ...options, services: [serviceName] }, onOutput);
 }
 
 export async function composeLogs(
